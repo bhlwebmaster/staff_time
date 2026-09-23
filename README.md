@@ -1,0 +1,140 @@
+# BHL Attendance
+
+Clock-in app for the Philippine team, built to replace posting in the WhatsApp group.
+
+- **Staff app** (`/`): tap your name, enter your 4-digit PIN, then tap **Clock in → Start lunch → End lunch → Clock out**. It shows UK time and Manila time, your OT bank, who else is in today, and a **Copy WhatsApp message** button that outputs the same format the group uses.
+- **Admin** (`admin.html`): live board, timesheets, **Reports** (daily / weekly / monthly / custom dates, exported to PDF or CSV), edits to any entry (every change is logged), staff management, PIN resets, and **Access**, where admins create logins for other admins or finance.
+
+Works without setup: if `config.js` still has the placeholder values, both pages run in **demo mode** with sample data (demo PINs: Rae `1111`, Cess `2222`).
+
+---
+
+## Go live: Supabase + GitHub Pages (about 20 minutes, free)
+
+Supabase stores the data and runs the one server-side piece (creating logins). GitHub Pages hosts the pages.
+
+### 1. Supabase: database
+1. Create a project at https://supabase.com. Pick a region near London or Singapore.
+2. Go to **SQL Editor → New query**, paste all of `supabase/schema.sql`, and click **Run**.
+3. Optional: run `supabase/seed.sql` to add Rae and Cess plus the entries already posted in WhatsApp (22–23 Sept).
+4. Make yourself the first admin:
+   - **Authentication → Users → Add user → Create new user**: enter your email and a password, and tick **Auto Confirm User**.
+   - Back in **SQL Editor**, run:
+     ```sql
+     insert into public.admins (user_id, email, role)
+     select id, email, 'admin' from auth.users where email = 'mylesjessop@me.com';
+     ```
+   You only do this once. Every other login is created from the admin page.
+5. **Authentication → Sign In / Providers → Email**: turn off **Allow new users to sign up**, so nobody can create their own account.
+6. **Project Settings → API** (or **API Keys**): copy the **Project URL** and the **anon / public** key.
+
+### 2. Supabase: the "create logins" function
+1. Go to **Edge Functions → Deploy a new function → Via Editor**.
+2. Name it exactly `admin-users`.
+3. Delete the sample code, paste all of `supabase/functions/admin-users/index.ts`, and click **Deploy**.
+4. Open the function → **Details / Settings**, turn **off** "Verify JWT" (called "Enforce JWT verification" in some versions), and save.
+   It's safe to turn this off because the function checks the caller's login and admin role itself.
+   Supabase gives the function its secret key automatically, so you don't need to set anything else.
+
+### 3. Put the keys in `config.js`
+Edit these two lines with your values from step 1.6:
+```js
+SUPABASE_URL: "https://xxxx.supabase.co",
+SUPABASE_ANON_KEY: "eyJhbGciOi...",
+```
+The anon key is designed to be public. **Never** put the service_role key in this file.
+
+### 4. GitHub: upload the files
+1. On https://github.com, click **+ → New repository**. Name it `bhl-attendance`, choose **Public** (Pages is free for public repos), and leave "Add a README" unticked. Click **Create repository**.
+2. Click the **"uploading an existing file"** link. Open the unzipped `bhl-attendance` folder, select **everything inside it**, and drag it into the browser. Then click **Commit changes**.
+   The repo's front page must show `index.html` directly, not inside a folder.
+   Note: `.nojekyll` is a hidden file. On a Mac, press **Cmd+Shift+.** in Finder to show it so it gets included. If it's missing, use **Add file → Create new file**, name it `.nojekyll`, leave it empty and commit.
+
+### 5. GitHub Pages: switch it on
+1. In the repo, go to **Settings → Pages**.
+2. **Source:** Deploy from a branch. **Branch:** `main`, folder `/ (root)`. Click **Save**.
+3. Wait 1–2 minutes and refresh. The page shows your link:
+   - Staff app: `https://YOUR-USERNAME.github.io/bhl-attendance/`
+   - Admin: `https://YOUR-USERNAME.github.io/bhl-attendance/admin.html`
+
+### 6. Quick test
+1. Open the admin link and sign in. The yellow demo banner should be gone.
+2. **Access** tab: you're listed. Create a test finance login to check the function works.
+3. **Staff** tab: add people, or check Rae and Cess are there if you ran the seed.
+4. On your phone, open the staff link, tap a name, create a PIN, then clock in and clock out.
+5. **Reports** → **Export PDF**.
+
+### 7. Roll out
+- Send staff the link. On the phone, **Share → Add to Home Screen** makes it open like an app.
+- Bookmark `admin.html` for yourself and finance.
+- **Updating later:** in the repo, use **Add file → Upload files**, drag in the changed files and commit. Pages republishes within a minute or two.
+- **Optional custom domain** (e.g. `attendance.biohacklondon.com`): go to repo **Settings → Pages → Custom domain**, then add the CNAME record GitHub shows you at your domain's DNS.
+
+### Troubleshooting
+| You see | Fix |
+|---|---|
+| 404 on the Pages link | Wait 2 minutes; check Settings → Pages is set to `main` / root, and that `index.html` sits at the top of the repo. |
+| Demo banner still showing | `config.js` wasn't saved correctly, or your browser has an old copy. Hard-refresh with Cmd+Shift+R. |
+| "User management isn't set up yet" | Deploy the `admin-users` Edge Function (step 2) with exactly that name. |
+| Creating a login fails with a network or CORS error | Turn off "Verify JWT" on the function (step 2.4). |
+| "This login doesn't have access" | That email isn't in the `admins` table. For your own first login, run the SQL in step 1.4. |
+| Supabase project paused | The free tier pauses after about a week with no use. Click **Restore** in Supabase; daily clock-ins keep it awake. |
+
+---
+
+## Logins and roles
+| Role | Can do |
+|---|---|
+| **Admin** | Everything: edit or add entries, manage staff and PINs, change settings, create, change or remove logins. |
+| **Finance** | View the live board, timesheets and reports, and export CSV or PDF. Can't change anything; the database enforces this, not just the screen. |
+
+To create a login, go to **Access → Create a login**: enter an email, pick a role, click **Generate** for a temporary password, then click **Create login**. Copy the details and send them privately. They sign in at `admin.html` and change their password under **Access → My password**. Admins can switch roles or remove a login from the same page. You can't remove or demote yourself, so there's always at least one admin.
+
+## Reports
+In **Admin → Reports**:
+- **Daily**: one day, with hours per person plus each person's in, lunch and out.
+- **Weekly**: Mon–Sun, with hours per person per day.
+- **Monthly**: a calendar month, with hours per person per week.
+- **Custom dates**: any from–to range. Up to 14 days shows by day, up to about 4 months by week, and longer ranges by month.
+
+Use ← / → to step back or forward a period, and filter to one person if needed. **Export PDF** downloads a landscape A4 report: summary figures, the hours table with totals, full daily detail (missing clock-outs highlighted), and page numbers. **CSV** gives the same table in decimal hours for spreadsheets or invoicing.
+
+## How the numbers work
+All times are **UK time** (Europe/London). That's the "GMT" the team already uses in WhatsApp, and it follows BST automatically. You can change it in Settings.
+
+| Term | Rule |
+|---|---|
+| **Late** | Clocked in more than *grace* minutes (default 5) after that day's scheduled start. |
+| **Worked** | Time out − time in − lunch. If someone arrives early, counting starts at their scheduled start (there's a setting to change this). Lunch is the actual lunch taken if both lunch taps exist, otherwise their standard unpaid lunch. |
+| **Paid day** | The person's default schedule minus lunch, e.g. 6:00–15:00 with 60 min lunch = 8:00. |
+| **OT earned** | Worked minus the paid day, when positive, rounded **down** to whole blocks (default 15 min). Example: 36 min extra counts as 30. |
+| **Offset / short** | Worked minus the paid day, when negative. It's taken from the OT bank. |
+| **OT bank** | OT earned − offset/short for the period. |
+| **Regular hrs** | Worked hours, capped at the paid day. |
+| **Billable hrs** | Regular + OT earned. This is the figure for invoicing. |
+
+**Offset days:** before clocking in, staff can open "Different schedule today?" and set, for example, 6:30–15:00 with the note "Offset against 30-minute OT yesterday". The shorter day then draws from their OT bank.
+
+## Security model
+- Staff never read or write tables directly. Every clock action goes through database functions that check the PIN (stored bcrypt-hashed) and use the **server clock**, so a phone's time can't be changed to fake a punch. After 5 wrong PINs, that name is locked for 15 minutes.
+- Anyone with the link can see the team's names and today's status, the same as the WhatsApp group. History and reports are admin-only.
+- Admin and finance users sign in with email and password. Row Level Security gives read access to everyone listed in `admins`, and write access only to the `admin` role. PIN hashes can't be read by any login.
+- New logins are created by the `admin-users` Edge Function in Supabase. It checks that the caller is signed in with the admin role before using the service key, which never leaves Supabase.
+- The GitHub repo is public, but it contains no secrets: the anon key is designed to be public, and the database rules plus the PIN checks protect the data.
+- Every create, edit and delete on an attendance entry goes to `audit_log`, with who made it and before/after values. You can see it under "History" in the edit dialog.
+
+## Files
+```
+index.html        staff app
+admin.html        admin
+config.js         your Supabase URL + anon key
+assets/core.js    time zone maths + hours/OT rules (shared)
+assets/api.js     Supabase calls + demo mode
+assets/staff.js   staff app logic
+assets/admin.js   admin logic (incl. reports + PDF + access)
+assets/style.css  styles (light + dark)
+supabase/schema.sql   tables, security, functions (safe to re-run)
+supabase/seed.sql     optional starting data
+supabase/functions/admin-users/index.ts   Edge Function: create / change / remove logins
+.nojekyll         tells GitHub Pages to serve files as-is
+```

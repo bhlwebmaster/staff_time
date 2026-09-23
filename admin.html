@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BHL Attendance · Admin</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  main { padding-block: 22px 70px; }
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tabs button { border: 0; background: transparent; padding: 8px 12px; border-radius: 9px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  .tabs button[aria-selected=true] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .head { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .head h1 { font-size: clamp(24px, 4vw, 30px); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .kpi { padding: 14px 16px; display: grid; gap: 2px; }
+  .kpi b { font-family: var(--mono); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .kpi span { font-size: 12.5px; color: var(--muted); }
+  .kpi.warn b { color: var(--late); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .chips button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .controls label.f { min-width: 140px; }
+  dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); padding: 0; width: min(560px, calc(100% - 32px)); box-shadow: var(--shadow); }
+  dialog::backdrop { background: rgba(10, 20, 15, .45); }
+  dialog form { padding: 20px; display: grid; gap: 14px; }
+  .hist { font-size: 12.5px; color: var(--muted); display: grid; gap: 3px; max-height: 120px; overflow: auto; }
+  .login { max-width: 400px; margin: 8vh auto 0; }
+  .printhead { display: none; }
+  td .sub { display: block; font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+  td.note { max-width: 260px; font-size: 13px; color: var(--muted); }
+  .check { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+  body.ro .adminonly { display: none !important; }
+  .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .role { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+  .role:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .role input { margin-top: 3px; accent-color: var(--accent); }
+  .role b { display: block; } .role span { font-size: 13px; color: var(--muted); }
+  .pw { display: flex; gap: 8px; } .pw input { flex: 1; font-family: var(--mono); }
+  .made { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 12px; padding: 14px 16px; display: grid; gap: 8px; }
+  .made pre { margin: 0; font-family: var(--mono); font-size: 13px; white-space: pre-wrap; }
+  .pill.role-admin { color: var(--accent); background: var(--accent-soft); }
+  .pill.role-finance { color: var(--lunch); background: var(--lunch-soft); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 11px; padding: 3px; background: var(--surface-2); flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; padding: 7px 14px; border-radius: 8px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  .seg button[aria-pressed=true] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .matrix td.num, .matrix th.num { min-width: 56px; }
+  .matrix td:first-child .sub { white-space: nowrap; }
+  .matrix td, .matrix th { padding-inline: 10px; }
+  .matrix td.zero { color: var(--line); }
+  .matrix th.tot, .matrix td.tot { background: var(--surface-2); }
+  .matrix th .d { display: block; font-size: 10.5px; letter-spacing: 0; text-transform: none; font-weight: 500; }
+  .rephead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 20px 0 10px; }
+  @media print { .printhead { display: block; margin-bottom: 12px; } main { padding: 0; } table { font-size: 11px; } td, th { padding: 5px 6px; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap">
+    <div class="brand"><div class="mark">BHL</div>Attendance <span class="muted" style="font-weight:600;font-size:14px">Admin</span></div>
+    <nav class="tabs" id="tabs" role="tablist" hidden>
+      <button role="tab" data-tab="today" aria-selected="true">Today</button>
+      <button role="tab" data-tab="sheets" aria-selected="false">Timesheets</button>
+      <button role="tab" data-tab="reports" aria-selected="false">Reports</button>
+      <button role="tab" data-tab="staff" aria-selected="false" class="adminonly">Staff</button>
+      <button role="tab" data-tab="settings" aria-selected="false" class="adminonly">Settings</button>
+      <button role="tab" data-tab="access" aria-selected="false">Access</button>
+    </nav>
+    <div class="clocks"><div class="clock"><b id="ukClock">--:--</b><span>UK</span></div>
+      <button class="btn ghost sm" id="signOut" hidden>Sign out</button></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="demoBanner" class="banner" hidden style="margin-bottom:18px">
+    <b>Demo mode</b> with sample data. Connect Supabase in <code>config.js</code> to go live. Sign in with any email (use one containing “finance” to preview the finance view).
+  </div>
+
+  <section id="vLogin" class="login card pad stack" hidden>
+    <h1 style="font-size:26px">Admin sign-in</h1>
+    <form id="loginForm" class="stack">
+      <label class="f">Email<input type="email" id="lEmail" autocomplete="username" required></label>
+      <label class="f">Password<input type="password" id="lPass" autocomplete="current-password" required></label>
+      <button class="btn primary" type="submit">Sign in</button>
+      <p class="muted" id="lMsg" style="margin:0;font-size:13px"></p>
+    </form>
+  </section>
+
+  <!-- TODAY -->
+  <section id="tab-today" hidden>
+    <div class="head">
+      <div><div class="eyebrow">Live board</div><h1 id="dayTitle">Today</h1></div>
+      <span class="spacer"></span>
+      <label class="f">Day<input type="date" id="dayPick"></label>
+    </div>
+    <div class="kpis" id="dayKpis" style="margin-bottom:14px"></div>
+    <div class="card tablewrap"><table>
+      <thead><tr><th>Name</th><th>Status</th><th>Schedule</th><th>In</th><th>Lunch</th><th>Out</th><th class="num">Worked</th><th>Flags</th><th></th></tr></thead>
+      <tbody id="dayRows"></tbody>
+    </table></div>
+  </section>
+
+  <!-- TIMESHEETS -->
+  <section id="tab-sheets" hidden>
+    <div class="printhead"><h2 id="printTitle"></h2></div>
+    <div class="head noprint">
+      <div><div class="eyebrow">Hours for finance & invoicing</div><h1 id="sheetTitle">Timesheets</h1></div>
+    </div>
+    <div class="card pad stack noprint" style="margin-bottom:14px">
+      <div class="chips" id="quick">
+        <button data-q="tw">This week</button><button data-q="lw">Last week</button>
+        <button data-q="tm">This month</button><button data-q="lm">Last month</button>
+      </div>
+      <div class="controls">
+        <label class="f">From<input type="date" id="from"></label>
+        <label class="f">To<input type="date" id="to"></label>
+        <label class="f">Person<select id="who"><option value="">Everyone</option></select></label>
+        <span class="spacer"></span>
+        <button class="btn" id="csvSum">Summary CSV</button>
+        <button class="btn" id="csvDay">Daily CSV</button>
+        <button class="btn" id="printBtn">Print / PDF</button>
+      </div>
+    </div>
+    <div class="kpis" id="sheetKpis" style="margin-bottom:14px"></div>
+    <div class="card tablewrap" style="margin-bottom:18px"><table>
+      <thead><tr><th>Name</th><th class="num">Days</th><th class="num">Worked</th><th class="num">Regular</th><th class="num">OT earned</th>
+        <th class="num">Offset / short</th><th class="num">OT bank</th><th class="num">Late</th><th class="num">No clock-out</th><th class="num">Billable hrs</th></tr></thead>
+      <tbody id="sumRows"></tbody><tfoot id="sumFoot"></tfoot>
+    </table></div>
+    <div class="row" style="margin-bottom:10px">
+      <h2 style="font-size:19px">Daily entries</h2><span class="spacer"></span>
+      <button class="btn sm noprint adminonly" id="addEntry">+ Add entry</button>
+    </div>
+    <div class="card tablewrap"><table>
+      <thead><tr><th>Date</th><th>Name</th><th>Schedule</th><th>In</th><th>Lunch</th><th>Out</th><th class="num">Worked</th><th>Flags</th><th>Note</th><th class="noprint"></th></tr></thead>
+      <tbody id="dailyRows"></tbody>
+    </table></div>
+  </section>
+
+  <!-- REPORTS -->
+  <section id="tab-reports" hidden>
+    <div class="head">
+      <div><div class="eyebrow">Work-hours tally</div><h1 id="repTitle">Reports</h1><p class="muted" id="repSub" style="margin:4px 0 0"></p></div>
+    </div>
+    <div class="card pad stack" style="margin-bottom:14px">
+      <div class="seg" id="repType" role="group" aria-label="Report type">
+        <button data-t="day" aria-pressed="false">Daily</button><button data-t="week" aria-pressed="true">Weekly</button>
+        <button data-t="month" aria-pressed="false">Monthly</button><button data-t="custom" aria-pressed="false">Custom dates</button>
+      </div>
+      <div class="controls">
+        <label class="f" id="rDayL">Any day in the week<input type="date" id="rDay"></label>
+        <label class="f" id="rMonthL" hidden>Month<input type="month" id="rMonth"></label>
+        <label class="f" id="rFromL" hidden>From<input type="date" id="rFrom"></label>
+        <label class="f" id="rToL" hidden>To<input type="date" id="rTo"></label>
+        <div class="row" id="rStep"><button class="btn sm" id="rPrev" aria-label="Previous period">←</button><button class="btn sm" id="rNow">Current</button><button class="btn sm" id="rNext" aria-label="Next period">→</button></div>
+        <label class="f">Person<select id="rWho"><option value="">Everyone</option></select></label>
+        <span class="spacer"></span>
+        <button class="btn" id="rCsv">CSV</button>
+        <button class="btn primary" id="rPdf">Export PDF</button>
+      </div>
+    </div>
+    <div class="kpis" id="repKpis"></div>
+    <div class="rephead"><h2 style="font-size:19px" id="matrixTitle">Hours by day</h2><span class="muted" style="font-size:13px">Worked hours (h:mm), after unpaid lunch</span></div>
+    <div class="card tablewrap"><table class="matrix" id="matrix"></table></div>
+    <div class="rephead"><h2 style="font-size:19px">Daily detail</h2></div>
+    <div class="card tablewrap"><table id="repDetail"></table></div>
+  </section>
+
+  <!-- STAFF -->
+  <section id="tab-staff" hidden>
+    <div class="head"><div><div class="eyebrow">Team</div><h1>Staff</h1></div><span class="spacer"></span>
+      <button class="btn primary" id="addStaff">+ Add person</button></div>
+    <div class="card tablewrap"><table>
+      <thead><tr><th>Name</th><th>Timesheet name</th><th>Default schedule (UK)</th><th class="num">Lunch</th><th class="num">Paid day</th><th>PIN</th><th>Status</th><th></th></tr></thead>
+      <tbody id="staffRows"></tbody>
+    </table></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="tab-settings" hidden>
+    <div class="head"><div><div class="eyebrow">Rules</div><h1>Settings</h1></div></div>
+    <form id="setForm" class="card pad stack" style="max-width:620px">
+      <label class="f">Company name<input type="text" id="stCompany"></label>
+      <label class="f">Working time zone
+        <select id="stTz"><option>Europe/London</option><option>Asia/Manila</option><option>UTC</option></select></label>
+      <div class="grid2">
+        <label class="f">Late after (grace, minutes)<input type="number" id="stGrace" min="0" max="60"></label>
+        <label class="f">Credit OT in blocks of (minutes)<input type="number" id="stBlock" min="1" max="60"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="stEarly"> Count minutes before scheduled start as worked time</label>
+      <p class="muted" style="margin:0;font-size:13px">Worked time = time out − (time in, or scheduled start if they arrived early) − lunch. Anything above the person's normal paid day
+        is OT credit in whole blocks; anything below is drawn from their OT bank (an offset) or shows as short.</p>
+      <div><button class="btn primary" type="submit">Save settings</button></div>
+    </form>
+  </section>
+  <!-- ACCESS -->
+  <section id="tab-access" hidden>
+    <div class="head"><div><div class="eyebrow">Who can sign in here</div><h1>Access</h1></div></div>
+    <div class="stack">
+      <div class="card pad stack adminonly">
+        <h2 style="font-size:19px">Create a login</h2>
+        <form id="userForm" class="stack">
+          <label class="f">Email<input type="email" id="uEmail" required placeholder="finance@biohacklondon.com" autocomplete="off"></label>
+          <div class="roles" role="radiogroup" aria-label="Role">
+            <label class="role"><input type="radio" name="uRole" value="finance" checked><div><b>Finance</b><span>Sees the live board and timesheets, and can export CSV or PDF. Can't edit anything.</span></div></label>
+            <label class="role"><input type="radio" name="uRole" value="admin"><div><b>Admin</b><span>Everything: edit entries, manage staff and settings, create logins.</span></div></label>
+          </div>
+          <label class="f">Temporary password
+            <div class="pw"><input type="text" id="uPass" required minlength="8" autocomplete="off"><button class="btn" type="button" id="uGen">Generate</button></div></label>
+          <div><button class="btn primary" type="submit" id="uSubmit">Create login</button></div>
+        </form>
+        <div class="made" id="uMade" hidden>
+          <b>Login created. Send these details to them privately:</b>
+          <pre id="uMadeText"></pre>
+          <div><button class="btn sm" type="button" id="uCopy">Copy details</button></div>
+        </div>
+      </div>
+
+      <div class="card tablewrap adminonly"><table>
+        <thead><tr><th>Email</th><th>Role</th><th>Added</th><th></th></tr></thead>
+        <tbody id="userRows"></tbody>
+      </table></div>
+
+      <form id="myPwForm" class="card pad stack" style="max-width:520px">
+        <h2 style="font-size:19px">My password</h2>
+        <p class="muted" style="margin:0;font-size:13px">Signed in as <b id="meEmail"></b>. If you were given a temporary password, change it here.</p>
+        <label class="f">New password<input type="password" id="myPw" minlength="8" required autocomplete="new-password"></label>
+        <label class="f">Type it again<input type="password" id="myPw2" minlength="8" required autocomplete="new-password"></label>
+        <div><button class="btn primary" type="submit">Change password</button></div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<dialog id="entryDlg">
+  <form method="dialog" id="entryForm">
+    <div class="row"><h2 style="font-size:20px" id="entryTitle">Edit entry</h2><span class="spacer"></span>
+      <button class="btn ghost sm" value="cancel" formnovalidate>Close</button></div>
+    <div class="grid2">
+      <label class="f">Person<select id="eWho" required></select></label>
+      <label class="f">Date<input type="date" id="eDate" required></label>
+      <label class="f">Sched start<input type="time" id="eSS" required></label>
+      <label class="f">Sched end<input type="time" id="eSE" required></label>
+      <label class="f">Time in<input type="time" id="eIn"></label>
+      <label class="f">Time out<input type="time" id="eOut"></label>
+      <label class="f">Lunch out<input type="time" id="eLO"></label>
+      <label class="f">Lunch in<input type="time" id="eLI"></label>
+    </div>
+    <label class="f">Note<textarea id="eNote" rows="2"></textarea></label>
+    <p class="muted" style="margin:0;font-size:12.5px">All times are UK time. Every change is kept in the history below.</p>
+    <div class="hist" id="eHist"></div>
+    <div class="row"><button class="btn danger" type="button" id="eDel">Delete entry</button><span class="spacer"></span>
+      <button class="btn primary" type="submit" value="save">Save</button></div>
+  </form>
+</dialog>
+
+<dialog id="staffDlg">
+  <form method="dialog" id="staffForm">
+    <div class="row"><h2 style="font-size:20px" id="staffTitle">Person</h2><span class="spacer"></span>
+      <button class="btn ghost sm" value="cancel" formnovalidate>Close</button></div>
+    <div class="grid2">
+      <label class="f">Display name<input type="text" id="pDisp" required placeholder="Rae"></label>
+      <label class="f">Timesheet name<input type="text" id="pFull" required placeholder="BINGHOY, RAE"></label>
+      <label class="f">Start (UK)<input type="time" id="pSS" required></label>
+      <label class="f">End (UK)<input type="time" id="pSE" required></label>
+      <label class="f">Unpaid lunch (min)<input type="number" id="pLunch" min="0" max="180" required></label>
+      <label class="f">Status<select id="pActive"><option value="true">Active</option><option value="false">Inactive</option></select></label>
+    </div>
+    <div class="row"><button class="btn" type="button" id="pReset">Reset PIN</button>
+      <span class="muted" style="font-size:12.5px">They'll create a new one next time they open the app.</span></div>
+    <div class="row"><span class="spacer"></span><button class="btn primary" type="submit" value="save">Save</button></div>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="config.js"></script>
+<script src="assets/core.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/admin.js"></script>
+</body>
+</html>
