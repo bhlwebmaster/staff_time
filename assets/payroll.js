@@ -12,7 +12,9 @@
 
   /**
    * One person's pay for a period, from their attendance.
-   * - Rate is per pay period (GBP). Daily rate = rate ÷ weekdays in the period; minute rate = daily ÷ paid minutes per day.
+   * - Pay type "daily": rate per day; gross = (days worked + paid leave) × rate.
+   * - Pay type "period": fixed rate per pay period; daily = rate ÷ working days; absences deducted at the daily rate.
+   * - Minute rate (for lates/undertime) = daily ÷ paid minutes per day.
    * - Started mid-period: paid for the weekdays from their start date.
    * - Lates: minutes after the day's scheduled start (beyond grace). Undertime: minutes before the day's scheduled end.
    * - Working days come from the weekly schedule (rest days don't count; paid leave is paid, unpaid leave is deducted).
@@ -47,13 +49,17 @@
     const v = { ...auto };
     for (const k of Object.keys(auto)) if (over[k] !== undefined && over[k] !== null && over[k] !== "") v[k] = k === "other_note" ? over[k] : Number(over[k]);
     const rate = Number(staff.pay_rate) || 0;
-    const daily = fullSched ? rate / fullSched : 0;
+    const type = staff.pay_type === "period" ? "period" : "daily";
+    // Daily rate: pay = (days worked + paid leave days) × rate. Absences simply aren't paid, so no separate deduction.
+    // Per period: fixed amount for the period; absent days are deducted at rate ÷ working days.
+    const daily = type === "daily" ? rate : fullSched ? rate / fullSched : 0;
     const minute = daily / Math.max(1, B.standardMins(staff));
-    const gross = r2(daily * sched);
-    const late_ded = r2(v.late_mins * minute), undertime_ded = r2(v.undertime_mins * minute), absence_ded = r2(v.absences * daily);
+    const paid_days = type === "daily" ? (Number(v.days_worked) || 0) + leave : sched;
+    const gross = r2(type === "daily" ? daily * paid_days : daily * sched);
+    const late_ded = r2(v.late_mins * minute), undertime_ded = r2(v.undertime_mins * minute), absence_ded = type === "daily" ? 0 : r2(v.absences * daily);
     const total_ded = r2(late_ded + undertime_ded + absence_ded + (Number(v.other_ded) || 0));
     return {
-      staff_id: staff.id, employee_name: staff.full_name, start_date: staff.start_date || null, rate: r2(rate),
+      staff_id: staff.id, employee_name: staff.full_name, start_date: staff.start_date || null, rate: r2(rate), pay_type: type, paid_days,
       days_scheduled: sched, paid_leave: leave, ...v, late_ded, undertime_ded, absence_ded, other_ded: r2(v.other_ded), total_ded,
       gross, net: r2(Math.max(0, gross - total_ded)), auto, overrides: over, daily: r2(daily), minute,
     };
@@ -94,10 +100,10 @@
         ${row("Pay Period:", period({ start_date: s.period_start, end_date: s.period_end }))}
         ${row("Payment Date:", B.prettyDate(s.pay_date, { month: "long", day: "numeric", year: "numeric" }))}
         ${head("EARNINGS (GBP)")}
-        ${row("Basic Pay:", `<b>${GBP(s.gross)}</b>`)}
+        ${row(s.pay_type === "daily" ? `Basic Pay (${Number(s.paid_days) || 0} day${Number(s.paid_days) === 1 ? "" : "s"} × ${GBP(s.rate)}):` : "Basic Pay:", `<b>${GBP(s.gross)}</b>`)}
         ${head("DEDUCTIONS (GBP)")}
         ${row(`Late/Undertime (${lateUnder} min):`, GBP(r2((+s.late_ded || 0) + (+s.undertime_ded || 0))))}
-        ${row(`Absences (${Number(s.absences) || 0} day${Number(s.absences) === 1 ? "" : "s"}):`, GBP(s.absence_ded))}
+        ${row(`Absences (${Number(s.absences) || 0} day${Number(s.absences) === 1 ? "" : "s"}${s.pay_type === "daily" ? ", unpaid" : ""}):`, GBP(s.absence_ded))}
         ${row(`Other Deductions${s.other_note ? ` (${B.esc(s.other_note)})` : ""}:`, GBP(s.other_ded))}
         ${row("<b>Total Deductions:</b>", `<b>${GBP(s.total_ded)}</b>`)}
         ${head("TOTAL (GBP)")}
@@ -149,7 +155,7 @@
     line("Employee Name:", s.employee_name, { bold: true });
     line("Pay Period:", period({ start_date: s.period_start, end_date: s.period_end }));
     line("Payment Date:", B.prettyDate(s.pay_date, { month: "long", day: "numeric", year: "numeric" }));
-    sec("EARNINGS (GBP)"); line("Basic Pay:", GBP(s.gross), { bold: true });
+    sec("EARNINGS (GBP)"); line(s.pay_type === "daily" ? `Basic Pay (${Number(s.paid_days) || 0} days x ${GBP(s.rate)}):` : "Basic Pay:", GBP(s.gross), { bold: true });
     sec("DEDUCTIONS (GBP)");
     line(`Late/Undertime (${lateUnder} min):`, GBP(r2((+s.late_ded || 0) + (+s.undertime_ded || 0))));
     line(`Absences (${Number(s.absences) || 0} days):`, GBP(s.absence_ded));

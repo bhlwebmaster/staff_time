@@ -358,7 +358,12 @@ grant select (id, full_name, display_name, sched_start, sched_end, lunch_mins, a
 
 -- Pay details on each staff member
 alter table public.staff add column if not exists start_date date;              -- employment start date
-alter table public.staff add column if not exists pay_rate   numeric(12,2);     -- GBP per pay period (bi-weekly)
+alter table public.staff add column if not exists pay_rate   numeric(12,2);     -- GBP: per day (daily) or per pay period
+-- 'daily'  = paid for each day worked (plus paid leave) × daily rate
+-- 'period' = fixed amount per pay period, minus absences
+alter table public.staff add column if not exists pay_type   text not null default 'daily';
+alter table public.staff drop constraint if exists staff_pay_type_check;
+alter table public.staff add constraint staff_pay_type_check check (pay_type in ('daily', 'period'));
 
 -- A pay period (created by an admin each time)
 create table if not exists public.pay_periods (
@@ -381,6 +386,7 @@ create table if not exists public.payslips (
   employee_name   text not null,
   start_date      date,
   rate            numeric(12,2) not null default 0,
+  pay_type        text not null default 'daily',
   days_scheduled  int not null default 0,
   days_worked     int not null default 0,
   late_mins       int not null default 0,
@@ -405,6 +411,9 @@ create table if not exists public.payslips (
   unique (period_id, staff_id)
 );
 
+alter table public.payslips add column if not exists pay_type text not null default 'daily';
+alter table public.payslips add column if not exists paid_days numeric(5,1) not null default 0;
+
 alter table public.pay_periods enable row level security;
 alter table public.payslips    enable row level security;
 do $$
@@ -418,7 +427,7 @@ begin
   end loop;
 end $$;
 grant select, insert, update, delete on public.pay_periods, public.payslips to authenticated;
-grant select (start_date, pay_rate) on public.staff to authenticated;
+grant select (start_date, pay_rate, pay_type) on public.staff to authenticated;
 
 -- Staff list for admins now includes pay details
 create or replace function public.admin_staff() returns json
@@ -428,7 +437,7 @@ language sql stable security definer set search_path = public as $$
       'sched_start', sched_start, 'sched_end', sched_end, 'lunch_mins', lunch_mins, 'active', active,
       'has_pin', pin_hash is not null, 'created_at', created_at,
       'avatar', avatar, 'photo', photo, 'tagline', tagline, 'color', color,
-      'start_date', start_date, 'pay_rate', pay_rate) order by display_name)
+      'start_date', start_date, 'pay_rate', pay_rate, 'pay_type', pay_type) order by display_name)
     from staff), '[]'::json) end;
 $$;
 
@@ -516,6 +525,6 @@ language sql stable security definer set search_path = public as $$
       'sched_start', sched_start, 'sched_end', sched_end, 'lunch_mins', lunch_mins, 'active', active,
       'has_pin', pin_hash is not null, 'created_at', created_at,
       'avatar', avatar, 'photo', photo, 'tagline', tagline, 'color', color,
-      'start_date', start_date, 'pay_rate', pay_rate, 'week_pattern', week_pattern) order by display_name)
+      'start_date', start_date, 'pay_rate', pay_rate, 'pay_type', pay_type, 'week_pattern', week_pattern) order by display_name)
     from staff), '[]'::json) end;
 $$;

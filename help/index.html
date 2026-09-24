@@ -608,7 +608,7 @@ details.faq:target, details.faq.flash { border-color: var(--accent); box-shadow:
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div><b>Once per person:</b> in <b>Staff → Edit</b>, set their <b>Start date</b> and <b>Rate per pay period (£)</b>.</div></li>
+        <li><div><b>Once per person:</b> in <b>Staff → Edit</b>, set their <b>Start date</b>, <b>Pay type</b> and <b>rate</b>. With <b>Daily rate</b>, enter what they earn per day (e.g. £30). With <b>Per pay period</b>, enter the fixed amount for the whole period (e.g. £300).</div></li>
         <li><div>Go to <b>Payroll → + New period</b>. Enter the start, end and payment dates, the <b>exchange rate</b> (₱ per £1) and the <b>total transfer fee</b> (₱).</div></li>
         <li><div>Check the sheet. Days worked, lates, undertime and absences come from attendance. To change a number, type over it (it turns orange). Add <b>Other deductions</b> (CA, loans, taxes) with a short note.</div></li>
         <li><div>Click <b>Save draft</b> any time. When it's right, click <b>Finalise &amp; publish</b> (twice). Staff can then see their payslips in the app.</div></li>
@@ -622,13 +622,14 @@ details.faq:target, details.faq.flash { border-color: var(--accent); box-shadow:
   <div class="tablewrap"><table>
     <thead><tr><th>Item</th><th>Rule</th></tr></thead>
     <tbody>
+      <tr><td><b>Pay type: Daily rate</b></td><td>Pay = (days worked + paid leave days) × daily rate. Example: 9 days worked + 1 vacation day × £30 = £300. Days not worked simply aren't paid.</td></tr>
+      <tr><td><b>Pay type: Per pay period</b></td><td>A fixed amount for the period, like a salary. Absent days are taken off at rate ÷ working days. Example: £300 ÷ 10 days = £30 per absent day.</td></tr>
       <tr><td><b>Working days</b></td><td>Days in the period with a shift or paid leave in the schedule. Rest days don't count.</td></tr>
-      <tr><td><b>Daily rate</b></td><td>Rate ÷ working days. Example: £300 ÷ 10 days = £30 a day.</td></tr>
       <tr><td><b>Per-minute rate</b></td><td>Daily rate ÷ paid minutes in their day. Example: £30 ÷ 480 = £0.0625 a minute.</td></tr>
       <tr><td><b>Lates</b></td><td>Minutes after the day's start time (beyond the grace minutes) × per-minute rate.</td></tr>
       <tr><td><b>Undertime</b></td><td>Minutes before the day's end time × per-minute rate.</td></tr>
-      <tr><td><b>Absences</b></td><td>Planned shifts with no clock-in, plus unpaid leave days, × daily rate. Vacation, sick leave and holidays are paid.</td></tr>
-      <tr><td><b>New starter</b></td><td>Started mid-period? Paid only for working days from their start date.</td></tr>
+      <tr><td><b>Absences</b></td><td>Planned shifts with no clock-in, plus unpaid leave days. <b>Per period:</b> deducted at the daily rate. <b>Daily rate:</b> shown for information, since those days aren't paid anyway. Vacation, sick leave and holidays are paid.</td></tr>
+      <tr><td><b>New starter</b></td><td>Per period: paid only for working days from their start date. Daily rate: paid for days worked, as normal.</td></tr>
       <tr><td><b>Net pay</b></td><td>Gross − lates − undertime − absences − other deductions.</td></tr>
       <tr><td><b>Pesos</b></td><td>Net pay × exchange rate.</td></tr>
       <tr><td><b>Transfer fee share</b></td><td>The total fee is split by each person's share of everyone's net pay. Amount received = net in pesos − their share of the fee.</td></tr>

@@ -241,6 +241,7 @@
     $("pSS").value = (s?.sched_start || "06:00").slice(0, 5); $("pSE").value = (s?.sched_end || "15:00").slice(0, 5);
     $("pLunch").value = s?.lunch_mins ?? 60; $("pActive").value = String(s?.active ?? true);
     $("pStartDate").value = s?.start_date || ""; $("pRate").value = s?.pay_rate ?? "";
+    $("pPayType").value = s?.pay_type || "daily"; payTypeLabel();
     renderPattern(s);
     $("pReset").hidden = !s?.has_pin;
     $("pPhotoRow").hidden = !s?.photo; $("pAv").innerHTML = s ? B.avatarHtml(s, 36) : "";
@@ -251,7 +252,7 @@
     e.preventDefault();
     const rec = { display_name: $("pDisp").value.trim(), full_name: $("pFull").value.trim().toUpperCase(), sched_start: $("pSS").value, sched_end: $("pSE").value,
       lunch_mins: +$("pLunch").value, active: $("pActive").value === "true",
-      start_date: $("pStartDate").value || null, pay_rate: $("pRate").value === "" ? null : +$("pRate").value, week_pattern: readPattern() };
+      start_date: $("pStartDate").value || null, pay_rate: $("pRate").value === "" ? null : +$("pRate").value, pay_type: $("pPayType").value, week_pattern: readPattern() };
     if (rec.week_pattern && Object.values(rec.week_pattern).some((d) => d && d.e <= d.s)) return B.toast("In the usual week, each end time must be after its start time.", "err");
     if (rec.sched_end <= rec.sched_start) return B.toast("End must be after start.", "err");
     try {
@@ -456,6 +457,11 @@
   (function () { const st = document.createElement("style"); st.textContent = S.CSS; document.head.appendChild(st); })();
   let schFrom = null, schDays = [], schDraft = {};
   const DSHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function payTypeLabel() {
+    const d = $("pPayType").value === "daily";
+    $("pRateLabel").textContent = d ? "Daily rate (£)" : "Rate per pay period (£)"; $("pRate").placeholder = d ? "e.g. 30" : "e.g. 300";
+  }
+  $("pPayType").onchange = payTypeLabel;
   function renderPattern(s) {
     const base = s || { sched_start: "06:00:00", sched_end: "15:00:00" };
     $("pPattern").innerHTML = [1, 2, 3, 4, 5, 6, 0].map((d) => {
@@ -594,12 +600,12 @@
         ${num ? 'type="number" step="any" min="0"' : 'maxlength="40" placeholder="e.g. Cash advance"'} aria-label="${k.replace(/_/g, " ")} for ${B.esc(l.employee_name)}"
         title="${has ? `Changed by admin. From attendance: ${autoV}` : "From attendance. Type to change."}">${has ? `<button type="button" class="undo" data-s="${l.staff_id}" data-k="${k}" title="Back to the attendance value (${B.esc(autoV)})" aria-label="Reset to ${B.esc(autoV)}">↺</button>` : ""}</span>`;
     };
-    $("paySheet").innerHTML = `<thead><tr><th style="text-align:left">Employee name</th><th>Start date</th><th>Payroll period</th><th>Rate<br>(per period)</th>
+    $("paySheet").innerHTML = `<thead><tr><th style="text-align:left">Employee name</th><th>Start date</th><th>Payroll period</th><th>Rate</th>
       <th>Days worked</th><th>Lates<br>(mins)</th><th>Undertime<br>(mins)</th><th>Absences</th><th>Other deductions<br>(CA, loans, taxes)</th><th>Note</th>
       <th>Total deductions</th><th>Gross pay</th><th>Net pay</th><th>Exchange rate</th><th>Gross pay<br>(PHP)</th><th>Net pay<br>(PHP)</th><th>Fee share</th><th>Received<br>(PHP)</th></tr></thead>
       <tbody>${payLines.map((l) => `<tr>
         <td><b>${B.esc(l.employee_name)}</b></td><td class="num">${P.usDate(l.start_date)}</td><td>${P.period(curP)}</td>
-        <td class="num">${P.GBP(l.rate)}</td><td class="num">${inp(l, "days_worked")}</td><td class="num">${inp(l, "late_mins")}</td>
+        <td class="num">${P.GBP(l.rate)}<span class="sub">${l.pay_type === "daily" ? `per day · ${l.paid_days} paid` : "per period"}</span></td><td class="num">${inp(l, "days_worked")}</td><td class="num">${inp(l, "late_mins")}</td>
         <td class="num">${inp(l, "undertime_mins")}</td><td class="num">${inp(l, "absences")}</td><td class="num">${inp(l, "other_ded")}</td><td>${inp(l, "other_note", "note")}</td>
         <td class="num">${P.GBP(l.total_ded)}</td><td class="num">${P.GBP(l.gross)}</td><td class="num"><b>${P.GBP(l.net)}</b></td>
         <td class="num">${l.exchange_rate ? Number(l.exchange_rate).toFixed(2) : "—"}</td><td class="num">${P.PHP(l.gross_php)}</td><td class="num hl">${P.PHP(l.net_php)}</td>
@@ -645,14 +651,14 @@
     doc.save(`Payslips_${curP.start_date}_to_${curP.end_date}.pdf`);
   };
   $("payCsv").onclick = () => download(`Payroll_${curP.start_date}_to_${curP.end_date}.csv`, [
-    ["Employee name", "Start date", "Payroll period", "Rate (GBP)", "Days worked", "Lates (mins)", "Undertime (mins)", "Absences", "Late ded (GBP)", "Undertime ded (GBP)",
+    ["Employee name", "Start date", "Payroll period", "Pay type", "Rate (GBP)", "Paid days", "Days worked", "Lates (mins)", "Undertime (mins)", "Absences", "Late ded (GBP)", "Undertime ded (GBP)",
       "Absence ded (GBP)", "Other deductions (GBP)", "Note", "Total deductions (GBP)", "Gross pay (GBP)", "Net pay (GBP)", "Exchange rate", "Gross pay (PHP)", "Net pay (PHP)",
       "Transfer fee share", "Transfer fee (PHP)", "Amount received (PHP)"],
-    ...payLines.map((l) => [l.employee_name, P.usDate(l.start_date), P.period(curP), l.rate, l.days_worked, l.late_mins, l.undertime_mins, l.absences, l.late_ded,
+    ...payLines.map((l) => [l.employee_name, P.usDate(l.start_date), P.period(curP), l.pay_type === "daily" ? "Daily" : "Per period", l.rate, l.paid_days, l.days_worked, l.late_mins, l.undertime_mins, l.absences, l.late_ded,
       l.undertime_ded, l.absence_ded, l.other_ded, l.other_note || "", l.total_ded, l.gross, l.net, l.exchange_rate ?? "", l.gross_php ?? "", l.net_php ?? "",
       ((+l.fee_share || 0) * 100).toFixed(2) + "%", l.fee_php ?? "", l.received_php ?? ""]),
   ]);
-  const KEEP = ["employee_name", "start_date", "rate", "days_scheduled", "days_worked", "late_mins", "undertime_mins", "absences", "late_ded", "undertime_ded",
+  const KEEP = ["employee_name", "start_date", "rate", "pay_type", "paid_days", "days_scheduled", "days_worked", "late_mins", "undertime_mins", "absences", "late_ded", "undertime_ded",
     "absence_ded", "other_ded", "other_note", "total_ded", "gross", "net", "exchange_rate", "gross_php", "net_php", "fee_share", "fee_php", "received_php"];
   async function savePayroll(status) {
     const p = { id: curP.id, exchange_rate: $("payFx").value === "" ? null : +$("payFx").value, transfer_fee: +$("payFee").value || 0 };
