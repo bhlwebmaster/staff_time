@@ -312,6 +312,11 @@
   function bumpIdle() { clearTimeout(idleT); idleT = setTimeout(() => { if (!$("vToday").hidden) lock(); }, 5 * 60 * 1000); }
   ["click", "keydown", "touchstart"].forEach((ev) => document.addEventListener(ev, () => pin && bumpIdle(), { passive: true }));
 
+  // Logo and "Staff" link = back to the homepage (who's clocking in), signed out
+  document.querySelectorAll('a.brand, .sitenav a[aria-current="page"]').forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault(); pin = ""; data = null; me = null; B.lsSet("bhl.me", null); show("vPick"); loadRoster(); loadWeek(null);
+  }));
+
   // ---------- boot ----------
   (async () => {
     if (!api.ready) return;

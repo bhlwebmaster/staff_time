@@ -137,23 +137,30 @@ details.faq:target, details.faq.flash { border-color: var(--accent); box-shadow:
 @media (max-width: 600px) {
   .bar { position: static; }
   .bar .wrap { gap: 10px; }
-  .brand { order: 0; } .bar .home { order: 1; margin-left: auto; } .switch { order: 2; }
+  .brand { order: 0; } .bar .sitenav { order: 1; margin-left: auto; } .switch { order: 2; }
   .search { order: 3; flex-basis: 100%; max-width: none; margin-left: 0; }
   .hero { padding-top: 22px; } .hero .links { display: none; }
 }
 .tech > summary { cursor: pointer; font-weight: 700; color: var(--muted); }
+
+a.brand { text-decoration: none; color: inherit; border-radius: 10px; }
+a.brand:hover .mark { filter: brightness(1.08); }
+.sitenav { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+.sitenav a { padding: 5px 13px; border-radius: 999px; font-weight: 700; font-size: 13.5px; text-decoration: none; color: var(--muted); }
+.sitenav a:hover { color: var(--ink); }
+.sitenav a[aria-current="page"] { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
 </style>
 
 </head>
 <body>
 <header class="bar">
   <div class="wrap">
-    <div class="brand"><div class="mark">BHL</div>Attendance Help</div>
+    <a class="brand" href="../" aria-label="BHL Attendance home"><div class="mark">BHL</div>Attendance Help</a>
     <div class="switch" role="group" aria-label="Choose a guide">
       <button id="tabStaff" aria-pressed="true" data-g="staff">Staff</button>
       <button id="tabAdmin" aria-pressed="false" data-g="admin">Admin &amp; Finance</button>
     </div>
-    <a class="home" href="../">← Back to app</a>
+    <nav class="sitenav" aria-label="Open the app"><a href="../">Staff app</a><a href="../admin.html">Admin app</a></nav>
     <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
       <input id="q" type="search" placeholder="Search help (e.g. PIN, lunch, PDF)" aria-label="Search help"></label>
   </div>

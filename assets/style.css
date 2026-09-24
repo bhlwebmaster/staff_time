@@ -54,6 +54,12 @@ h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0; text-wra
 .brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 17px; }
 .brand .mark { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); color: var(--accent-ink);
   display: grid; place-items: center; font-size: 13px; letter-spacing: .02em; }
+a.brand { text-decoration: none; color: inherit; border-radius: 10px; }
+a.brand:hover .mark { filter: brightness(1.08); }
+.sitenav { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+.sitenav a { padding: 5px 13px; border-radius: 999px; font-weight: 700; font-size: 13.5px; text-decoration: none; color: var(--muted); }
+.sitenav a:hover { color: var(--ink); }
+.sitenav a[aria-current="page"] { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
 .help-link { order: 3; font-weight: 700; font-size: 13.5px; text-decoration: none; color: var(--accent); border: 1px solid var(--line); background: var(--surface); padding: 5px 12px; border-radius: 999px; }
 .help-link:hover { border-color: var(--accent); }
 .clocks { margin-left: auto; display: flex; gap: 14px; align-items: baseline; }
