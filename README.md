@@ -169,6 +169,7 @@ supabase/schema.sql   core tables, security, functions (safe to re-run)
 supabase/payroll.sql  payroll tables
 supabase/schedule.sql weekly schedule tables
 supabase/requests.sql staff schedule requests + approval
+supabase/security.sql locks internal/admin functions (Security Advisor)
 supabase/production-cleanup.sql   optional: clear test entries before go-live
 supabase/functions/admin-users/index.ts   Edge Function: create / change / remove logins
 .nojekyll         tells GitHub Pages to serve files as-is
