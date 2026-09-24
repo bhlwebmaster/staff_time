@@ -387,12 +387,12 @@ a.brand:hover .mark { filter: brightness(1.08); }
   <div class="split wide">
     <div class="prose">
       <ul>
-        <li><b>Table</b> shows each person's shift per day. Yellow means a rest day, green means vacation leave.</li>
+        <li><b>Table</b> shows each person's shift per day. Yellow means a rest day, green means vacation leave, orange means emergency leave.</li>
         <li><b>Timeline</b> shows each person as one coloured bar covering their shift, like a calendar. The colour key is at the bottom.</li>
         <li>It opens on <b>Today</b>, showing just today's shifts. Tap <b>This week</b> to see the whole week.</li>
         <li>Use <b>←</b> / <b>→</b> to go back or forward a day (or a week). Tap <b>Today</b> or <b>This week</b> again to jump back to now.</li>
         <li>Weeks run <b>Sunday to Saturday</b>. The app remembers whether you like Table or Timeline.</li>
-        <li>Leave (vacation, sick, holiday) shows as a small note under that day.</li>
+        <li>Leave (vacation, sick, emergency, holiday) shows as a small note under that day.</li>
         <li>On <b>Today</b>, the <b>Status</b> column shows what everyone is doing right now: Working, On lunch, Clocked out, Not in yet, Late, Absent, Rest day, Vacation or Sick.</li>
       </ul>
       <h3 style="margin-top:18px;font-size:17px">Your own schedule and changes</h3>
@@ -488,7 +488,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
         <li>The totals at the top count <b>Working · On lunch · Clocked out · Not in · Late</b>.</li>
         <li><b>Flags</b> show late arrivals, OT earned, short days and missing clock-outs. Notes from staff appear under the flags.</li>
         <li>The <b>Schedule</b> column shows each person's shift for that day, from the weekly schedule.</li>
-        <li>People on a <b>Rest Day</b> or leave (vacation, sick, holiday, unpaid) show a grey pill and aren't counted as <b>Not in</b>.</li>
+        <li>People on a <b>Rest Day</b> or leave (vacation, sick, emergency, holiday, unpaid) show a grey pill and aren't counted as <b>Not in</b>.</li>
         <li>Use the <b>Day</b> picker to look at any past date.</li>
       </ul>
     </div>
@@ -622,7 +622,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
     <div class="prose">
       <ol class="steps">
         <li><div><b>Usual week:</b> go to <b>Staff → Edit</b>. Tick the days they work and set start and end times (UK). Untick a day for a rest day. Click <b>Save</b>.</div></li>
-        <li><div><b>This week:</b> open the <b>Schedule</b> tab. Each cell starts from the usual week. Change any day to a different shift, <b>Rest Day</b>, <b>Vacation Leave</b>, <b>Sick Leave</b>, <b>Holiday</b> or <b>Unpaid Leave</b>.</div></li>
+        <li><div><b>This week:</b> open the <b>Schedule</b> tab. Each cell starts from the usual week. Change any day to a different shift, <b>Rest Day</b>, <b>Vacation Leave</b>, <b>Sick Leave</b>, <b>Emergency Leave</b>, <b>Holiday</b> or <b>Unpaid Leave</b>.</div></li>
         <li><div>Changed days are outlined in orange. Click <b>Save week</b>.</div></li>
         <li><div>Handy buttons: <b>Copy last week</b> repeats last week's plan, and <b>Reset to usual week</b> clears the changes.</div></li>
         <li><div><b>Staff requests:</b> staff can ask to change their own week (up to 2 weeks ahead). The <b>Schedule</b> tab shows an orange number when requests are waiting. Each request lists the days, what's planned now and what they want. Add an optional message, then click <b>Approve</b> (the schedule updates straight away) or <b>Reject</b>.</div></li>
@@ -660,7 +660,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
       <tr><td><b>Per-minute rate</b></td><td>Daily rate ÷ paid minutes in their day. Example: £30 ÷ 480 = £0.0625 a minute.</td></tr>
       <tr><td><b>Lates</b></td><td>Minutes after the day's start time (beyond the grace minutes) × per-minute rate.</td></tr>
       <tr><td><b>Undertime</b></td><td>Minutes before the day's end time × per-minute rate.</td></tr>
-      <tr><td><b>Absences</b></td><td>Planned shifts with no clock-in (counted up to yesterday, so today never shows as absent), plus unpaid leave days. <b>Per period:</b> deducted at the daily rate. <b>Daily rate:</b> shown for information, since those days aren't paid anyway. Vacation, sick leave and holidays are paid.</td></tr>
+      <tr><td><b>Absences</b></td><td>Planned shifts with no clock-in (counted up to yesterday, so today never shows as absent), plus unpaid leave days. <b>Per period:</b> deducted at the daily rate. <b>Daily rate:</b> shown for information, since those days aren't paid anyway. Vacation, sick leave, emergency leave and holidays are paid.</td></tr>
       <tr><td><b>New starter</b></td><td>Per period: paid only for working days from their start date. Daily rate: paid for days worked, as normal.</td></tr>
       <tr><td><b>Net pay</b></td><td>Gross − lates − undertime − absences − other deductions.</td></tr>
       <tr><td><b>Pesos</b></td><td>Net pay × exchange rate.</td></tr>

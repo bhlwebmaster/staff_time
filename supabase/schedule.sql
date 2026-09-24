@@ -13,12 +13,16 @@ create table if not exists public.schedule_days (
   id          uuid primary key default gen_random_uuid(),
   staff_id    uuid not null references public.staff(id) on delete cascade,
   work_date   date not null,
-  kind        text not null check (kind in ('shift', 'rest', 'vacation', 'sick', 'holiday', 'unpaid')),
+  kind        text not null,
   start_time  time,
   end_time    time,
   note        text,
   unique (staff_id, work_date)
 );
+-- Allowed day types (Emergency Leave added later; re-created so older databases get it too)
+alter table public.schedule_days drop constraint if exists schedule_days_kind_check;
+alter table public.schedule_days add constraint schedule_days_kind_check
+  check (kind in ('shift', 'rest', 'vacation', 'sick', 'emergency', 'holiday', 'unpaid'));
 alter table public.schedule_days enable row level security;
 drop policy if exists team_read on public.schedule_days;
 drop policy if exists admin_write on public.schedule_days;
@@ -67,6 +71,9 @@ language sql stable security definer set search_path = public as $$
       'sched_start', sched_start, 'sched_end', sched_end, 'lunch_mins', lunch_mins, 'active', active,
       'has_pin', pin_hash is not null, 'created_at', created_at,
       'avatar', avatar, 'photo', photo, 'tagline', tagline, 'color', color,
-      'start_date', start_date, 'pay_rate', pay_rate, 'week_pattern', week_pattern) order by display_name)
+      'start_date', start_date, 'pay_rate', pay_rate, 'pay_type', pay_type, 'week_pattern', week_pattern) order by display_name)
     from staff), '[]'::json) end;
 $$;
+
+-- Refresh Supabase's column list so the app sees changes immediately
+notify pgrst, 'reload schema';

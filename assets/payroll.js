@@ -22,9 +22,9 @@
    * - Anything in `over` (typed by an admin) replaces the automatic value.
    */
   function compute(staff, rows, p, settings, over = {}, today = B.dateIn(new Date(), settings.timezone), plan = null) {
-    // plan(date) → { kind: shift | rest | vacation | sick | holiday | unpaid } from the weekly schedule; default Mon–Fri.
+    // plan(date) → { kind: shift | rest | vacation | sick | emergency | holiday | unpaid } from the weekly schedule; default Mon–Fri.
     const kindOf = (d) => (plan ? plan(d).kind : isWeekday(d) ? "shift" : "rest");
-    const PAID = { shift: 1, vacation: 1, sick: 1, holiday: 1 };
+    const PAID = { shift: 1, vacation: 1, sick: 1, emergency: 1, holiday: 1 };
     const from = staff.start_date && staff.start_date > p.start_date ? staff.start_date : p.start_date;
     // Absences only count days that are over: up to yesterday, or the period end if that's earlier
     const lastPast = [p.end_date, addDays(today, -1)].sort()[0];
@@ -37,7 +37,7 @@
       if (d < from) continue;
       if (PAID[k] || k === "unpaid") sched++;
       if (d <= lastPast && ((k === "shift" && !workedOn.has(d)) || k === "unpaid")) absent++;
-      if (k === "vacation" || k === "sick" || k === "holiday") leave++;
+      if (k === "vacation" || k === "sick" || k === "emergency" || k === "holiday") leave++;
     }
     let late = 0, under = 0;
     for (const r of mine) {

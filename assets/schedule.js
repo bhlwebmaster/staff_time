@@ -6,6 +6,7 @@
     rest:     { label: "Rest Day", cls: "k-rest" },
     vacation: { label: "Vacation Leave", cls: "k-vac", paid: true },
     sick:     { label: "Sick Leave", cls: "k-sick", paid: true },
+    emergency: { label: "Emergency Leave", cls: "k-emer", paid: true },
     holiday:  { label: "Holiday", cls: "k-hol", paid: true },
     unpaid:   { label: "Unpaid Leave", cls: "k-unpaid" },
   };
@@ -117,6 +118,7 @@
   .wk-table td { white-space: nowrap; font-family: var(--mono); font-size: 11.5px; color: var(--ink); }
   .wk-table td.is-today { box-shadow: inset 0 0 0 2px #ffe45c; }
   .wk-table td.k-rest, .wk-time td.k-rest { background: #fff59a; color: #3b3500; font-family: var(--body); font-weight: 700; }
+  .wk-table td.k-emer { background: #ffd08a; color: #4a2a00; font-family: var(--body); font-weight: 700; }
   .wk-table td.k-vac { background: #37d34a; color: #06300c; font-family: var(--body); font-weight: 700; }
   .wk-table td.k-sick { background: #ffc9b8; color: #4a1606; font-family: var(--body); font-weight: 700; }
   .wk-table td.k-hol { background: #b9d8ff; color: #0b2a52; font-family: var(--body); font-weight: 700; }

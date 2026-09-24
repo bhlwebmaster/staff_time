@@ -64,7 +64,7 @@ begin
       return json_build_object('ok', false, 'error', 'A day is outside this week.'); end if;
     if k::date < v_today then
       return json_build_object('ok', false, 'error', 'Past days can''t be changed. Ask an admin.'); end if;
-    if coalesce(v->>'kind', '') not in ('shift', 'rest', 'vacation', 'sick', 'unpaid') then
+    if coalesce(v->>'kind', '') not in ('shift', 'rest', 'vacation', 'sick', 'emergency', 'unpaid') then
       return json_build_object('ok', false, 'error', 'Unknown day type.'); end if;
     if v->>'kind' = 'shift' and (coalesce(v->>'s', '') !~ '^\d{2}:\d{2}$' or coalesce(v->>'e', '') !~ '^\d{2}:\d{2}$') then
       return json_build_object('ok', false, 'error', 'Add a start and end time for each working day.'); end if;

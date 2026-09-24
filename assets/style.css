@@ -101,6 +101,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
 .pill.leave { color: #3b3500; background: #fff59a; }
 .pill.leave.k-vacation, .pill.leave.k-holiday { color: #06300c; background: #c9f3cf; }
 .pill.leave.k-sick { color: #4a1606; background: #ffd9cc; }
+.pill.leave.k-emergency { color: #4a2a00; background: #ffd08a; }
 .pill.leave.k-unpaid { color: #333; background: #e8e8e8; }
 .pill.leave::before { display: none; }
 .flag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }

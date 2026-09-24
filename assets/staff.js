@@ -300,7 +300,7 @@
   function liveStatus(p, plan) {
     const r = roster.staff.find((x) => x.id === p.id), t = r?.today;
     if (!t?.time_in && plan.kind !== "shift") {
-      const k = { rest: "Rest day", vacation: "Vacation", sick: "Sick", holiday: "Holiday", unpaid: "Unpaid leave" }[plan.kind] || plan.kind;
+      const k = { rest: "Rest day", vacation: "Vacation", sick: "Sick", emergency: "Emergency leave", holiday: "Holiday", unpaid: "Unpaid leave" }[plan.kind] || plan.kind;
       return `<span class="pill leave k-${plan.kind}">${k}</span>`;
     }
     const tzn = tz(), now = new Date();
@@ -369,7 +369,7 @@
 
   // ---------- my schedule (this week + next 2) and change requests ----------
   let msIdx = 0, msReqs = [], msEditing = false, msWk = null, msFrom = null;
-  const MS_KINDS = ["shift", "rest", "vacation", "sick", "unpaid"];
+  const MS_KINDS = ["shift", "rest", "vacation", "sick", "emergency", "unpaid"];
   const sameDay = (a, b) => a.kind === b.kind && (a.kind !== "shift" || (a.start === b.start && a.end === b.end));
   async function loadMySched(refresh) {
     if (!me || !pin) return;
