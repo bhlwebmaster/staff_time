@@ -264,7 +264,7 @@
 
   // ---------- boot ----------
   (async () => {
-    $("demoBanner").hidden = !api.demo;
+    if (!api.ready) return;
     tick(); setInterval(tick, 10000);
     await loadRoster();
     const saved = B.lsGet("bhl.me");

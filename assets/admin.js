@@ -12,7 +12,7 @@
 
   // ---------- auth ----------
   async function boot() {
-    $("demoBanner").hidden = !api.demo;
+    if (!api.ready) return;
     const session = await A.session();
     if (!session) return showLogin();
     role = await A.role().catch(() => null);
@@ -34,7 +34,7 @@
   function showLogin(msg) { $("vLogin").hidden = false; $("lMsg").textContent = msg || ""; }
   $("loginForm").onsubmit = async (e) => {
     e.preventDefault(); $("lMsg").textContent = "Signing in…";
-    try { await A.signIn($("lEmail").value.trim(), $("lPass").value); api.demo ? boot() : location.reload(); }
+    try { await A.signIn($("lEmail").value.trim(), $("lPass").value); location.reload(); }
     catch (err) { $("lMsg").textContent = err.message; }
   };
   $("signOut").onclick = async () => { await A.signOut(); location.reload(); };

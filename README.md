@@ -5,7 +5,7 @@ Clock-in app for the Philippine team, built to replace posting in the WhatsApp g
 - **Staff app** (`/`): tap your name, enter your 4-digit PIN, then tap **Clock in → Start lunch → End lunch → Clock out**. It shows UK time and Manila time, your OT bank, who else is in today, and a **Copy WhatsApp message** button that outputs the same format the group uses.
 - **Admin** (`admin.html`): live board, timesheets, **Reports** (daily / weekly / monthly / custom dates, exported to PDF or CSV), edits to any entry (every change is logged), staff management, PIN resets, and **Access**, where admins create logins for other admins or finance.
 
-Works without setup: if `config.js` still has the placeholder values, both pages run in **demo mode** with sample data (demo PINs: Rae `1111`, Cess `2222`).
+Production app: there is no demo mode. If `config.js` is missing its Supabase settings, both pages show an "isn't set up yet" message instead of loading.
 
 ---
 
@@ -58,7 +58,7 @@ The anon key is designed to be public. **Never** put the service_role key in thi
    - Admin: `https://bhlwebmaster.github.io/staff_time/admin.html`
 
 ### 6. Quick test
-1. Open the admin link and sign in. The yellow demo banner should be gone.
+1. Open the admin link and sign in.
 2. **Access** tab: you're listed. Create a test finance login to check the function works.
 3. **Staff** tab: add people, or check Rae and Cess are there if you ran the seed.
 4. On your phone, open the staff link, tap a name, create a PIN, then clock in and clock out.
@@ -74,7 +74,7 @@ The anon key is designed to be public. **Never** put the service_role key in thi
 | You see | Fix |
 |---|---|
 | 404 on the Pages link | Wait 2 minutes; check Settings → Pages is set to `main` / root, and that `index.html` sits at the top of the repo. |
-| Demo banner still showing | `config.js` wasn't saved correctly, or your browser has an old copy. Hard-refresh with Cmd+Shift+R. |
+| "This app isn't set up yet" | `config.js` is missing its Supabase settings or was overwritten by a blank copy. |
 | "User management isn't set up yet" | Deploy the `admin-users` Edge Function (step 2) with exactly that name. |
 | Creating a login fails with a network or CORS error | Turn off "Verify JWT" on the function (step 2.4). |
 | "This login doesn't have access" | That email isn't in the `admins` table. For your own first login, run the SQL in step 1.4. |
@@ -136,13 +136,13 @@ index.html        staff app
 admin.html        admin
 config.js         your Supabase URL + anon key
 assets/core.js    time zone maths + hours/OT rules (shared)
-assets/api.js     Supabase calls + demo mode
+assets/api.js     Supabase calls (shows a "not set up" message if config.js is empty)
 assets/staff.js   staff app logic
 assets/admin.js   admin logic (incl. reports + PDF + access)
 assets/game.js    avatars, profiles, XP, streaks, badges
 assets/style.css  styles (light + dark)
 supabase/schema.sql   tables, security, functions (safe to re-run)
-supabase/seed.sql     optional starting data
+supabase/production-cleanup.sql   optional: clear test entries before go-live
 supabase/functions/admin-users/index.ts   Edge Function: create / change / remove logins
 .nojekyll         tells GitHub Pages to serve files as-is
 ```
