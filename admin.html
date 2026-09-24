@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260924b">
+<link rel="stylesheet" href="assets/style.css?v=20260925a">
 <style>
   main { padding-block: 22px 70px; }
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -83,7 +83,9 @@
   .paysheet tfoot td { background: #33e0ea; color: #06231a; }
   .paysheet input { width: 70px; padding: 4px 6px; font-size: 13px; text-align: right; border-radius: 6px; }
   .paysheet input.note { width: 110px; text-align: left; }
-  .paysheet input.ov { border-color: var(--lunch); background: var(--lunch-soft); }
+  .paysheet input.ov { border-color: var(--lunch); background: var(--lunch-soft); font-weight: 700; }
+  .paysheet .cellin { display: inline-flex; align-items: center; gap: 3px; }
+  .paysheet .undo { border: 0; background: none; color: var(--lunch); cursor: pointer; font-size: 15px; padding: 0 2px; line-height: 1; }
   .paysheet .warn { color: var(--late); font-weight: 600; font-size: 12px; }
   .payslip-area { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
   #slipView { flex: 1 1 360px; }
@@ -400,12 +402,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20260924b"></script>
-<script src="assets/core.js?v=20260924b"></script>
-<script src="assets/game.js?v=20260924b"></script>
-<script src="assets/schedule.js?v=20260924b"></script>
-<script src="assets/payroll.js?v=20260924b"></script>
-<script src="assets/api.js?v=20260924b"></script>
-<script src="assets/admin.js?v=20260924b"></script>
+<script src="config.js?v=20260925a"></script>
+<script src="assets/core.js?v=20260925a"></script>
+<script src="assets/game.js?v=20260925a"></script>
+<script src="assets/schedule.js?v=20260925a"></script>
+<script src="assets/payroll.js?v=20260925a"></script>
+<script src="assets/api.js?v=20260925a"></script>
+<script src="assets/admin.js?v=20260925a"></script>
 </body>
 </html>

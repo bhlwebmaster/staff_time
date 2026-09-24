@@ -581,16 +581,20 @@
     $("paySave").hidden = $("payFinal").hidden = final; $("payReopen").hidden = !final;
     const noRate = payLines.filter((l) => !l.rate).map((l) => l.employee_name);
     $("payHint").innerHTML = (noRate.length ? `<span class="warn">No pay rate set for ${noRate.map(B.esc).join(", ")}. Add it under Staff → Edit.</span> ` : "") +
-      (edit ? "Numbers come from attendance. Type over any orange-able box to change it; clear the box to go back to the automatic value." : final ? "This curP is locked. Reopen it to make changes." : "");
+      (edit ? "Days worked, lates, undertime and absences are filled in from attendance and the schedule. Type in any box to change it (it turns orange); click ↺ to go back to the attendance value." : final ? "This period is locked. Reopen it to make changes." : "");
     const T = P.totals(payLines);
     const inp = (l, k, cls = "") => {
       const ov = payOver[l.staff_id]?.[k];
       if (!edit) return k === "other_note" ? B.esc(l.other_note || "") : (k === "other_ded" ? P.GBP(l[k]) : l[k]);
-      const val = ov ?? (k === "other_note" ? "" : "");
-      const ph = l.auto ? l.auto[k] : "";
-      return `<input class="${cls} ${ov !== undefined && ov !== "" ? "ov" : ""}" data-s="${l.staff_id}" data-k="${k}" value="${B.esc(val)}" placeholder="${B.esc(ph)}" ${k === "other_note" ? 'maxlength="40"' : 'type="number" step="any" min="0"'} aria-label="${k} for ${B.esc(l.employee_name)}">`;
+      const has = ov !== undefined && ov !== "";
+      const autoV = l.auto ? l.auto[k] : "";
+      const val = has ? ov : autoV;
+      const num = k !== "other_note";
+      return `<span class="cellin"><input class="${cls} ${has ? "ov" : ""}" data-s="${l.staff_id}" data-k="${k}" value="${B.esc(val ?? "")}"
+        ${num ? 'type="number" step="any" min="0"' : 'maxlength="40" placeholder="e.g. Cash advance"'} aria-label="${k.replace(/_/g, " ")} for ${B.esc(l.employee_name)}"
+        title="${has ? `Changed by admin. From attendance: ${autoV}` : "From attendance. Type to change."}">${has ? `<button type="button" class="undo" data-s="${l.staff_id}" data-k="${k}" title="Back to the attendance value (${B.esc(autoV)})" aria-label="Reset to ${B.esc(autoV)}">↺</button>` : ""}</span>`;
     };
-    $("paySheet").innerHTML = `<thead><tr><th style="text-align:left">Employee name</th><th>Start date</th><th>Payroll curP</th><th>Rate<br>(per curP)</th>
+    $("paySheet").innerHTML = `<thead><tr><th style="text-align:left">Employee name</th><th>Start date</th><th>Payroll period</th><th>Rate<br>(per period)</th>
       <th>Days worked</th><th>Lates<br>(mins)</th><th>Undertime<br>(mins)</th><th>Absences</th><th>Other deductions<br>(CA, loans, taxes)</th><th>Note</th>
       <th>Total deductions</th><th>Gross pay</th><th>Net pay</th><th>Exchange rate</th><th>Gross pay<br>(PHP)</th><th>Net pay<br>(PHP)</th><th>Fee share</th><th>Received<br>(PHP)</th></tr></thead>
       <tbody>${payLines.map((l) => `<tr>
@@ -600,7 +604,7 @@
         <td class="num">${P.GBP(l.total_ded)}</td><td class="num">${P.GBP(l.gross)}</td><td class="num"><b>${P.GBP(l.net)}</b></td>
         <td class="num">${l.exchange_rate ? Number(l.exchange_rate).toFixed(2) : "—"}</td><td class="num">${P.PHP(l.gross_php)}</td><td class="num hl">${P.PHP(l.net_php)}</td>
         <td class="num">${((+l.fee_share || 0) * 100).toFixed(2)}%</td><td class="num"><b>${P.PHP(l.received_php)}</b></td></tr>`).join("")
-        || `<tr><td colspan="18" class="muted">No active staff in this curP.</td></tr>`}</tbody>
+        || `<tr><td colspan="18" class="muted">No active staff in this period.</td></tr>`}</tbody>
       <tfoot><tr><td colspan="10" style="text-align:right">TOTAL</td><td class="num">${P.GBP(T.total_ded)}</td><td class="num">${P.GBP(T.gross)}</td><td class="num">${P.GBP(T.net)}</td>
         <td></td><td class="num">${P.PHP(T.gross_php)}</td><td class="num">${P.PHP(T.net_php)}</td><td></td><td class="num">${P.PHP(T.received_php)}</td></tr></tfoot>`;
     const cur = $("slipWho").value;
@@ -610,9 +614,16 @@
   }
   $("paySheet").addEventListener("change", (e) => {
     const i = e.target.closest("input[data-s]"); if (!i) return;
-    const o = (payOver[i.dataset.s] ||= {});
-    if (i.value === "") delete o[i.dataset.k]; else o[i.dataset.k] = i.dataset.k === "other_note" ? i.value : +i.value;
+    const o = (payOver[i.dataset.s] ||= {}), k = i.dataset.k;
+    const line = payLines.find((l) => l.staff_id === i.dataset.s), autoV = line?.auto?.[k];
+    const v = k === "other_note" ? i.value.trim() : i.value === "" ? "" : +i.value;
+    // Same as attendance (or emptied) = no override; anything else is kept as the admin's value
+    if (v === "" || v === autoV || (k === "other_note" && !v)) delete o[k]; else o[k] = v;
     recalc();
+  });
+  $("paySheet").addEventListener("click", (e) => {
+    const b = e.target.closest("button.undo"); if (!b) return;
+    delete payOver[b.dataset.s]?.[b.dataset.k]; recalc();
   });
   const slipData = (l) => ({ ...l, period_start: curP.start_date, period_end: curP.end_date, pay_date: curP.pay_date });
   function renderSlip() {
@@ -634,7 +645,7 @@
     doc.save(`Payslips_${curP.start_date}_to_${curP.end_date}.pdf`);
   };
   $("payCsv").onclick = () => download(`Payroll_${curP.start_date}_to_${curP.end_date}.csv`, [
-    ["Employee name", "Start date", "Payroll curP", "Rate (GBP)", "Days worked", "Lates (mins)", "Undertime (mins)", "Absences", "Late ded (GBP)", "Undertime ded (GBP)",
+    ["Employee name", "Start date", "Payroll period", "Rate (GBP)", "Days worked", "Lates (mins)", "Undertime (mins)", "Absences", "Late ded (GBP)", "Undertime ded (GBP)",
       "Absence ded (GBP)", "Other deductions (GBP)", "Note", "Total deductions (GBP)", "Gross pay (GBP)", "Net pay (GBP)", "Exchange rate", "Gross pay (PHP)", "Net pay (PHP)",
       "Transfer fee share", "Transfer fee (PHP)", "Amount received (PHP)"],
     ...payLines.map((l) => [l.employee_name, P.usDate(l.start_date), P.period(curP), l.rate, l.days_worked, l.late_mins, l.undertime_mins, l.absences, l.late_ded,
@@ -665,15 +676,15 @@
     if (!finArmed) { finArmed = true; $("payFinal").textContent = "Click again to publish to staff"; setTimeout(() => { finArmed = false; $("payFinal").textContent = "Finalise & publish"; }, 4000); return; }
     finArmed = false; $("payFinal").textContent = "Finalise & publish"; savePayroll("final");
   };
-  $("payReopen").onclick = async () => { try { await A.savePeriod({ id: curP.id, status: "draft" }); B.toast("Reopened. Staff can't see this curP until you finalise again."); loadPayroll(curP.id); } catch (e) { B.toast(e.message, "err"); } };
+  $("payReopen").onclick = async () => { try { await A.savePeriod({ id: curP.id, status: "draft" }); B.toast("Reopened. Staff can't see this period until you finalise again."); loadPayroll(curP.id); } catch (e) { B.toast(e.message, "err"); } };
 
-  // curP dialog
+  // period dialog
   let editingPeriod = null;
   function openPeriodDlg(p) {
     editingPeriod = p;
     const last = periods[0];
     const start = p?.start_date || (last ? P.addDays(last.end_date, 1) : today());
-    $("periodTitle").textContent = p ? "Edit pay curP" : "New pay curP";
+    $("periodTitle").textContent = p ? "Edit pay period" : "New pay period";
     $("ppStart").value = start; $("ppEnd").value = p?.end_date || P.addDays(start, 13); $("ppPay").value = p?.pay_date || P.addDays(start, 14);
     $("ppFx").value = p?.exchange_rate ?? (last?.exchange_rate ?? ""); $("ppFee").value = p?.transfer_fee ?? 0;
     $("ppDel").hidden = !p; $("periodDlg").showModal();
@@ -685,14 +696,14 @@
     if (e.submitter?.value !== "save") return; e.preventDefault();
     const rec = { start_date: $("ppStart").value, end_date: $("ppEnd").value, pay_date: $("ppPay").value,
       exchange_rate: $("ppFx").value === "" ? null : +$("ppFx").value, transfer_fee: +$("ppFee").value || 0 };
-    if (rec.end_date < rec.start_date) return B.toast("The curP must end after it starts.", "err");
-    try { const saved = await A.savePeriod(editingPeriod ? { ...rec, id: editingPeriod.id } : rec); $("periodDlg").close(); B.toast("Pay curP saved"); loadPayroll(saved?.id || editingPeriod?.id); }
+    if (rec.end_date < rec.start_date) return B.toast("The period must end after it starts.", "err");
+    try { const saved = await A.savePeriod(editingPeriod ? { ...rec, id: editingPeriod.id } : rec); $("periodDlg").close(); B.toast("Pay period saved"); loadPayroll(saved?.id || editingPeriod?.id); }
     catch (err) { B.toast(err.message, "err"); }
   };
   let delP = false;
   $("ppDel").onclick = async () => {
-    if (!delP) { delP = true; $("ppDel").textContent = "Click again to delete, payslips included"; setTimeout(() => { delP = false; $("ppDel").textContent = "Delete curP"; }, 4000); return; }
-    delP = false; try { await A.deletePeriod(editingPeriod.id); $("periodDlg").close(); B.toast("Pay curP deleted"); loadPayroll(); } catch (err) { B.toast(err.message, "err"); }
+    if (!delP) { delP = true; $("ppDel").textContent = "Click again to delete, payslips included"; setTimeout(() => { delP = false; $("ppDel").textContent = "Delete period"; }, 4000); return; }
+    delP = false; try { await A.deletePeriod(editingPeriod.id); $("periodDlg").close(); B.toast("Pay period deleted"); loadPayroll(); } catch (err) { B.toast(err.message, "err"); }
   };
 
   // ---------- access (logins) ----------

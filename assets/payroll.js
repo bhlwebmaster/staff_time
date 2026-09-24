@@ -24,7 +24,8 @@
     const kindOf = (d) => (plan ? plan(d).kind : isWeekday(d) ? "shift" : "rest");
     const PAID = { shift: 1, vacation: 1, sick: 1, holiday: 1 };
     const from = staff.start_date && staff.start_date > p.start_date ? staff.start_date : p.start_date;
-    const lastPast = [p.end_date, today].sort()[0];
+    // Absences only count days that are over: up to yesterday, or the period end if that's earlier
+    const lastPast = [p.end_date, addDays(today, -1)].sort()[0];
     const mine = rows.filter((r) => r.staff_id === staff.id && r.work_date >= p.start_date && r.work_date <= p.end_date && r.time_in);
     const workedOn = new Set(mine.map((r) => r.work_date));
     let fullSched = 0, sched = 0, absent = 0, leave = 0;
