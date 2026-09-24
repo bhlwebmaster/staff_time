@@ -35,6 +35,10 @@
   td .sub { display: block; font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
   td.note { max-width: 260px; font-size: 13px; color: var(--muted); }
   .check { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+  .av { width: var(--av); height: var(--av); border-radius: 50%; display: inline-grid; place-items: center; overflow: hidden; flex: none; vertical-align: middle;
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--ring); background: var(--surface-2); margin-right: 8px; }
+  .av img, .av .av-svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .av-init { width: 100%; height: 100%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: calc(var(--av) * .38); }
   body.ro .adminonly { display: none !important; }
   .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
   .role { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
@@ -72,6 +76,7 @@
       <button role="tab" data-tab="access" aria-selected="false">Access</button>
     </nav>
     <div class="clocks"><div class="clock"><b id="ukClock">--:--</b><span>UK</span></div>
+      <a class="help-link" href="help/#admin">Help</a>
       <button class="btn ghost sm" id="signOut" hidden>Sign out</button></div>
   </div>
 </header>
@@ -271,6 +276,8 @@
       <label class="f">Unpaid lunch (min)<input type="number" id="pLunch" min="0" max="180" required></label>
       <label class="f">Status<select id="pActive"><option value="true">Active</option><option value="false">Inactive</option></select></label>
     </div>
+    <div class="row" id="pPhotoRow"><span id="pAv"></span><button class="btn" type="button" id="pPhotoRm">Remove photo</button>
+      <span class="muted" style="font-size:12.5px">Staff choose their own avatar and photo in the app.</span></div>
     <div class="row"><button class="btn" type="button" id="pReset">Reset PIN</button>
       <span class="muted" style="font-size:12.5px">They'll create a new one next time they open the app.</span></div>
     <div class="row"><span class="spacer"></span><button class="btn primary" type="submit" value="save">Save</button></div>
@@ -282,6 +289,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="config.js"></script>
 <script src="assets/core.js"></script>
+<script src="assets/game.js"></script>
 <script src="assets/api.js"></script>
 <script src="assets/admin.js"></script>
 </body>

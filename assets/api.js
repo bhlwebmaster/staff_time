@@ -18,6 +18,8 @@
     demo: false,
     roster: async () => unwrap(await sb.rpc("roster")),
     setPin: async (staff, current, next) => unwrap(await sb.rpc("set_pin", { p_staff: staff, p_current: current, p_new: next })),
+    setProfile: async (staff, pin, p) => unwrap(await sb.rpc("set_profile", { p_staff: staff, p_pin: pin,
+      p_avatar: p.avatar || null, p_photo: p.photo || null, p_tagline: p.tagline || null, p_color: p.color || null })),
     punch: async (staff, pin, action, extra = {}) =>
       unwrap(await sb.rpc("punch", { p_staff: staff, p_pin: pin, p_action: action,
         p_sched_start: extra.sched_start || null, p_sched_end: extra.sched_end || null, p_note: extra.note ?? null })),
@@ -50,9 +52,10 @@
   const D = (() => {
     const settings = { id: 1, timezone: "Europe/London", grace_mins: 5, ot_block_mins: 15, count_early: false, company_name: "BioHack London" };
     const staff = [
-      { id: "rae", full_name: "BINGHOY, RAE", display_name: "Rae", sched_start: "05:00:00", sched_end: "14:00:00", lunch_mins: 60, active: true, pin: "1111" },
-      { id: "cess", full_name: "ALISEN, CESS", display_name: "Cess", sched_start: "06:00:00", sched_end: "15:00:00", lunch_mins: 60, active: true, pin: "2222" },
+      { id: "rae", full_name: "BINGHOY, RAE", display_name: "Rae", sched_start: "05:00:00", sched_end: "14:00:00", lunch_mins: 60, active: true, pin: "1111", avatar: "sunrise", color: "sunset", tagline: "Early shift, early wins" },
+      { id: "cess", full_name: "ALISEN, CESS", display_name: "Cess", sched_start: "06:00:00", sched_end: "15:00:00", lunch_mins: 60, active: true, pin: "2222", avatar: "coffee", color: "jade", tagline: "Coffee first, then conquer" },
       { id: "jaycel", full_name: "TE, JAYCEL", display_name: "Jaycel", sched_start: "06:00:00", sched_end: "15:00:00", lunch_mins: 60, active: true, pin: null },
+      { id: "verge", full_name: "GAMOTAN, VERGE", display_name: "Verge", sched_start: "09:00:00", sched_end: "18:00:00", lunch_mins: 60, active: true, pin: "3333", avatar: "rocket", color: "grape", tagline: "Ship it" },
     ];
     const Z = (dt, t) => (t ? window.BHL.zonedToDate(dt, t, settings.timezone).toISOString() : null);
     const rows = [];
@@ -71,6 +74,7 @@
       add("rae", ds, "05:00", "14:00", mm(300, jitter(k, 1) - 4), mm(730, 0), mm(790, jitter(k, 2) % 4), mm(840, Math.abs(jitter(k, 3)) + 2));
       add("cess", ds, "06:00", "15:00", mm(360, jitter(k, 4) - 3), mm(750, 0), mm(810, 0), mm(900, Math.abs(jitter(k, 5)) * 2));
       if (k % 5 !== 2) add("jaycel", ds, "06:00", "15:00", mm(360, jitter(k, 6)), mm(720, 0), mm(780, 1), mm(900, jitter(k, 7)));
+      add("verge", ds, "09:00", "18:00", mm(540, -Math.abs(jitter(k, 8)) % 9), mm(750, 0), mm(810, 0), mm(1080, Math.abs(jitter(k, 9))));
     }
     // today: Rae on lunch, Cess in
     add("rae", today, "05:00", "14:00", "04:52", "12:10", null, null);
@@ -90,8 +94,16 @@
     roster: async () => ({ now: nowIso(), today: todayStr(), settings: D.settings,
       staff: D.staff.filter((s) => s.active).map((s) => {
         const a = D.rows.find((r) => r.staff_id === s.id && r.work_date === todayStr());
-        return { ...pub(s), today: a || null };
+        const f = new Date(todayStr() + "T12:00:00Z"); f.setUTCDate(f.getUTCDate() - 45); const from = f.toISOString().slice(0, 10);
+        return { ...pub(s), today: a || null, recent: D.rows.filter((r) => r.staff_id === s.id && r.work_date >= from).sort((x, y) => x.work_date.localeCompare(y.work_date)) };
       }).sort((a, b) => a.display_name.localeCompare(b.display_name)) }),
+    setProfile: async (id, pin, p) => {
+      const s = D.staff.find((x) => x.id === id);
+      if (s.pin !== pin) return { ok: false, error: "Wrong PIN." };
+      if ((p.tagline || "").length > 40) return { ok: false, error: "Keep your tagline to 40 characters." };
+      Object.assign(s, { avatar: p.avatar || null, photo: p.photo || null, tagline: p.tagline?.trim() || null, color: p.color || null });
+      return { ok: true };
+    },
     setPin: async (id, cur, next) => {
       const s = D.staff.find((x) => x.id === id);
       if (!/^\d{4}$/.test(next)) return { ok: false, error: "PIN must be 4 digits." };

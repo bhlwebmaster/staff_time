@@ -85,7 +85,7 @@
         const lunch = r.lunch_out ? ((r.lunch_in ? new Date(r.lunch_in) : new Date()) - new Date(r.lunch_out)) : 0;
         worked = `<span class="muted">${B.fmtMins(Math.max(0, (Date.now() - Math.max(new Date(r.time_in), c.schedStart) - lunch) / 60000))}</span>`;
       }
-      return `<tr><td><b>${B.esc(s.display_name)}</b></td><td><span class="pill ${k}">${label}</span></td>
+      return `<tr><td style="white-space:nowrap">${B.avatarHtml(s, 28)}<b>${B.esc(s.display_name)}</b></td><td><span class="pill ${k}">${label}</span></td>
         <td class="mono">${B.clockStr(r?.sched_start || s.sched_start)}–${B.clockStr(r?.sched_end || s.sched_end)}</td>
         <td class="mono">${r ? t(r.time_in) : "—"}</td><td class="mono">${r ? lunchCell(r) : "—"}</td><td class="mono">${r ? t(r.time_out) : "—"}</td>
         <td class="num">${worked}</td><td>${r ? flagsHtml(c, day === today()) : ""}${r?.note ? `<span class="sub" title="${B.esc(r.note)}">${B.esc(r.note)}</span>` : ""}</td>
@@ -222,7 +222,7 @@
   // ---------- staff ----------
   function renderStaff() {
     $("staffRows").innerHTML = staff.map((s) => `<tr>
-      <td><b>${B.esc(s.display_name)}</b></td><td>${B.esc(s.full_name)}</td>
+      <td style="white-space:nowrap">${B.avatarHtml(s, 28)}<b>${B.esc(s.display_name)}</b></td><td>${B.esc(s.full_name)}</td>
       <td class="mono">${B.clockStr(s.sched_start)}–${B.clockStr(s.sched_end)}</td><td class="num">${s.lunch_mins}m</td>
       <td class="num">${B.fmtMins(B.standardMins(s))}</td>
       <td>${s.has_pin ? `<span class="pill in">Set</span>` : `<span class="pill absent">Not yet</span>`}</td>
@@ -239,6 +239,7 @@
     $("pSS").value = (s?.sched_start || "06:00").slice(0, 5); $("pSE").value = (s?.sched_end || "15:00").slice(0, 5);
     $("pLunch").value = s?.lunch_mins ?? 60; $("pActive").value = String(s?.active ?? true);
     $("pReset").hidden = !s?.has_pin;
+    $("pPhotoRow").hidden = !s?.photo; $("pAv").innerHTML = s ? B.avatarHtml(s, 36) : "";
     $("staffDlg").showModal();
   }
   $("staffForm").onsubmit = async (e) => {
@@ -251,6 +252,10 @@
       await A.saveStaff(editingStaff ? { ...rec, id: editingStaff.id } : rec);
       staff = await A.staff(); fillPeople(); renderStaff(); $("staffDlg").close(); B.toast("Saved");
     } catch (err) { B.toast(err.message, "err"); }
+  };
+  $("pPhotoRm").onclick = async () => {
+    try { await A.saveStaff({ id: editingStaff.id, photo: null }); staff = await A.staff(); renderStaff(); $("pPhotoRow").hidden = true; B.toast(`Photo removed for ${editingStaff.display_name}`); }
+    catch (err) { B.toast(err.message, "err"); }
   };
   $("pReset").onclick = async () => {
     try { await A.resetPin(editingStaff.id); staff = await A.staff(); renderStaff(); $("pReset").hidden = true; B.toast(`PIN cleared for ${editingStaff.display_name}`); }

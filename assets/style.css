@@ -54,6 +54,8 @@ h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0; text-wra
 .brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 17px; }
 .brand .mark { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); color: var(--accent-ink);
   display: grid; place-items: center; font-size: 13px; letter-spacing: .02em; }
+.help-link { order: 3; font-weight: 700; font-size: 13.5px; text-decoration: none; color: var(--accent); border: 1px solid var(--line); background: var(--surface); padding: 5px 12px; border-radius: 999px; }
+.help-link:hover { border-color: var(--accent); }
 .clocks { margin-left: auto; display: flex; gap: 14px; align-items: baseline; }
 .clock b { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--clock-uk); }
 .clock span { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--clock-uk); font-weight: 700; margin-left: 4px; }

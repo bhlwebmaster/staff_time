@@ -48,6 +48,12 @@ create table if not exists public.attendance (
   updated_at   timestamptz not null default now(),
   unique (staff_id, work_date)
 );
+-- Profile touches (chosen by the staff member)
+alter table public.staff add column if not exists avatar  text;   -- preset avatar key, e.g. 'mango'
+alter table public.staff add column if not exists photo   text;   -- own photo as small JPEG data URL (≤ 60 KB)
+alter table public.staff add column if not exists tagline text;   -- short motto, ≤ 40 chars
+alter table public.staff add column if not exists color   text;   -- card colour key
+
 create index if not exists attendance_date_idx on public.attendance (work_date);
 
 create table if not exists public.audit_log (
@@ -162,7 +168,12 @@ language sql stable security definer set search_path = public as $$
       select json_agg(json_build_object(
         'id', st.id, 'display_name', st.display_name, 'full_name', st.full_name,
         'has_pin', st.pin_hash is not null,
-        'sched_start', st.sched_start, 'sched_end', st.sched_end,
+        'sched_start', st.sched_start, 'sched_end', st.sched_end, 'lunch_mins', st.lunch_mins,
+        'avatar', st.avatar, 'photo', st.photo, 'tagline', st.tagline, 'color', st.color,
+        'recent', coalesce((select json_agg(json_build_object('work_date', r.work_date, 'sched_start', r.sched_start,
+            'sched_end', r.sched_end, 'time_in', r.time_in, 'lunch_out', r.lunch_out, 'lunch_in', r.lunch_in,
+            'time_out', r.time_out) order by r.work_date)
+          from attendance r where r.staff_id = st.id and r.work_date >= (select today from d) - 45), '[]'::json),
         'today', case when a.id is null then null else json_build_object(
             'sched_start', a.sched_start, 'sched_end', a.sched_end,
             'time_in', a.time_in, 'lunch_out', a.lunch_out, 'lunch_in', a.lunch_in, 'time_out', a.time_out) end
@@ -269,7 +280,8 @@ begin
     'ok', true,
     'now', now(),
     'staff', json_build_object('id', s.id, 'display_name', s.display_name, 'full_name', s.full_name,
-               'sched_start', s.sched_start, 'sched_end', s.sched_end, 'lunch_mins', s.lunch_mins),
+               'sched_start', s.sched_start, 'sched_end', s.sched_end, 'lunch_mins', s.lunch_mins,
+               'avatar', s.avatar, 'photo', s.photo, 'tagline', s.tagline, 'color', s.color),
     'settings', (select json_build_object('timezone', timezone, 'grace_mins', grace_mins,
                'ot_block_mins', ot_block_mins, 'count_early', count_early) from settings where id = 1),
     -- this month + last month, for the personal OT bank
@@ -287,22 +299,42 @@ language sql stable security definer set search_path = public as $$
   select case when not public.is_admin() then '[]'::json else coalesce((
     select json_agg(json_build_object('id', id, 'full_name', full_name, 'display_name', display_name,
       'sched_start', sched_start, 'sched_end', sched_end, 'lunch_mins', lunch_mins, 'active', active,
-      'has_pin', pin_hash is not null, 'created_at', created_at) order by display_name)
+      'has_pin', pin_hash is not null, 'created_at', created_at,
+      'avatar', avatar, 'photo', photo, 'tagline', tagline, 'color', color) order by display_name)
     from staff), '[]'::json) end;
 $$;
+
+-- Staff set their own avatar / photo / tagline / colour (PIN-checked).
+create or replace function public.set_profile(p_staff uuid, p_pin text, p_avatar text, p_photo text, p_tagline text, p_color text)
+returns json
+language plpgsql security definer set search_path = public, extensions as $$
+declare v_err text; v_photo text := nullif(p_photo, ''); v_tag text := nullif(btrim(coalesce(p_tagline, '')), '');
+begin
+  v_err := _check_pin(p_staff, p_pin);
+  if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
+  if p_avatar is not null and p_avatar !~ '^[a-z0-9-]{1,24}$' then return json_build_object('ok', false, 'error', 'Unknown avatar.'); end if;
+  if p_color is not null and p_color !~ '^[a-z0-9-]{1,24}$' then return json_build_object('ok', false, 'error', 'Unknown colour.'); end if;
+  if v_photo is not null and (v_photo !~ '^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$' or length(v_photo) > 60000) then
+    return json_build_object('ok', false, 'error', 'Photo is too large or not an image. Try another one.');
+  end if;
+  if v_tag is not null and length(v_tag) > 40 then return json_build_object('ok', false, 'error', 'Keep your tagline to 40 characters.'); end if;
+  update staff set avatar = p_avatar, photo = v_photo, tagline = v_tag, color = p_color where id = p_staff;
+  return json_build_object('ok', true);
+end $$;
 
 -- ---------- Permissions ----------
 revoke all on function public._check_pin(uuid, text) from public, anon, authenticated;
 grant execute on function public.roster() to anon, authenticated;
 grant execute on function public.set_pin(uuid, text, text) to anon, authenticated;
 grant execute on function public.punch(uuid, text, text, time, time, text) to anon, authenticated;
+grant execute on function public.set_profile(uuid, text, text, text, text, text) to anon, authenticated;
 grant execute on function public.is_admin() to authenticated;
 grant execute on function public.is_full_admin() to authenticated;
 grant execute on function public.my_role() to authenticated;
 grant execute on function public.admin_staff() to authenticated;
 -- Signed-in users can't read PIN hashes or lock-out counters directly.
 revoke select on public.staff from anon, authenticated;
-grant select (id, full_name, display_name, sched_start, sched_end, lunch_mins, active, created_at) on public.staff to authenticated;
+grant select (id, full_name, display_name, sched_start, sched_end, lunch_mins, active, created_at, avatar, photo, tagline, color) on public.staff to authenticated;
 
 -- ---------- Make yourself the first admin (one time) ----------
 -- 1. Supabase → Authentication → Users → Add user (your email + a password, tick Auto confirm).

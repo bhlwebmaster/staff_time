@@ -54,8 +54,8 @@ The anon key is designed to be public. **Never** put the service_role key in thi
 1. In the repo, go to **Settings → Pages**.
 2. **Source:** Deploy from a branch. **Branch:** `main`, folder `/ (root)`. Click **Save**.
 3. Wait 1–2 minutes and refresh. The page shows your link:
-   - Staff app: `https://YOUR-USERNAME.github.io/bhl-attendance/`
-   - Admin: `https://YOUR-USERNAME.github.io/bhl-attendance/admin.html`
+   - Staff app: `https://bhlwebmaster.github.io/staff_time/`
+   - Admin: `https://bhlwebmaster.github.io/staff_time/admin.html`
 
 ### 6. Quick test
 1. Open the admin link and sign in. The yellow demo banner should be gone.
@@ -81,6 +81,13 @@ The anon key is designed to be public. **Never** put the service_role key in thi
 | Supabase project paused | The free tier pauses after about a week with no use. Click **Restore** in Supabase; daily clock-ins keep it awake. |
 
 ---
+
+## Profiles and the game layer
+- **Profile:** staff tap their avatar (or **Edit profile**) to pick one of 12 avatars or upload their own photo (cropped and shrunk to ~10 KB), plus a card colour and a tagline of up to 40 characters. It's saved with their PIN. Admins can remove a photo under Staff → Edit.
+- **XP (resets monthly):** +10 on-time clock-in (+3 if late), +10 complete day, +5 lunch logged, +5 early bird (5+ min early). Levels: Rookie 0 · Regular 100 · Reliable 250 · Pro 450 · Ace 700 · Legend 1000.
+- **Streak:** on-time days in a row; days off don't break it, a late clock-in resets it. Shown on each person's card.
+- **Badges:** First Punch, Early Bird, On Fire, Iron Streak, Perfect Week, Lunch Pro, No Loose Ends, Extra Mile.
+- Confetti plays for an on-time clock-in, a new badge or a level-up (not shown if the phone has "reduce motion" on).
 
 ## Logins and roles
 | Role | Can do |
@@ -132,6 +139,7 @@ assets/core.js    time zone maths + hours/OT rules (shared)
 assets/api.js     Supabase calls + demo mode
 assets/staff.js   staff app logic
 assets/admin.js   admin logic (incl. reports + PDF + access)
+assets/game.js    avatars, profiles, XP, streaks, badges
 assets/style.css  styles (light + dark)
 supabase/schema.sql   tables, security, functions (safe to re-run)
 supabase/seed.sql     optional starting data

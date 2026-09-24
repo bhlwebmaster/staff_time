@@ -30,13 +30,18 @@
     $("pickDate").textContent = B.prettyDate(roster.today, { weekday: "long", day: "numeric", month: "long" });
     $("people").innerHTML = roster.staff.map((s) => {
       const [k, label] = statusOf(s.today);
-      return `<button class="person" data-id="${B.esc(s.id)}">
-        <span class="nm">${B.esc(s.display_name)}</span>
+      const g = B.stats(s.recent, s, roster.settings, roster.today);
+      return `<button class="person" data-id="${B.esc(s.id)}" style="--card-tint:${B.colorOf(s)}">
+        <span class="top">${B.avatarHtml(s, 46)}<span><span class="nm">${B.esc(s.display_name)}</span>${streakChip(g.streak)}</span></span>
+        <span class="tagline">${B.esc(s.tagline || "")}</span>
         <span class="pill ${k}">${label}</span>
         <span class="sub">${B.clockStr(s.today?.sched_start || s.sched_start)}–${B.clockStr(s.today?.sched_end || s.sched_end)}</span>
       </button>`;
     }).join("") || `<p class="muted">No staff yet. An admin can add people from the admin page.</p>`;
     renderTeam();
+  }
+  function streakChip(n) {
+    return n >= 2 ? `<span class="chip-streak" title="${n} on-time days in a row">${B.icon("flame", 13)}${n} on-time</span>` : "";
   }
   function renderTeam() {
     if (!roster) return;
@@ -44,7 +49,7 @@
       const [k, label] = statusOf(s.today);
       const t = s.today;
       const times = t?.time_in ? `in ${B.clockIn(new Date(t.time_in), tz())}${t.time_out ? " · out " + B.clockIn(new Date(t.time_out), tz()) : ""}` : "";
-      return `<div class="tr"><span class="n">${B.esc(s.display_name)}</span><span class="pill ${k}">${label}</span><span class="x">${times}</span></div>`;
+      return `<div class="tr">${B.avatarHtml(s, 30)}<span class="n">${B.esc(s.display_name)}</span><span class="pill ${k}">${label}</span><span class="x">${times}</span></div>`;
     }).join("");
   }
   $("people").addEventListener("click", (e) => {
@@ -61,6 +66,7 @@
   }
   function renderPin(hint) {
     $("pinTitle").textContent = me.display_name;
+    $("pinAv").innerHTML = B.avatarHtml(me, 64);
     $("pinEyebrow").textContent = pinMode === "enter" ? "Enter your PIN" : pinMode === "create1" ? "Create a 4-digit PIN" : "Type it again";
     $("pinHint").textContent = hint || (pinMode === "enter" ? "" : "You'll use this every time you clock in.");
     [...$("dots").children].forEach((d, i) => d.classList.toggle("on", i < entry.length));
@@ -103,6 +109,9 @@
     const today = B.dateIn(new Date(), set.timezone);
     $("tDate").textContent = B.prettyDate(today, { weekday: "long", day: "numeric", month: "long" });
     $("tName").textContent = `Hi, ${st.display_name}`;
+    $("meAv").innerHTML = B.avatarHtml(st, 58);
+    $("tTag").textContent = st.tagline || "";
+    renderSeason();
     const [k, label] = statusOf(row);
     $("tStatus").className = "pill " + k; $("tStatus").textContent = label;
     const ss = row?.sched_start || st.sched_start, se = row?.sched_end || st.sched_end;
@@ -164,14 +173,84 @@
     const r = await api.punch(me.id, pin, a, extra).catch((e) => ({ ok: false, error: e.message }));
     btn.disabled = false;
     if (!r.ok) { B.toast(r.error, "err"); if (/PIN/.test(r.error)) { pin = ""; pick(me); } return; }
+    const before = game();
     data = r;
+    const after = game();
     const words = { in: "Clocked in", lunch_start: "Enjoy your lunch", lunch_end: "Welcome back", out: "Clocked out", note: "Note saved" };
-    B.toast(`${words[a]} · ${B.clockIn(new Date(r.now), r.settings.timezone)} UK`);
+    const gained = after.xp - before.xp;
+    const newBadges = after.badges.filter((b, i) => b.earned && !before.badges[i].earned);
+    let msg = `${words[a]} · ${B.clockIn(new Date(r.now), r.settings.timezone)} UK`;
+    if (gained > 0) msg += ` · +${gained} XP`;
+    if (a === "in" && after.streak >= 2) msg += ` · ${after.streak}-day streak`;
+    if (newBadges.length) msg = `Badge unlocked: ${newBadges.map((b) => b.name).join(", ")}! ` + (gained > 0 ? `+${gained} XP` : "");
+    B.toast(msg);
+    fresh = new Set(newBadges.map((b) => b.key));
+    const onTimeIn = a === "in" && !B.calcDay(todayRow(), data.staff, data.settings).late;
+    if (newBadges.length || onTimeIn || after.level.n > before.level.n) B.confetti();
     renderToday(); loadRoster(); bumpIdle();
   }
   $("actMain").onclick = (e) => act(e.currentTarget.dataset.a, e.currentTarget);
   $("actAlt").addEventListener("click", (e) => { const b = e.target.closest("button[data-a]"); if (b) act(b.dataset.a, b); });
 
+
+  // ---------- season (XP, level, streak, badges) ----------
+  let fresh = new Set();
+  const game = () => B.stats(data.rows, data.staff, data.settings, B.dateIn(new Date(data.now), data.settings.timezone));
+  function renderSeason() {
+    const g = game(), L = g.level;
+    $("tLevel").textContent = `Level ${L.n} · ${L.title}`;
+    $("lvlRing").style.setProperty("--p", L.pct);
+    $("lvlRing").innerHTML = `<div><b>${L.n}</b><small>Level</small></div>`;
+    $("xpNow").textContent = `${g.xp} XP`;
+    $("xpNext").textContent = L.next ? `${L.next - g.xp} XP to Level ${L.n + 1}` : "Top level reached";
+    requestAnimationFrame(() => { $("xpFill").style.width = L.pct + "%"; });
+    $("streakNow").innerHTML = `${B.icon("flame", 16)} ${g.streak}-day on-time streak`;
+    $("streakBest").textContent = g.best > g.streak ? `Best: ${g.best}` : g.streak ? "Personal best!" : "Clock in on time to start one";
+    const colors = { first: "#56606b", early: "#e0912b", fire: "#d9622b", iron: "#1f6fb2", week: "#0d7656", lunch: "#b07d0c", tidy: "#6d4bc4", ot: "#c2416b" };
+    $("badges").innerHTML = g.badges.map((b) => `<div class="badge ${b.earned ? "" : "locked"} ${fresh.has(b.key) ? "fresh" : ""}" title="${B.esc(b.desc)}" style="--bc:${colors[b.key]}">
+      <span class="ic">${B.icon(b.icon, 20)}</span><b>${B.esc(b.name)}</b>
+      <small>${b.earned ? "Unlocked" : b.goal > 1 ? `${b.key === "ot" ? B.fmtMins(b.have) + " / 2:00" : b.have + " / " + b.goal}` : B.esc(b.desc)}</small></div>`).join("");
+    fresh = new Set();
+  }
+
+  // ---------- profile editor ----------
+  let draft = null;
+  function openProfile() {
+    const st = data.staff;
+    draft = { avatar: st.avatar || (st.photo ? null : "sunrise"), photo: st.photo || null, tagline: st.tagline || "", color: st.color || "jade" };
+    $("tagIn").value = draft.tagline;
+    renderProfile(); $("profDlg").showModal();
+  }
+  function renderProfile() {
+    const view = { ...data.staff, ...draft, tagline: $("tagIn").value };
+    $("profPreview").innerHTML = `${B.avatarHtml(view, 64)}<div><b style="font-family:var(--display);font-size:20px">${B.esc(view.display_name)}</b>
+      <div class="muted" style="font-size:13px;font-style:italic">${B.esc(view.tagline || "Add a tagline below")}</div></div>`;
+    $("avGrid").innerHTML = B.AVATARS.map((k) => `<button type="button" role="radio" aria-checked="${!draft.photo && draft.avatar === k}" aria-label="${k} avatar" data-av="${k}">${B.avatarSvg(k, 48)}</button>`).join("");
+    $("swatches").innerHTML = Object.entries(B.COLORS).map(([k, c]) => `<button type="button" role="radio" aria-checked="${draft.color === k}" aria-label="${k}" data-c="${k}" style="--sw:${c}"></button>`).join("");
+    $("photoRm").hidden = !draft.photo;
+  }
+  $("avGrid").addEventListener("click", (e) => { const b = e.target.closest("[data-av]"); if (!b) return; draft.avatar = b.dataset.av; draft.photo = null; renderProfile(); });
+  $("swatches").addEventListener("click", (e) => { const b = e.target.closest("[data-c]"); if (!b) return; draft.color = b.dataset.c; renderProfile(); });
+  $("tagIn").addEventListener("input", () => renderProfile());
+  $("photoIn").addEventListener("change", async (e) => {
+    try { draft.photo = await B.resizePhoto(e.target.files[0]); renderProfile(); }
+    catch (err) { B.toast(err.message, "err"); }
+    e.target.value = "";
+  });
+  $("photoRm").onclick = () => { draft.photo = null; draft.avatar ||= "sunrise"; renderProfile(); };
+  $("profForm").addEventListener("submit", async (e) => {
+    if (e.submitter?.value !== "save") return;
+    e.preventDefault();
+    const p = { ...draft, tagline: $("tagIn").value.trim() };
+    $("profSave").disabled = true;
+    const r = await api.setProfile(me.id, pin, p).catch((err) => ({ ok: false, error: err.message }));
+    $("profSave").disabled = false;
+    if (!r.ok) return B.toast(r.error, "err");
+    Object.assign(data.staff, p); Object.assign(me, p);
+    $("profDlg").close(); B.toast("Profile saved"); renderToday(); loadRoster();
+  });
+  $("meAv").onclick = openProfile;
+  $("editProfile").onclick = openProfile;
   $("copyWa").onclick = async () => {
     const row = todayRow();
     if (!row) return B.toast("Clock in first, then copy.", "err");

@@ -56,6 +56,58 @@
   .team .tr { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   .team .tr:last-child { border-bottom: 0; }
   .team .tr .n { font-weight: 600; min-width: 80px; }
+  /* profiles + game */
+  .av { width: var(--av); height: var(--av); border-radius: 50%; display: inline-grid; place-items: center; overflow: hidden; flex: none;
+    box-shadow: 0 0 0 2.5px var(--surface), 0 0 0 4.5px var(--ring); background: var(--surface-2); }
+  .av img, .av .av-svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .av-init { width: 100%; height: 100%; display: grid; place-items: center; color: #fff; font-weight: 700; font-family: var(--display); font-size: calc(var(--av) * .38); }
+  .person { position: relative; overflow: hidden; }
+  .person::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 52px; background: var(--card-tint, transparent); opacity: .14; }
+  .person > * { position: relative; }
+  .person .top { display: flex; align-items: center; gap: 12px; }
+  .person .tagline { font-size: 12.5px; color: var(--muted); line-height: 1.35; min-height: 1.35em; }
+  .chip-streak { display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 700; color: #c2541b; white-space: nowrap; margin-top: 2px; }
+  .person .top > span:last-child { min-width: 0; display: grid; }
+  .person .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pin-av { display: flex; justify-content: center; margin-bottom: 10px; }
+  .me-av { border: 0; background: none; padding: 0; cursor: pointer; border-radius: 50%; position: relative; }
+  .me-av::after { content: "Edit"; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); font-size: 10.5px; font-weight: 700;
+    background: var(--ink); color: var(--bg); padding: 1px 7px; border-radius: 999px; }
+  .today-head { align-items: center; }
+  .me-sub { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+  .lvl { font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 9px; border-radius: 999px; }
+  .tag { font-size: 13px; color: var(--muted); font-style: italic; }
+  .season-top { display: flex; gap: 16px; align-items: center; }
+  .lvl-ring { width: 74px; height: 74px; flex: none; border-radius: 50%; display: grid; place-items: center;
+    background: conic-gradient(var(--accent) calc(var(--p, 0) * 1%), var(--surface-2) 0); }
+  .lvl-ring > div { width: 60px; height: 60px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; text-align: center; line-height: 1.05; }
+  .lvl-ring b { font-family: var(--display); font-size: 22px; } .lvl-ring small { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .season-main { flex: 1; display: grid; gap: 7px; min-width: 0; }
+  .xp-line { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; } .xp-line b { font-family: var(--mono); font-size: 16px; }
+  .xp-bar { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .xp-bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--accent), #3cc491); transition: width .8s cubic-bezier(.2,.8,.2,1); }
+  .streaks { display: flex; gap: 12px; align-items: center; font-size: 13px; flex-wrap: wrap; }
+  .streak { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; color: #c2541b; }
+  .badges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  @media (max-width: 440px) { .badges { grid-template-columns: repeat(2, 1fr); } }
+  .badge { border: 1px solid var(--line); border-radius: 12px; padding: 10px 8px; display: grid; justify-items: center; gap: 4px; text-align: center; }
+  .badge .ic { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--bc, var(--accent)); }
+  .badge b { font-size: 12px; line-height: 1.2; } .badge small { font-size: 10.5px; color: var(--muted); line-height: 1.25; }
+  .badge.locked .ic { background: var(--surface-2); color: var(--muted); } .badge.locked b { color: var(--muted); }
+  .badge.fresh { animation: pop .6s ease; }
+  @keyframes pop { 40% { transform: scale(1.12); } }
+  dialog { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); padding: 0; width: min(520px, calc(100% - 32px)); box-shadow: var(--shadow); }
+  dialog::backdrop { background: rgba(10, 20, 15, .45); }
+  dialog form { padding: 20px; display: grid; gap: 16px; }
+  .prof-preview { display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 14px; background: var(--surface-2); }
+  .av-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .av-grid button { border: 0; padding: 0; background: none; border-radius: 50%; cursor: pointer; aspect-ratio: 1; max-width: 100%; }
+  .av-grid button .av-svg { width: 100%; height: 100%; border-radius: 50%; display: block; }
+  .av-grid button[aria-checked=true] { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5.5px var(--accent); }
+  .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+  .swatches button { width: 32px; height: 32px; border-radius: 50%; border: 0; cursor: pointer; background: var(--sw); }
+  .swatches button[aria-checked=true] { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--sw); }
+  .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
   .team .tr .x { margin-left: auto; font-family: var(--mono); font-size: 13px; color: var(--muted); }
 </style>
 </head>
@@ -63,6 +115,7 @@
 <header class="bar">
   <div class="wrap">
     <div class="brand"><div class="mark">BHL</div>Attendance</div>
+    <a class="help-link" href="help/" aria-label="Help">Help</a>
     <div class="clocks" aria-live="off">
       <div class="clock"><b id="ukClock">--:--</b><span id="ukLabel">UK</span></div>
       <div class="clock sub"><b id="phClock">--:--</b><span id="phLabel">Manila</span></div>
@@ -71,7 +124,7 @@
 </header>
 <main class="wrap narrow">
   <div id="demoBanner" class="banner" hidden style="margin-bottom:16px">
-    <b>Demo mode.</b> Nothing is saved. Try Rae (PIN <code>1111</code>) or Cess (<code>2222</code>). Jaycel has no PIN yet, so you can create one.
+    <b>Demo mode.</b> Nothing is saved. Try Rae (PIN <code>1111</code>), Cess (<code>2222</code>) or Verge (<code>3333</code>). Jaycel has no PIN yet, so you can create one.
   </div>
   <section id="vPick" hidden>
     <div class="hello">
@@ -79,12 +132,13 @@
       <h1>Who's clocking in?</h1>
     </div>
     <div class="people" id="people"></div>
-    <p class="muted" style="margin-top:22px;font-size:13px">Times are recorded by the server in UK time, the same time you post in WhatsApp as "GMT".</p>
+    <p class="muted" style="margin-top:22px;font-size:13px">Tap your name to start. All times are in UK time. <a href="help/">Need help?</a></p>
   </section>
 
   <section id="vPin" hidden>
     <div class="card pinbox">
       <div>
+        <div id="pinAv" class="pin-av"></div>
         <div class="eyebrow" id="pinEyebrow">Enter PIN</div>
         <h2 id="pinTitle" style="font-size:26px;margin-top:4px"></h2>
         <p id="pinHint" class="muted" style="margin:6px 0 0"></p>
@@ -92,14 +146,17 @@
       <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
       <div class="keys" id="pad"></div>
       <button class="btn ghost" id="pinBack">← Not you?</button>
+      <a class="muted" href="help/#q-forgot-pin" style="font-size:13.5px">Forgot your PIN?</a>
     </div>
   </section>
 
   <section id="vToday" hidden class="stack">
     <div class="today-head">
-      <div>
+      <button class="me-av" id="meAv" aria-label="Edit your profile"></button>
+      <div class="me-txt">
         <div class="eyebrow" id="tDate"></div>
         <h1 id="tName"></h1>
+        <div class="me-sub"><span id="tLevel" class="lvl"></span><span id="tTag" class="tag"></span></div>
       </div>
       <span class="spacer"></span>
       <span id="tStatus" class="pill absent">Not in yet</span>
@@ -125,6 +182,23 @@
 
     <div class="timeline" id="timeline"></div>
 
+    <div class="card pad stack season" id="season">
+      <div class="row"><div class="eyebrow">Your season</div><span class="spacer"></span><button class="btn ghost sm" id="editProfile">Edit profile</button></div>
+      <div class="season-top">
+        <div class="lvl-ring" id="lvlRing"></div>
+        <div class="season-main">
+          <div class="xp-line"><b id="xpNow">0 XP</b><span class="muted" id="xpNext"></span></div>
+          <div class="xp-bar"><i id="xpFill"></i></div>
+          <div class="streaks">
+            <span class="streak" id="streakNow"></span>
+            <span class="muted" id="streakBest"></span>
+          </div>
+        </div>
+      </div>
+      <div class="badges" id="badges"></div>
+      <p class="muted" style="margin:0;font-size:12.5px">XP resets each month. +10 on-time clock-in · +10 full day · +5 lunch logged · +5 early bird (5+ min early).</p>
+    </div>
+
     <div class="card pad stack">
       <div class="row"><div class="eyebrow">This month</div><span class="spacer"></span><span class="muted" style="font-size:12px" id="mLabel"></span></div>
       <div class="stats">
@@ -148,9 +222,34 @@
   </section>
 </main>
 
+<dialog id="profDlg" aria-labelledby="profTitle">
+  <form method="dialog" id="profForm">
+    <div class="row"><h2 id="profTitle" style="font-size:21px">Your profile</h2><span class="spacer"></span>
+      <button class="btn ghost sm" value="cancel" formnovalidate>Close</button></div>
+    <div class="prof-preview" id="profPreview"></div>
+    <div>
+      <div class="eyebrow" style="margin-bottom:8px">Pick an avatar</div>
+      <div class="av-grid" id="avGrid" role="radiogroup" aria-label="Avatar"></div>
+    </div>
+    <div class="row">
+      <label class="btn" for="photoIn">Upload your photo</label>
+      <input type="file" id="photoIn" accept="image/*" hidden>
+      <button class="btn ghost sm" type="button" id="photoRm" hidden>Remove photo</button>
+    </div>
+    <div>
+      <div class="eyebrow" style="margin-bottom:8px">Card colour</div>
+      <div class="swatches" id="swatches" role="radiogroup" aria-label="Card colour"></div>
+    </div>
+    <label class="f">Tagline <span class="muted" style="font-weight:400">up to 40 characters</span>
+      <input type="text" id="tagIn" maxlength="40" placeholder="e.g. Coffee first, then conquer"></label>
+    <div class="row"><span class="spacer"></span><button class="btn primary" type="submit" value="save" id="profSave">Save profile</button></div>
+  </form>
+</dialog>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="assets/core.js"></script>
+<script src="assets/game.js"></script>
 <script src="assets/api.js"></script>
 <script src="assets/staff.js"></script>
 </body>
