@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=20260924b">
 <style>
   main { padding-block: 22px 70px; }
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -59,6 +59,34 @@
   .matrix td.zero { color: var(--line); }
   .matrix th.tot, .matrix td.tot { background: var(--surface-2); }
   .matrix th .d { display: block; font-size: 10.5px; letter-spacing: 0; text-transform: none; font-weight: 500; }
+  .sch-edit { font-size: 12.5px; }
+  .sch-edit th { background: #0f5c56; color: #fff; text-align: center; font-size: 11px; }
+  .sch-edit th.is-today { box-shadow: inset 0 -3px #ffe45c; }
+  .sch-edit tbody th { background: var(--surface); color: var(--ink); text-align: left; font-size: 13px; white-space: nowrap; }
+  .sch-edit td { padding: 6px; min-width: 128px; vertical-align: top; }
+  .sch-cell { display: grid; gap: 4px; padding: 5px; border-radius: 8px; border: 1.5px solid transparent; }
+  .sch-cell.changed { border-color: var(--lunch); background: var(--lunch-soft); }
+  .sch-cell select, .sch-cell input { font-size: 12px; padding: 3px 5px; border-radius: 6px; }
+  .sch-cell .t { display: flex; gap: 3px; } .sch-cell .t input { width: 100%; }
+  .sch-cell.k-rest { background: #fff59a; } .sch-cell.k-vacation { background: #b9f2c0; } .sch-cell.k-sick { background: #ffd9cc; }
+  .sch-cell.k-holiday { background: #d6e8ff; } .sch-cell.k-unpaid { background: #e8e8e8; }
+  .sch-ro { font-family: var(--mono); font-size: 12px; }
+  .pattern { display: grid; gap: 6px; }
+  .pattern .pr { display: grid; grid-template-columns: 96px 1fr 1fr; gap: 8px; align-items: center; font-size: 13px; }
+  .pattern .pr label { display: flex; gap: 6px; align-items: center; font-weight: 600; }
+  .pattern input[type=time] { padding: 5px 8px; }
+  .paysheet { font-size: 13px; }
+  .paysheet th { background: #0f5c56; color: #fff; text-align: center; white-space: normal; line-height: 1.2; font-size: 11px; vertical-align: bottom; }
+  .paysheet td { padding: 7px 8px; white-space: nowrap; }
+  .paysheet td.num { text-align: right; }
+  .paysheet td.hl { background: #fff59a; color: #1a1a00; font-weight: 700; }
+  .paysheet tfoot td { background: #33e0ea; color: #06231a; }
+  .paysheet input { width: 70px; padding: 4px 6px; font-size: 13px; text-align: right; border-radius: 6px; }
+  .paysheet input.note { width: 110px; text-align: left; }
+  .paysheet input.ov { border-color: var(--lunch); background: var(--lunch-soft); }
+  .paysheet .warn { color: var(--late); font-weight: 600; font-size: 12px; }
+  .payslip-area { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  #slipView { flex: 1 1 360px; }
   .rephead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 20px 0 10px; }
   @media print { .printhead { display: block; margin-bottom: 12px; } main { padding: 0; } table { font-size: 11px; } td, th { padding: 5px 6px; } }
 </style>
@@ -71,6 +99,8 @@
       <button role="tab" data-tab="today" aria-selected="true">Today</button>
       <button role="tab" data-tab="sheets" aria-selected="false">Timesheets</button>
       <button role="tab" data-tab="reports" aria-selected="false">Reports</button>
+      <button role="tab" data-tab="schedule" aria-selected="false">Schedule</button>
+      <button role="tab" data-tab="payroll" aria-selected="false">Payroll</button>
       <button role="tab" data-tab="staff" aria-selected="false" class="adminonly">Staff</button>
       <button role="tab" data-tab="settings" aria-selected="false" class="adminonly">Settings</button>
       <button role="tab" data-tab="access" aria-selected="false">Access</button>
@@ -173,6 +203,68 @@
     <div class="card tablewrap"><table id="repDetail"></table></div>
   </section>
 
+  <!-- SCHEDULE -->
+  <section id="tab-schedule" hidden>
+    <div class="head">
+      <div><div class="eyebrow">Work schedule · UK time</div><h1 id="schTitle">Schedule</h1><p class="muted" style="margin:4px 0 0">Everyone sees this week on the clock-in homepage.</p></div>
+      <span class="spacer"></span>
+      <div class="row" style="gap:6px"><button class="btn sm" id="schPrev" aria-label="Previous week">←</button><button class="btn sm" id="schNow">This week</button><button class="btn sm" id="schNext" aria-label="Next week">→</button></div>
+    </div>
+    <div class="card pad stack" style="margin-bottom:14px">
+      <div class="row">
+        <span class="muted" style="font-size:13px" id="schHint">Each cell starts from the person's usual week (set under Staff → Edit). Change any day, then click Save week. Changed days are outlined in orange.</span>
+        <span class="spacer"></span>
+        <button class="btn adminonly" id="schCopy">Copy last week</button>
+        <button class="btn adminonly" id="schReset">Reset to usual week</button>
+        <button class="btn primary adminonly" id="schSave">Save week</button>
+      </div>
+    </div>
+    <div class="card tablewrap" style="margin-bottom:18px"><table class="sch-edit" id="schGrid"></table></div>
+    <h2 style="font-size:19px;margin-bottom:10px">Timeline preview</h2>
+    <div class="wk-wrap" id="schTimeline"></div>
+  </section>
+
+  <!-- PAYROLL -->
+  <section id="tab-payroll" hidden>
+    <div class="head">
+      <div><div class="eyebrow">Pay from attendance</div><h1>Payroll</h1><p class="muted" id="payStatusLine" style="margin:4px 0 0"></p></div>
+      <span class="spacer"></span>
+      <label class="f">Pay period<select id="paySel"></select></label>
+      <button class="btn adminonly" id="payEditPeriod">Edit period</button>
+      <button class="btn primary adminonly" id="payNewPeriod">+ New period</button>
+    </div>
+    <div id="payEmpty" class="card pad stack" hidden style="max-width:560px">
+      <h2 style="font-size:19px">No pay periods yet</h2>
+      <p class="muted" style="margin:0">Create your first pay period (for example 31 Oct – 13 Nov, paid 14 Nov). The app fills in days worked, lates, undertime and absences from attendance.</p>
+      <div><button class="btn primary adminonly" id="payFirst">+ Create a pay period</button></div>
+    </div>
+    <div id="payBody" hidden>
+      <div class="card pad" style="margin-bottom:14px">
+        <div class="controls">
+          <label class="f">Exchange rate (₱ per £1)<input type="number" id="payFx" step="0.0001" min="0" placeholder="e.g. 83.21"></label>
+          <label class="f">Total transfer fee (₱)<input type="number" id="payFee" step="0.01" min="0" placeholder="0.00"></label>
+          <span class="spacer"></span>
+          <button class="btn" id="payCsv">CSV</button>
+          <button class="btn" id="payPdfAll">All payslips PDF</button>
+          <button class="btn adminonly" id="paySave">Save draft</button>
+          <button class="btn primary adminonly" id="payFinal">Finalise &amp; publish</button>
+          <button class="btn adminonly" id="payReopen" hidden>Reopen to edit</button>
+        </div>
+        <p class="muted" style="margin:10px 0 0;font-size:12.5px" id="payHint"></p>
+      </div>
+      <div class="card tablewrap" style="margin-bottom:22px"><table class="paysheet" id="paySheet"></table></div>
+      <div class="payslip-area">
+        <div class="stack" style="min-width:240px;max-width:320px">
+          <h2 style="font-size:19px">Payslip</h2>
+          <label class="f">Employee name<select id="slipWho"></select></label>
+          <button class="btn primary" id="slipPdf">Download this payslip (PDF)</button>
+          <p class="muted" style="margin:0;font-size:12.5px">Pick a name to see their payslip, like the dropdown in the payroll sheet. Staff see their own payslips in the app once the period is finalised.</p>
+        </div>
+        <div id="slipView"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- STAFF -->
   <section id="tab-staff" hidden>
     <div class="head"><div><div class="eyebrow">Team</div><h1>Staff</h1></div><span class="spacer"></span>
@@ -261,6 +353,23 @@
   </form>
 </dialog>
 
+<dialog id="periodDlg">
+  <form method="dialog" id="periodForm">
+    <div class="row"><h2 style="font-size:20px" id="periodTitle">New pay period</h2><span class="spacer"></span>
+      <button class="btn ghost sm" value="cancel" formnovalidate>Close</button></div>
+    <div class="grid2">
+      <label class="f">Period start<input type="date" id="ppStart" required></label>
+      <label class="f">Period end<input type="date" id="ppEnd" required></label>
+      <label class="f">Payment date<input type="date" id="ppPay" required></label>
+      <label class="f">Exchange rate (₱ per £1)<input type="number" id="ppFx" step="0.0001" min="0" placeholder="can be added later"></label>
+      <label class="f">Total transfer fee (₱)<input type="number" id="ppFee" step="0.01" min="0" value="0"></label>
+    </div>
+    <p class="muted" style="margin:0;font-size:12.5px">Weekdays in the period are the working days used for daily and per-minute rates.</p>
+    <div class="row"><button class="btn danger" type="button" id="ppDel" hidden>Delete period</button><span class="spacer"></span>
+      <button class="btn primary" type="submit" value="save">Save period</button></div>
+  </form>
+</dialog>
+
 <dialog id="staffDlg">
   <form method="dialog" id="staffForm">
     <div class="row"><h2 style="font-size:20px" id="staffTitle">Person</h2><span class="spacer"></span>
@@ -272,6 +381,13 @@
       <label class="f">End (UK)<input type="time" id="pSE" required></label>
       <label class="f">Unpaid lunch (min)<input type="number" id="pLunch" min="0" max="180" required></label>
       <label class="f">Status<select id="pActive"><option value="true">Active</option><option value="false">Inactive</option></select></label>
+      <label class="f">Start date<input type="date" id="pStartDate"></label>
+      <label class="f">Rate per pay period (£)<input type="number" id="pRate" min="0" step="0.01" placeholder="e.g. 300"></label>
+    </div>
+    <div>
+      <div class="eyebrow" style="margin-bottom:6px">Usual week (UK time)</div>
+      <div class="pattern" id="pPattern"></div>
+      <p class="muted" style="margin:6px 0 0;font-size:12.5px">Untick a day for a rest day. Specific dates (leave, swaps) are changed in the Schedule tab.</p>
     </div>
     <div class="row" id="pPhotoRow"><span id="pAv"></span><button class="btn" type="button" id="pPhotoRm">Remove photo</button>
       <span class="muted" style="font-size:12.5px">Staff choose their own avatar and photo in the app.</span></div>
@@ -284,10 +400,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js"></script>
-<script src="assets/core.js"></script>
-<script src="assets/game.js"></script>
-<script src="assets/api.js"></script>
-<script src="assets/admin.js"></script>
+<script src="config.js?v=20260924b"></script>
+<script src="assets/core.js?v=20260924b"></script>
+<script src="assets/game.js?v=20260924b"></script>
+<script src="assets/schedule.js?v=20260924b"></script>
+<script src="assets/payroll.js?v=20260924b"></script>
+<script src="assets/api.js?v=20260924b"></script>
+<script src="assets/admin.js?v=20260924b"></script>
 </body>
 </html>

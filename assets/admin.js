@@ -2,7 +2,7 @@
   const B = window.BHL, api = B.api, A = api.admin;
   const $ = (id) => document.getElementById(id);
   let settings = null, staff = [], sheetRows = [], editing = null, editingStaff = null, role = null, meId = null;
-  const TABS = () => role === "admin" ? ["today", "sheets", "reports", "staff", "settings", "access"] : ["today", "sheets", "reports", "access"];
+  const TABS = () => role === "admin" ? ["today", "sheets", "reports", "schedule", "payroll", "staff", "settings", "access"] : ["today", "sheets", "reports", "schedule", "payroll", "access"];
   const tz = () => settings?.timezone || "Europe/London";
   const byId = (id) => staff.find((s) => s.id === id);
   const today = () => B.dateIn(new Date(), tz());
@@ -44,9 +44,9 @@
   function openTab(name) {
     for (const b of $("tabs").children) b.setAttribute("aria-selected", b.dataset.tab === name);
     if (!TABS().includes(name)) name = "today";
-    for (const n of ["today", "sheets", "reports", "staff", "settings", "access"]) $("tab-" + n).hidden = n !== name;
+    for (const n of ["today", "sheets", "reports", "schedule", "payroll", "staff", "settings", "access"]) $("tab-" + n).hidden = n !== name;
     history.replaceState(null, "", "#" + name);
-    ({ today: loadDay, sheets: loadSheets, staff: renderStaff, settings: renderSettings, access: loadUsers, reports: loadReport })[name]();
+    ({ today: loadDay, sheets: loadSheets, staff: renderStaff, settings: renderSettings, access: loadUsers, reports: loadReport, payroll: loadPayroll, schedule: loadSchedule })[name]();
   }
   $("tabs").onclick = (e) => { const b = e.target.closest("button[data-tab]"); if (b) openTab(b.dataset.tab); };
 
@@ -71,14 +71,16 @@
   async function loadDay() {
     const day = $("dayPick").value || today();
     $("dayTitle").textContent = day === today() ? "Today · " + B.prettyDate(day) : B.prettyDate(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    const rows = await A.attendance(day, day);
+    const [rows, sdays] = await Promise.all([A.attendance(day, day), A.scheduleDays(day, day)]);
+    const planOv = B.sched.indexDays(sdays);
     const act = staff.filter((s) => s.active || rows.some((r) => r.staff_id === s.id));
     let n = { in: 0, lunch: 0, out: 0, absent: 0, late: 0 };
     $("dayRows").innerHTML = act.map((s) => {
       const r = rows.find((x) => x.staff_id === s.id);
-      const c = r ? B.calcDay(r, s, settings) : { status: "absent" };
-      n[c.status]++; if (c.late) n.late++;
-      const [k, label] = pillFor(c);
+      const plan = B.sched.effective(s, day, planOv);
+      const c = r ? B.calcDay(r, s, settings) : { status: plan.kind === "shift" ? "absent" : "off" };
+      if (c.status !== "off") n[c.status]++; if (c.late) n.late++;
+      const [k, label] = c.status === "off" ? ["out", B.sched.KINDS[plan.kind].label] : pillFor(c);
       let worked = "—";
       if (c.worked != null) worked = B.fmtMins(c.worked);
       else if (r?.time_in && day === today()) {
@@ -86,7 +88,7 @@
         worked = `<span class="muted">${B.fmtMins(Math.max(0, (Date.now() - Math.max(new Date(r.time_in), c.schedStart) - lunch) / 60000))}</span>`;
       }
       return `<tr><td style="white-space:nowrap">${B.avatarHtml(s, 28)}<b>${B.esc(s.display_name)}</b></td><td><span class="pill ${k}">${label}</span></td>
-        <td class="mono">${B.clockStr(r?.sched_start || s.sched_start)}–${B.clockStr(r?.sched_end || s.sched_end)}</td>
+        <td class="mono">${r ? `${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}` : plan.kind === "shift" ? `${B.clockStr(plan.start)}–${B.clockStr(plan.end)}` : "—"}</td>
         <td class="mono">${r ? t(r.time_in) : "—"}</td><td class="mono">${r ? lunchCell(r) : "—"}</td><td class="mono">${r ? t(r.time_out) : "—"}</td>
         <td class="num">${worked}</td><td>${r ? flagsHtml(c, day === today()) : ""}${r?.note ? `<span class="sub" title="${B.esc(r.note)}">${B.esc(r.note)}</span>` : ""}</td>
         <td><button class="btn sm adminonly" data-edit="${r ? B.esc(r.id) : ""}" data-staff="${B.esc(s.id)}" data-date="${day}">${r ? "Edit" : "Add"}</button></td></tr>`;
@@ -238,6 +240,8 @@
     $("pDisp").value = s?.display_name || ""; $("pFull").value = s?.full_name || "";
     $("pSS").value = (s?.sched_start || "06:00").slice(0, 5); $("pSE").value = (s?.sched_end || "15:00").slice(0, 5);
     $("pLunch").value = s?.lunch_mins ?? 60; $("pActive").value = String(s?.active ?? true);
+    $("pStartDate").value = s?.start_date || ""; $("pRate").value = s?.pay_rate ?? "";
+    renderPattern(s);
     $("pReset").hidden = !s?.has_pin;
     $("pPhotoRow").hidden = !s?.photo; $("pAv").innerHTML = s ? B.avatarHtml(s, 36) : "";
     $("staffDlg").showModal();
@@ -246,7 +250,9 @@
     if (e.submitter?.value !== "save") return;
     e.preventDefault();
     const rec = { display_name: $("pDisp").value.trim(), full_name: $("pFull").value.trim().toUpperCase(), sched_start: $("pSS").value, sched_end: $("pSE").value,
-      lunch_mins: +$("pLunch").value, active: $("pActive").value === "true" };
+      lunch_mins: +$("pLunch").value, active: $("pActive").value === "true",
+      start_date: $("pStartDate").value || null, pay_rate: $("pRate").value === "" ? null : +$("pRate").value, week_pattern: readPattern() };
+    if (rec.week_pattern && Object.values(rec.week_pattern).some((d) => d && d.e <= d.s)) return B.toast("In the usual week, each end time must be after its start time.", "err");
     if (rec.sched_end <= rec.sched_start) return B.toast("End must be after start.", "err");
     try {
       await A.saveStaff(editingStaff ? { ...rec, id: editingStaff.id } : rec);
@@ -443,6 +449,250 @@
     }
     doc.save(fileBase() + ".pdf");
     B.toast("PDF downloaded");
+  };
+
+  // ---------- weekly schedule ----------
+  const S = B.sched;
+  (function () { const st = document.createElement("style"); st.textContent = S.CSS; document.head.appendChild(st); })();
+  let schFrom = null, schDays = [], schDraft = {};
+  const DSHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function renderPattern(s) {
+    const base = s || { sched_start: "06:00:00", sched_end: "15:00:00" };
+    $("pPattern").innerHTML = [1, 2, 3, 4, 5, 6, 0].map((d) => {
+      const x = S.patternDay({ ...base, week_pattern: s?.week_pattern ?? null }, d);
+      const st = x.kind === "shift" ? x.start : S.hhmm(base.sched_start), en = x.kind === "shift" ? x.end : S.hhmm(base.sched_end);
+      return `<div class="pr" data-d="${d}"><label><input type="checkbox" ${x.kind === "shift" ? "checked" : ""}> ${DSHORT[d]}</label>
+        <input type="time" value="${st}" aria-label="${DSHORT[d]} start"><input type="time" value="${en}" aria-label="${DSHORT[d]} end"></div>`; }).join("");
+  }
+  function readPattern() {
+    const out = {};
+    for (const r of $("pPattern").querySelectorAll(".pr")) {
+      const [cb, a, b] = r.querySelectorAll("input");
+      out[r.dataset.d] = cb.checked ? { s: a.value, e: b.value } : null;
+    }
+    return out;
+  }
+  async function loadSchedule(from) {
+    schFrom = from || schFrom || S.weekStart(today());
+    const end = S.addDays(schFrom, 6);
+    schDays = await A.scheduleDays(schFrom, end);
+    schDraft = {};
+    const ov = S.indexDays(schDays);
+    for (const s of staff.filter((x) => x.active)) for (let i = 0; i < 7; i++) { const d = S.addDays(schFrom, i); schDraft[s.id + "|" + d] = S.effective(s, d, ov); }
+    $("schTitle").textContent = `${B.prettyDate(schFrom, { day: "numeric", month: "long" })} – ${B.prettyDate(end, { day: "numeric", month: "long", year: "numeric" })}`;
+    renderSchedule();
+  }
+  function isChanged(s, d, e) {
+    const u = S.patternDay(s, S.dow(d));
+    return e.kind !== u.kind || (e.kind === "shift" && (e.start !== u.start || e.end !== u.end));
+  }
+  function renderSchedule() {
+    const edit = role === "admin", days = Array.from({ length: 7 }, (_, i) => S.addDays(schFrom, i)), t = today();
+    const people = staff.filter((x) => x.active);
+    $("schGrid").innerHTML = `<thead><tr><th>Name</th>${days.map((d) => `<th class="${d === t ? "is-today" : ""}">${S.DAY[S.dow(d)]}<br>${+d.slice(8)}</th>`).join("")}</tr></thead>
+      <tbody>${people.map((s) => `<tr><th>${B.avatarHtml(s, 24)}${B.esc(s.display_name)}</th>${days.map((d) => {
+        const e = schDraft[s.id + "|" + d], ch = isChanged(s, d, e);
+        if (!edit) return `<td><div class="sch-cell k-${e.kind} ${ch ? "changed" : ""}"><span class="sch-ro">${S.cellText(e)}</span></div></td>`;
+        return `<td><div class="sch-cell k-${e.kind} ${ch ? "changed" : ""}" data-k="${s.id}|${d}">
+          <select aria-label="${B.esc(s.display_name)} ${d}">${Object.entries(S.KINDS).map(([k, v]) => `<option value="${k}" ${k === e.kind ? "selected" : ""}>${v.label}</option>`).join("")}</select>
+          ${e.kind === "shift" ? `<div class="t"><input type="time" value="${e.start || ""}" aria-label="start"><input type="time" value="${e.end || ""}" aria-label="end"></div>` : ""}
+        </div></td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="8" class="muted">No active staff.</td></tr>`}</tbody>`;
+    $("schTimeline").innerHTML = S.timelineHtml(schFrom, people, Object.fromEntries(Object.entries(schDraft).map(([k, e]) => [k, { kind: e.kind, start_time: e.start, end_time: e.end }])), t);
+  }
+  $("schGrid").addEventListener("change", (e) => {
+    const cell = e.target.closest(".sch-cell[data-k]"); if (!cell) return;
+    const cur = schDraft[cell.dataset.k], [sid] = cell.dataset.k.split("|"), s = byId(sid);
+    const sel = cell.querySelector("select"), times = cell.querySelectorAll("input[type=time]");
+    const kind = sel.value;
+    if (kind === "shift") {
+      const u = S.patternDay(s, S.dow(cell.dataset.k.split("|")[1]));
+      schDraft[cell.dataset.k] = { kind, start: times[0]?.value || cur.start || u.start || S.hhmm(s.sched_start), end: times[1]?.value || cur.end || u.end || S.hhmm(s.sched_end) };
+    } else schDraft[cell.dataset.k] = { kind, start: cur.start, end: cur.end };
+    renderSchedule();
+  });
+  $("schPrev").onclick = () => loadSchedule(S.addDays(schFrom, -7));
+  $("schNext").onclick = () => loadSchedule(S.addDays(schFrom, 7));
+  $("schNow").onclick = () => loadSchedule(S.weekStart(today()));
+  $("schReset").onclick = () => {
+    for (const k of Object.keys(schDraft)) { const [sid, d] = k.split("|"); schDraft[k] = { ...S.patternDay(byId(sid), S.dow(d)) }; }
+    renderSchedule(); B.toast("Reset to everyone's usual week. Click Save week to keep it.");
+  };
+  $("schCopy").onclick = async () => {
+    const pf = S.addDays(schFrom, -7), prev = S.indexDays(await A.scheduleDays(pf, S.addDays(pf, 6)));
+    for (const k of Object.keys(schDraft)) { const [sid, d] = k.split("|"); schDraft[k] = S.effective(byId(sid), S.addDays(d, -7), prev); }
+    renderSchedule(); B.toast("Copied last week. Click Save week to keep it.");
+  };
+  $("schSave").onclick = async () => {
+    const existing = S.indexDays(schDays), up = [], del = [];
+    for (const [k, e] of Object.entries(schDraft)) {
+      const [sid, d] = k.split("|"), s = byId(sid);
+      if (e.kind === "shift" && (!e.start || !e.end || e.end <= e.start)) return B.toast(`${s.display_name}, ${B.prettyDate(d)}: end time must be after start time.`, "err");
+      if (isChanged(s, d, e)) up.push({ staff_id: sid, work_date: d, kind: e.kind, start_time: e.kind === "shift" ? e.start : null, end_time: e.kind === "shift" ? e.end : null });
+      else if (existing[k]) del.push(existing[k].id);
+    }
+    try { await A.saveScheduleDays(up); await A.deleteScheduleDays(del); B.toast("Week saved. Staff see it on the homepage."); loadSchedule(schFrom); }
+    catch (err) { B.toast(err.message, "err"); }
+  };
+
+  // ---------- payroll ----------
+  const P = B.payroll;
+  (function () { const st = document.createElement("style"); st.textContent = P.SLIP_CSS; document.head.appendChild(st); })();
+  let periods = [], curP = null, payLines = [], payOver = {}, payRows = [], payPlanOv = {};
+  const isAdminRole = () => role === "admin";
+  async function loadPayroll(keepId) {
+    periods = await A.periods();
+    $("payEmpty").hidden = periods.length > 0; $("payBody").hidden = !periods.length;
+    $("payEditPeriod").hidden = !periods.length;
+    $("paySel").innerHTML = periods.map((p) => `<option value="${p.id}">${P.period(p)}${p.status === "final" ? " · final" : " · draft"}</option>`).join("");
+    if (!periods.length) { $("payStatusLine").textContent = ""; return; }
+    const id = keepId || $("paySel").value || periods[0].id;
+    $("paySel").value = periods.some((p) => p.id === id) ? id : periods[0].id;
+    await openPeriod($("paySel").value);
+  }
+  $("paySel").onchange = () => openPeriod($("paySel").value);
+  async function openPeriod(id) {
+    curP = periods.find((p) => p.id === id);
+    const [saved, rows, sdays] = await Promise.all([A.payslips(id), A.attendance(curP.start_date, curP.end_date), A.scheduleDays(curP.start_date, curP.end_date)]);
+    payRows = rows; payPlanOv = B.sched.indexDays(sdays);
+    payOver = {}; for (const r of saved) payOver[r.staff_id] = { ...(r.overrides || {}) };
+    if (curP.status === "final") payLines = saved.map((r) => ({ ...r, auto: null }));
+    $("payFx").value = curP.exchange_rate ?? ""; $("payFee").value = curP.transfer_fee ?? 0;
+    recalc();
+  }
+  function people() {
+    return staff.filter((s) => (s.active && (!s.start_date || s.start_date <= curP.end_date)) || payRows.some((r) => r.staff_id === s.id) || payOver[s.id]);
+  }
+  function recalc() {
+    const final = curP.status === "final";
+    if (!final) {
+      const p = { ...curP, exchange_rate: $("payFx").value === "" ? null : +$("payFx").value, transfer_fee: +$("payFee").value || 0 };
+      payLines = P.finish(people().map((s) => P.compute(s, payRows, p, settings, payOver[s.id] || {}, undefined, (d) => B.sched.effective(s, d, payPlanOv))), p);
+    }
+    renderPayroll();
+  }
+  $("payFx").oninput = () => { if (curP?.status !== "final") recalc(); };
+  $("payFee").oninput = () => { if (curP?.status !== "final") recalc(); };
+
+  function renderPayroll() {
+    const final = curP.status === "final", edit = !final && isAdminRole();
+    $("payStatusLine").innerHTML = `${P.period(curP)} · paid ${B.prettyDate(curP.pay_date, { day: "numeric", month: "short", year: "numeric" })} · ` +
+      (final ? `<span class="pill out">Final · staff can see payslips</span>` : `<span class="pill lunch">Draft · not visible to staff</span>`);
+    $("payFx").disabled = $("payFee").disabled = !edit;
+    $("paySave").hidden = $("payFinal").hidden = final; $("payReopen").hidden = !final;
+    const noRate = payLines.filter((l) => !l.rate).map((l) => l.employee_name);
+    $("payHint").innerHTML = (noRate.length ? `<span class="warn">No pay rate set for ${noRate.map(B.esc).join(", ")}. Add it under Staff → Edit.</span> ` : "") +
+      (edit ? "Numbers come from attendance. Type over any orange-able box to change it; clear the box to go back to the automatic value." : final ? "This curP is locked. Reopen it to make changes." : "");
+    const T = P.totals(payLines);
+    const inp = (l, k, cls = "") => {
+      const ov = payOver[l.staff_id]?.[k];
+      if (!edit) return k === "other_note" ? B.esc(l.other_note || "") : (k === "other_ded" ? P.GBP(l[k]) : l[k]);
+      const val = ov ?? (k === "other_note" ? "" : "");
+      const ph = l.auto ? l.auto[k] : "";
+      return `<input class="${cls} ${ov !== undefined && ov !== "" ? "ov" : ""}" data-s="${l.staff_id}" data-k="${k}" value="${B.esc(val)}" placeholder="${B.esc(ph)}" ${k === "other_note" ? 'maxlength="40"' : 'type="number" step="any" min="0"'} aria-label="${k} for ${B.esc(l.employee_name)}">`;
+    };
+    $("paySheet").innerHTML = `<thead><tr><th style="text-align:left">Employee name</th><th>Start date</th><th>Payroll curP</th><th>Rate<br>(per curP)</th>
+      <th>Days worked</th><th>Lates<br>(mins)</th><th>Undertime<br>(mins)</th><th>Absences</th><th>Other deductions<br>(CA, loans, taxes)</th><th>Note</th>
+      <th>Total deductions</th><th>Gross pay</th><th>Net pay</th><th>Exchange rate</th><th>Gross pay<br>(PHP)</th><th>Net pay<br>(PHP)</th><th>Fee share</th><th>Received<br>(PHP)</th></tr></thead>
+      <tbody>${payLines.map((l) => `<tr>
+        <td><b>${B.esc(l.employee_name)}</b></td><td class="num">${P.usDate(l.start_date)}</td><td>${P.period(curP)}</td>
+        <td class="num">${P.GBP(l.rate)}</td><td class="num">${inp(l, "days_worked")}</td><td class="num">${inp(l, "late_mins")}</td>
+        <td class="num">${inp(l, "undertime_mins")}</td><td class="num">${inp(l, "absences")}</td><td class="num">${inp(l, "other_ded")}</td><td>${inp(l, "other_note", "note")}</td>
+        <td class="num">${P.GBP(l.total_ded)}</td><td class="num">${P.GBP(l.gross)}</td><td class="num"><b>${P.GBP(l.net)}</b></td>
+        <td class="num">${l.exchange_rate ? Number(l.exchange_rate).toFixed(2) : "—"}</td><td class="num">${P.PHP(l.gross_php)}</td><td class="num hl">${P.PHP(l.net_php)}</td>
+        <td class="num">${((+l.fee_share || 0) * 100).toFixed(2)}%</td><td class="num"><b>${P.PHP(l.received_php)}</b></td></tr>`).join("")
+        || `<tr><td colspan="18" class="muted">No active staff in this curP.</td></tr>`}</tbody>
+      <tfoot><tr><td colspan="10" style="text-align:right">TOTAL</td><td class="num">${P.GBP(T.total_ded)}</td><td class="num">${P.GBP(T.gross)}</td><td class="num">${P.GBP(T.net)}</td>
+        <td></td><td class="num">${P.PHP(T.gross_php)}</td><td class="num">${P.PHP(T.net_php)}</td><td></td><td class="num">${P.PHP(T.received_php)}</td></tr></tfoot>`;
+    const cur = $("slipWho").value;
+    $("slipWho").innerHTML = payLines.map((l) => `<option value="${l.staff_id}">${B.esc(l.employee_name)}</option>`).join("");
+    if (payLines.some((l) => l.staff_id === cur)) $("slipWho").value = cur;
+    renderSlip();
+  }
+  $("paySheet").addEventListener("change", (e) => {
+    const i = e.target.closest("input[data-s]"); if (!i) return;
+    const o = (payOver[i.dataset.s] ||= {});
+    if (i.value === "") delete o[i.dataset.k]; else o[i.dataset.k] = i.dataset.k === "other_note" ? i.value : +i.value;
+    recalc();
+  });
+  const slipData = (l) => ({ ...l, period_start: curP.start_date, period_end: curP.end_date, pay_date: curP.pay_date });
+  function renderSlip() {
+    const l = payLines.find((x) => x.staff_id === $("slipWho").value);
+    $("slipView").innerHTML = l ? P.slipHtml(slipData(l), settings.company_name) : "";
+  }
+  $("slipWho").onchange = renderSlip;
+  function pdfDoc() { if (!window.jspdf?.jsPDF) { B.toast("PDF tools didn't load. Reload the page and try again.", "err"); return null; } return new window.jspdf.jsPDF({ unit: "pt", format: "a4" }); }
+  const fileSafe = (t) => t.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  $("slipPdf").onclick = () => {
+    const l = payLines.find((x) => x.staff_id === $("slipWho").value); if (!l) return;
+    const doc = pdfDoc(); if (!doc) return;
+    P.slipPdf(doc, slipData(l), settings.company_name, true);
+    doc.save(`Payslip_${fileSafe(l.employee_name)}_${curP.start_date}_to_${curP.end_date}.pdf`);
+  };
+  $("payPdfAll").onclick = () => {
+    if (!payLines.length) return; const doc = pdfDoc(); if (!doc) return;
+    payLines.forEach((l, i) => P.slipPdf(doc, slipData(l), settings.company_name, i === 0));
+    doc.save(`Payslips_${curP.start_date}_to_${curP.end_date}.pdf`);
+  };
+  $("payCsv").onclick = () => download(`Payroll_${curP.start_date}_to_${curP.end_date}.csv`, [
+    ["Employee name", "Start date", "Payroll curP", "Rate (GBP)", "Days worked", "Lates (mins)", "Undertime (mins)", "Absences", "Late ded (GBP)", "Undertime ded (GBP)",
+      "Absence ded (GBP)", "Other deductions (GBP)", "Note", "Total deductions (GBP)", "Gross pay (GBP)", "Net pay (GBP)", "Exchange rate", "Gross pay (PHP)", "Net pay (PHP)",
+      "Transfer fee share", "Transfer fee (PHP)", "Amount received (PHP)"],
+    ...payLines.map((l) => [l.employee_name, P.usDate(l.start_date), P.period(curP), l.rate, l.days_worked, l.late_mins, l.undertime_mins, l.absences, l.late_ded,
+      l.undertime_ded, l.absence_ded, l.other_ded, l.other_note || "", l.total_ded, l.gross, l.net, l.exchange_rate ?? "", l.gross_php ?? "", l.net_php ?? "",
+      ((+l.fee_share || 0) * 100).toFixed(2) + "%", l.fee_php ?? "", l.received_php ?? ""]),
+  ]);
+  const KEEP = ["employee_name", "start_date", "rate", "days_scheduled", "days_worked", "late_mins", "undertime_mins", "absences", "late_ded", "undertime_ded",
+    "absence_ded", "other_ded", "other_note", "total_ded", "gross", "net", "exchange_rate", "gross_php", "net_php", "fee_share", "fee_php", "received_php"];
+  async function savePayroll(status) {
+    const p = { id: curP.id, exchange_rate: $("payFx").value === "" ? null : +$("payFx").value, transfer_fee: +$("payFee").value || 0 };
+    if (status === "final") {
+      if (!p.exchange_rate) return B.toast("Enter the exchange rate before finalising.", "err");
+      if (payLines.some((l) => !l.rate)) return B.toast("Some people have no pay rate. Set it under Staff first.", "err");
+    }
+    const rows = payLines.map((l) => { const r = { period_id: curP.id, staff_id: l.staff_id, overrides: payOver[l.staff_id] || {}, updated_at: new Date().toISOString() };
+      for (const k of KEEP) r[k] = l[k] ?? null; r.other_note = l.other_note || null; return r; });
+    try {
+      await A.savePeriod(p);
+      if (rows.length) await A.savePayslips(rows);
+      if (status) await A.savePeriod({ id: curP.id, status });
+      B.toast(status === "final" ? "Finalised. Staff can now see their payslips." : "Draft saved");
+      await loadPayroll(curP.id);
+    } catch (err) { B.toast(err.message, "err"); }
+  }
+  $("paySave").onclick = () => savePayroll(null);
+  let finArmed = false;
+  $("payFinal").onclick = () => {
+    if (!finArmed) { finArmed = true; $("payFinal").textContent = "Click again to publish to staff"; setTimeout(() => { finArmed = false; $("payFinal").textContent = "Finalise & publish"; }, 4000); return; }
+    finArmed = false; $("payFinal").textContent = "Finalise & publish"; savePayroll("final");
+  };
+  $("payReopen").onclick = async () => { try { await A.savePeriod({ id: curP.id, status: "draft" }); B.toast("Reopened. Staff can't see this curP until you finalise again."); loadPayroll(curP.id); } catch (e) { B.toast(e.message, "err"); } };
+
+  // curP dialog
+  let editingPeriod = null;
+  function openPeriodDlg(p) {
+    editingPeriod = p;
+    const last = periods[0];
+    const start = p?.start_date || (last ? P.addDays(last.end_date, 1) : today());
+    $("periodTitle").textContent = p ? "Edit pay curP" : "New pay curP";
+    $("ppStart").value = start; $("ppEnd").value = p?.end_date || P.addDays(start, 13); $("ppPay").value = p?.pay_date || P.addDays(start, 14);
+    $("ppFx").value = p?.exchange_rate ?? (last?.exchange_rate ?? ""); $("ppFee").value = p?.transfer_fee ?? 0;
+    $("ppDel").hidden = !p; $("periodDlg").showModal();
+  }
+  $("payNewPeriod").onclick = () => openPeriodDlg(null);
+  $("payFirst").onclick = () => openPeriodDlg(null);
+  $("payEditPeriod").onclick = () => openPeriodDlg(curP);
+  $("periodForm").onsubmit = async (e) => {
+    if (e.submitter?.value !== "save") return; e.preventDefault();
+    const rec = { start_date: $("ppStart").value, end_date: $("ppEnd").value, pay_date: $("ppPay").value,
+      exchange_rate: $("ppFx").value === "" ? null : +$("ppFx").value, transfer_fee: +$("ppFee").value || 0 };
+    if (rec.end_date < rec.start_date) return B.toast("The curP must end after it starts.", "err");
+    try { const saved = await A.savePeriod(editingPeriod ? { ...rec, id: editingPeriod.id } : rec); $("periodDlg").close(); B.toast("Pay curP saved"); loadPayroll(saved?.id || editingPeriod?.id); }
+    catch (err) { B.toast(err.message, "err"); }
+  };
+  let delP = false;
+  $("ppDel").onclick = async () => {
+    if (!delP) { delP = true; $("ppDel").textContent = "Click again to delete, payslips included"; setTimeout(() => { delP = false; $("ppDel").textContent = "Delete curP"; }, 4000); return; }
+    delP = false; try { await A.deletePeriod(editingPeriod.id); $("periodDlg").close(); B.toast("Pay curP deleted"); loadPayroll(); } catch (err) { B.toast(err.message, "err"); }
   };
 
   // ---------- access (logins) ----------

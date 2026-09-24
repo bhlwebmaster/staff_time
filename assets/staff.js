@@ -5,7 +5,7 @@
   let roster = null, me = null, pin = "", entry = "", pinMode = "enter", firstPin = "", data = null, armedOut = false, idleT;
 
   const tz = () => roster?.settings?.timezone || "Europe/London";
-  const show = (v) => { for (const id of ["vPick", "vPin", "vToday"]) $(id).hidden = id !== v; window.scrollTo(0, 0); };
+  const show = (v) => { for (const id of ["vPick", "vPin", "vToday"]) $(id).hidden = id !== v; document.querySelector("main").classList.toggle("wide", v === "vPick"); window.scrollTo(0, 0); };
 
   // ---------- clocks ----------
   function tick() {
@@ -114,8 +114,9 @@
     renderSeason();
     const [k, label] = statusOf(row);
     $("tStatus").className = "pill " + k; $("tStatus").textContent = label;
-    const ss = row?.sched_start || st.sched_start, se = row?.sched_end || st.sched_end;
-    $("tSched").textContent = `${B.clockStr(ss)} – ${B.clockStr(se)} UK`;
+    const plan = row ? null : todayPlan(st);
+    const ss = row?.sched_start || (plan?.kind === "shift" ? plan.start + ":00" : st.sched_start), se = row?.sched_end || (plan?.kind === "shift" ? plan.end + ":00" : st.sched_end);
+    $("tSched").textContent = plan && plan.kind !== "shift" ? `${B.sched.KINDS[plan.kind].label} today` : `${B.clockStr(ss)} – ${B.clockStr(se)} UK`;
     $("schedEdit").hidden = !!row?.time_in;
     if (!row?.time_in) { $("sStart").value ||= ss.slice(0, 5); $("sEnd").value ||= se.slice(0, 5); }
     if (document.activeElement !== $("tNote")) $("tNote").value = row?.note || "";
@@ -251,6 +252,55 @@
   });
   $("meAv").onclick = openProfile;
   $("editProfile").onclick = openProfile;
+  // ---------- weekly schedule ----------
+  (function () { const st = document.createElement("style"); st.textContent = B.sched.CSS; document.head.appendChild(st); })();
+  let wkFrom = null, wkView = "table", wkData = null, thisWeek = null;
+  try { wkView = localStorage.getItem("bhl.wkView") || "table"; } catch {}
+  async function loadWeek(from) {
+    const S = B.sched, today = roster ? roster.today : B.dateIn(new Date(), tz());
+    wkFrom = from || S.weekStart(today);
+    try { wkData = await api.weekSchedule(wkFrom); } catch { return; }
+    if (wkFrom === S.weekStart(today)) thisWeek = wkData;
+    const ov = S.indexDays(wkData.staff.flatMap((p) => p.days.map((d) => ({ ...d, staff_id: p.id }))));
+    const end = S.addDays(wkFrom, 6);
+    const endTxt = B.prettyDate(end, { day: "numeric", month: "long", year: "numeric" });
+    $("weekTitle").textContent = wkFrom.slice(5, 7) === end.slice(5, 7) ? `${+wkFrom.slice(8)} – ${endTxt}` : `${B.prettyDate(wkFrom, { day: "numeric", month: "long" })} – ${endTxt}`;
+    $("weekView").innerHTML = wkView === "table" ? S.tableHtml(wkFrom, wkData.staff, ov, today) : S.timelineHtml(wkFrom, wkData.staff, ov, today);
+    $("wkTable").setAttribute("aria-pressed", wkView === "table"); $("wkTime").setAttribute("aria-pressed", wkView !== "table");
+    $("weekBox").hidden = !wkData.staff.length;
+  }
+  $("wkPrev").onclick = () => loadWeek(B.sched.addDays(wkFrom, -7));
+  $("wkNext").onclick = () => loadWeek(B.sched.addDays(wkFrom, 7));
+  $("wkNow").onclick = () => loadWeek(null);
+  const setView = (v) => { wkView = v; try { localStorage.setItem("bhl.wkView", v); } catch {} loadWeek(wkFrom); };
+  $("wkTable").onclick = () => setView("table"); $("wkTime").onclick = () => setView("time");
+  /** Today's plan for a person from this week's schedule (falls back to their usual hours). */
+  function todayPlan(st) {
+    const p = thisWeek?.staff.find((x) => x.id === st.id); if (!p) return null;
+    const ov = B.sched.indexDays(p.days.map((d) => ({ ...d, staff_id: p.id })));
+    return B.sched.effective(p, B.dateIn(new Date(), tz()), ov);
+  }
+
+  // ---------- my payslips ----------
+  (function () { const st = document.createElement("style"); st.textContent = B.payroll.SLIP_CSS + " #slipDlg .slip{margin:0 auto}"; document.head.appendChild(st); })();
+  let mySlips = [], myCompany = "";
+  $("mySlips").onclick = async () => {
+    $("mySlipView").innerHTML = `<p class="muted">Loading…</p>`; $("mySlipPick").hidden = $("mySlipActions").hidden = true; $("slipDlg").showModal();
+    const r = await api.myPayslips(me.id, pin).catch((e) => ({ ok: false, error: e.message }));
+    if (!r.ok) { $("mySlipView").innerHTML = `<p class="muted">${B.esc(r.error)}</p>`; return; }
+    mySlips = r.payslips || []; myCompany = r.company;
+    if (!mySlips.length) { $("mySlipView").innerHTML = `<p class="muted">No payslips yet. They appear here once payroll for a period is finalised.</p>`; return; }
+    $("mySlipSel").innerHTML = mySlips.map((x, i) => `<option value="${i}">${B.payroll.period({ start_date: x.period_start, end_date: x.period_end })} · paid ${B.prettyDate(x.pay_date)}</option>`).join("");
+    $("mySlipPick").hidden = $("mySlipActions").hidden = false; showMySlip();
+  };
+  function showMySlip() { $("mySlipView").innerHTML = B.payroll.slipHtml(mySlips[+$("mySlipSel").value], myCompany); }
+  $("mySlipSel").onchange = showMySlip;
+  $("mySlipPdf").onclick = () => {
+    if (!window.jspdf?.jsPDF) return B.toast("Couldn't load the PDF tool. Check your connection and try again.", "err");
+    const x = mySlips[+$("mySlipSel").value], doc = new window.jspdf.jsPDF({ unit: "pt", format: "a4" });
+    B.payroll.slipPdf(doc, x, myCompany, true); doc.save(`Payslip_${x.period_start}_to_${x.period_end}.pdf`);
+  };
+
   $("copyWa").onclick = async () => {
     const row = todayRow();
     if (!row) return B.toast("Clock in first, then copy.", "err");
@@ -267,6 +317,7 @@
     if (!api.ready) return;
     tick(); setInterval(tick, 10000);
     await loadRoster();
+    loadWeek(null);
     const saved = B.lsGet("bhl.me");
     const s = roster?.staff.find((x) => x.id === saved);
     if (s) pick(s); else show("vPick");

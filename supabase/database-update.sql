@@ -1,4 +1,8 @@
 -- ============================================================
+-- BHL Attendance: FULL DATABASE UPDATE (core + payroll + weekly schedule)
+-- Paste all of this into Supabase → SQL Editor → Run. Safe to run again; keeps all data.
+-- ============================================================
+-- ============================================================
 -- BHL Attendance — Supabase schema
 -- Run once in Supabase → SQL Editor → New query → Run.
 -- Safe to re-run: functions are replaced, tables are created if missing.
@@ -347,3 +351,171 @@ grant select (id, full_name, display_name, sched_start, sched_end, lunch_mins, a
 -- 2. Run:  insert into public.admins (user_id, email, role)
 --          select id, email, 'admin' from auth.users where email = 'you@example.com';
 -- After that, create every other login from the Admin page → Access tab.
+-- ============================================================
+-- BHL Attendance: PAYROLL add-on
+-- Run once in Supabase → SQL Editor after schema.sql. Safe to re-run.
+-- ============================================================
+
+-- Pay details on each staff member
+alter table public.staff add column if not exists start_date date;              -- employment start date
+alter table public.staff add column if not exists pay_rate   numeric(12,2);     -- GBP per pay period (bi-weekly)
+
+-- A pay period (created by an admin each time)
+create table if not exists public.pay_periods (
+  id              uuid primary key default gen_random_uuid(),
+  start_date      date not null,
+  end_date        date not null,
+  pay_date        date not null,
+  exchange_rate   numeric(12,4),                  -- PHP per 1 GBP
+  transfer_fee    numeric(12,2) not null default 0, -- total transfer fee for the batch, in PHP
+  status          text not null default 'draft' check (status in ('draft', 'final')),
+  created_at      timestamptz not null default now(),
+  check (end_date >= start_date)
+);
+
+-- One payslip per person per period (a snapshot; overrides kept separately)
+create table if not exists public.payslips (
+  id              uuid primary key default gen_random_uuid(),
+  period_id       uuid not null references public.pay_periods(id) on delete cascade,
+  staff_id        uuid not null references public.staff(id) on delete cascade,
+  employee_name   text not null,
+  start_date      date,
+  rate            numeric(12,2) not null default 0,
+  days_scheduled  int not null default 0,
+  days_worked     int not null default 0,
+  late_mins       int not null default 0,
+  undertime_mins  int not null default 0,
+  absences        numeric(5,1) not null default 0,
+  late_ded        numeric(12,2) not null default 0,
+  undertime_ded   numeric(12,2) not null default 0,
+  absence_ded     numeric(12,2) not null default 0,
+  other_ded       numeric(12,2) not null default 0,   -- CA, loans, taxes
+  other_note      text,
+  total_ded       numeric(12,2) not null default 0,
+  gross           numeric(12,2) not null default 0,
+  net             numeric(12,2) not null default 0,
+  exchange_rate   numeric(12,4),
+  gross_php       numeric(14,2),
+  net_php         numeric(14,2),
+  fee_share       numeric(7,4),                        -- 0.2258 = 22.58%
+  fee_php         numeric(14,2),
+  received_php    numeric(14,2),
+  overrides       jsonb not null default '{}'::jsonb,  -- values an admin typed over the automatic ones
+  updated_at      timestamptz not null default now(),
+  unique (period_id, staff_id)
+);
+
+alter table public.pay_periods enable row level security;
+alter table public.payslips    enable row level security;
+do $$
+declare t text;
+begin
+  foreach t in array array['pay_periods', 'payslips'] loop
+    execute format('drop policy if exists team_read on public.%I', t);
+    execute format('drop policy if exists admin_write on public.%I', t);
+    execute format('create policy team_read on public.%I for select to authenticated using (public.is_admin())', t);
+    execute format('create policy admin_write on public.%I for all to authenticated using (public.is_full_admin()) with check (public.is_full_admin())', t);
+  end loop;
+end $$;
+grant select, insert, update, delete on public.pay_periods, public.payslips to authenticated;
+grant select (start_date, pay_rate) on public.staff to authenticated;
+
+-- Staff list for admins now includes pay details
+create or replace function public.admin_staff() returns json
+language sql stable security definer set search_path = public as $$
+  select case when not public.is_admin() then '[]'::json else coalesce((
+    select json_agg(json_build_object('id', id, 'full_name', full_name, 'display_name', display_name,
+      'sched_start', sched_start, 'sched_end', sched_end, 'lunch_mins', lunch_mins, 'active', active,
+      'has_pin', pin_hash is not null, 'created_at', created_at,
+      'avatar', avatar, 'photo', photo, 'tagline', tagline, 'color', color,
+      'start_date', start_date, 'pay_rate', pay_rate) order by display_name)
+    from staff), '[]'::json) end;
+$$;
+
+-- Staff see ONLY their own FINALISED payslips, with their PIN.
+create or replace function public.my_payslips(p_staff uuid, p_pin text) returns json
+language plpgsql security definer set search_path = public, extensions as $$
+declare v_err text;
+begin
+  v_err := _check_pin(p_staff, p_pin);
+  if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
+  return json_build_object('ok', true,
+    'company', (select company_name from settings where id = 1),
+    'payslips', coalesce((select json_agg(x order by x.pay_date desc) from (
+      select ps.*, pp.start_date as period_start, pp.end_date as period_end, pp.pay_date
+      from payslips ps join pay_periods pp on pp.id = ps.period_id
+      where ps.staff_id = p_staff and pp.status = 'final') x), '[]'::json));
+end $$;
+grant execute on function public.my_payslips(uuid, text) to anon, authenticated;
+-- ============================================================
+-- BHL Attendance: WEEKLY SCHEDULE add-on
+-- Run once in Supabase → SQL Editor (after schema.sql and payroll.sql). Safe to re-run.
+-- ============================================================
+
+-- Each person's usual week. Keys "0".."6" = Sunday..Saturday.
+-- A day is {"s":"05:00","e":"14:00"} for a shift, or null for a rest day.
+-- If week_pattern is empty, Monday–Friday on their usual start/end is assumed.
+alter table public.staff add column if not exists week_pattern jsonb;
+
+-- Changes for specific dates (a different shift, rest day or leave)
+create table if not exists public.schedule_days (
+  id          uuid primary key default gen_random_uuid(),
+  staff_id    uuid not null references public.staff(id) on delete cascade,
+  work_date   date not null,
+  kind        text not null check (kind in ('shift', 'rest', 'vacation', 'sick', 'holiday', 'unpaid')),
+  start_time  time,
+  end_time    time,
+  note        text,
+  unique (staff_id, work_date)
+);
+alter table public.schedule_days enable row level security;
+drop policy if exists team_read on public.schedule_days;
+drop policy if exists admin_write on public.schedule_days;
+create policy team_read on public.schedule_days for select to authenticated using (public.is_admin());
+create policy admin_write on public.schedule_days for all to authenticated using (public.is_full_admin()) with check (public.is_full_admin());
+grant select, insert, update, delete on public.schedule_days to authenticated;
+grant select (week_pattern) on public.staff to authenticated;
+
+-- The schedule for one person on one date: override → weekly pattern → Mon–Fri default
+create or replace function public.day_schedule(p_staff uuid, p_date date)
+returns table (kind text, start_time time, end_time time)
+language plpgsql stable security definer set search_path = public as $$
+declare s staff; o schedule_days; d jsonb;
+begin
+  select * into s from staff where id = p_staff;
+  select * into o from schedule_days where staff_id = p_staff and work_date = p_date;
+  if found then return query select o.kind, coalesce(o.start_time, s.sched_start), coalesce(o.end_time, s.sched_end); return; end if;
+  if s.week_pattern is not null then
+    d := s.week_pattern -> extract(dow from p_date)::int::text;
+    if d is null or jsonb_typeof(d) = 'null' then return query select 'rest'::text, s.sched_start, s.sched_end; return; end if;
+    return query select 'shift'::text, (d->>'s')::time, (d->>'e')::time; return;
+  end if;
+  if extract(isodow from p_date) >= 6 then return query select 'rest'::text, s.sched_start, s.sched_end; return; end if;
+  return query select 'shift'::text, s.sched_start, s.sched_end;
+end $$;
+
+-- Team week for the homepage (anyone with the link, like the WhatsApp group). Times only, no pay.
+create or replace function public.week_schedule(p_from date) returns json
+language sql stable security definer set search_path = public as $$
+  select json_build_object('from', p_from, 'staff', coalesce((
+    select json_agg(json_build_object('id', st.id, 'display_name', st.display_name, 'color', st.color, 'avatar', st.avatar,
+      'sched_start', st.sched_start, 'sched_end', st.sched_end, 'week_pattern', st.week_pattern,
+      'days', coalesce((select json_agg(json_build_object('work_date', sd.work_date, 'kind', sd.kind, 'start_time', sd.start_time,
+                'end_time', sd.end_time, 'note', sd.note)) from schedule_days sd
+                where sd.staff_id = st.id and sd.work_date between p_from and p_from + 6), '[]'::json)) order by st.display_name)
+    from staff st where st.active), '[]'::json));
+$$;
+grant execute on function public.week_schedule(date) to anon, authenticated;
+revoke all on function public.day_schedule(uuid, date) from public, anon, authenticated;
+
+-- Admin staff list: include the weekly pattern and pay details
+create or replace function public.admin_staff() returns json
+language sql stable security definer set search_path = public as $$
+  select case when not public.is_admin() then '[]'::json else coalesce((
+    select json_agg(json_build_object('id', id, 'full_name', full_name, 'display_name', display_name,
+      'sched_start', sched_start, 'sched_end', sched_end, 'lunch_mins', lunch_mins, 'active', active,
+      'has_pin', pin_hash is not null, 'created_at', created_at,
+      'avatar', avatar, 'photo', photo, 'tagline', tagline, 'color', color,
+      'start_date', start_date, 'pay_rate', pay_rate, 'week_pattern', week_pattern) order by display_name)
+    from staff), '[]'::json) end;
+$$;

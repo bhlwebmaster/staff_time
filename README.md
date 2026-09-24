@@ -89,6 +89,19 @@ The anon key is designed to be public. **Never** put the service_role key in thi
 - **Badges:** First Punch, Early Bird, On Fire, Iron Streak, Perfect Week, Lunch Pro, No Loose Ends, Extra Mile.
 - Confetti plays for an on-time clock-in, a new badge or a level-up (not shown if the phone has "reduce motion" on).
 
+## Weekly schedule
+- **Usual week:** Staff → Edit → tick working days and set start/end (UK). Unticked = rest day.
+- **Schedule tab:** change any date to a different shift, Rest Day, Vacation / Sick Leave, Holiday or Unpaid Leave, then **Save week**. **Copy last week** and **Reset to usual week** help.
+- The homepage shows the week as a **Table** or an hour-by-hour **Timeline**. Clock-ins use that day's planned shift; rest days don't count as absences.
+
+## Payroll
+- Staff → Edit: set **Start date** and **Rate per pay period (£)**.
+- Payroll → **+ New period** (dates, payment date, exchange rate ₱/£, total transfer fee ₱).
+- Days worked, lates, undertime and absences come from attendance + schedule; type over any value to change it; add other deductions (CA, loans, taxes).
+- Rules: daily rate = rate ÷ working days; minute rate = daily ÷ paid minutes; lates/undertime × minute rate; absences (missed shifts + unpaid leave) × daily rate; paid leave is paid; transfer fee split by share of net pay.
+- **Save draft**, then **Finalise & publish** → staff see their payslips under **My payslips**. Payslip PDF per person or all at once; CSV export.
+- Only admins edit payroll; finance can view and download.
+
 ## Logins and roles
 | Role | Can do |
 |---|---|
@@ -138,10 +151,15 @@ config.js         your Supabase URL + anon key
 assets/core.js    time zone maths + hours/OT rules (shared)
 assets/api.js     Supabase calls (shows a "not set up" message if config.js is empty)
 assets/staff.js   staff app logic
-assets/admin.js   admin logic (incl. reports + PDF + access)
+assets/admin.js   admin logic (reports, schedule, payroll, access)
+assets/schedule.js  weekly schedule (table + timeline)
+assets/payroll.js   pay calculation + payslip (screen + PDF)
 assets/game.js    avatars, profiles, XP, streaks, badges
 assets/style.css  styles (light + dark)
-supabase/schema.sql   tables, security, functions (safe to re-run)
+supabase/database-update.sql   run this in Supabase: everything below in one file
+supabase/schema.sql   core tables, security, functions (safe to re-run)
+supabase/payroll.sql  payroll tables
+supabase/schedule.sql weekly schedule tables
 supabase/production-cleanup.sql   optional: clear test entries before go-live
 supabase/functions/admin-users/index.ts   Edge Function: create / change / remove logins
 .nojekyll         tells GitHub Pages to serve files as-is

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=20260924b">
 <style>
   main { padding-block: 20px 60px; }
   .hello { display: grid; gap: 4px; margin-bottom: 18px; }
@@ -107,6 +107,13 @@
   .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
   .swatches button { width: 32px; height: 32px; border-radius: 50%; border: 0; cursor: pointer; background: var(--sw); }
   .swatches button[aria-checked=true] { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--sw); }
+  .week { margin-top: 26px; display: grid; gap: 12px; }
+  .week-head { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .week-head h2 { font-size: 21px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; padding: 3px; background: var(--surface-2); }
+  .seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: 7px; font-weight: 600; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .seg button[aria-pressed=true] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  main.wrap.narrow.wide { max-width: 980px; }
   .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
   .team .tr .x { margin-left: auto; font-family: var(--mono); font-size: 13px; color: var(--muted); }
 </style>
@@ -129,6 +136,21 @@
       <h1>Who's clocking in?</h1>
     </div>
     <div class="people" id="people"></div>
+    <section class="week" id="weekBox" hidden>
+      <div class="week-head">
+        <div><div class="eyebrow">Work schedule · UK time</div><h2 id="weekTitle">This week</h2></div>
+        <span class="spacer"></span>
+        <div class="row" style="gap:6px">
+          <button class="btn sm" id="wkPrev" aria-label="Previous week">←</button>
+          <button class="btn sm" id="wkNow">This week</button>
+          <button class="btn sm" id="wkNext" aria-label="Next week">→</button>
+        </div>
+        <div class="seg" role="group" aria-label="Schedule view">
+          <button id="wkTable" aria-pressed="true">Table</button><button id="wkTime" aria-pressed="false">Timeline</button>
+        </div>
+      </div>
+      <div class="wk-wrap" id="weekView"></div>
+    </section>
     <p class="muted" style="margin-top:22px;font-size:13px">Tap your name to start. All times are in UK time. <a href="help/">Need help?</a></p>
   </section>
 
@@ -208,6 +230,7 @@
 
     <div class="row">
       <button class="btn" id="copyWa">Copy WhatsApp message</button>
+      <button class="btn" id="mySlips">My payslips</button>
       <span class="spacer"></span>
       <button class="btn ghost" id="switchUser">Switch person</button>
     </div>
@@ -218,6 +241,16 @@
     </div>
   </section>
 </main>
+
+<dialog id="slipDlg" aria-labelledby="slipTitle">
+  <form method="dialog">
+    <div class="row"><h2 id="slipTitle" style="font-size:21px">My payslips</h2><span class="spacer"></span>
+      <button class="btn ghost sm" value="cancel">Close</button></div>
+    <label class="f" id="mySlipPick" hidden>Pay period<select id="mySlipSel"></select></label>
+    <div id="mySlipView"></div>
+    <div class="row" id="mySlipActions" hidden><button class="btn primary" type="button" id="mySlipPdf">Download PDF</button></div>
+  </form>
+</dialog>
 
 <dialog id="profDlg" aria-labelledby="profTitle">
   <form method="dialog" id="profForm">
@@ -244,10 +277,13 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="config.js"></script>
-<script src="assets/core.js"></script>
-<script src="assets/game.js"></script>
-<script src="assets/api.js"></script>
-<script src="assets/staff.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js?v=20260924b"></script>
+<script src="assets/core.js?v=20260924b"></script>
+<script src="assets/game.js?v=20260924b"></script>
+<script src="assets/schedule.js?v=20260924b"></script>
+<script src="assets/payroll.js?v=20260924b"></script>
+<script src="assets/api.js?v=20260924b"></script>
+<script src="assets/staff.js?v=20260924b"></script>
 </body>
 </html>
