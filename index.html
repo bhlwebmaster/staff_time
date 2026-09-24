@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260925d">
+<link rel="stylesheet" href="assets/style.css?v=20260926a">
 <style>
   main { padding-block: 20px 60px; }
   .hello { display: grid; gap: 4px; margin-bottom: 18px; }
@@ -139,12 +139,14 @@
     <div class="people" id="people"></div>
     <section class="week" id="weekBox" hidden>
       <div class="week-head">
-        <div><div class="eyebrow">Work schedule · UK time</div><h2 id="weekTitle">This week</h2></div>
+        <div><div class="eyebrow">Work schedule · UK time</div><h2 id="weekTitle">Today</h2></div>
         <span class="spacer"></span>
         <div class="row" style="gap:6px">
-          <button class="btn sm" id="wkPrev" aria-label="Previous week">←</button>
-          <button class="btn sm" id="wkNow">This week</button>
-          <button class="btn sm" id="wkNext" aria-label="Next week">→</button>
+          <button class="btn sm" id="wkPrev" aria-label="Previous day">←</button>
+          <div class="seg" role="group" aria-label="Show">
+            <button id="wkDay" aria-pressed="true">Today</button><button id="wkWeek" aria-pressed="false">This week</button>
+          </div>
+          <button class="btn sm" id="wkNext" aria-label="Next day">→</button>
         </div>
         <div class="seg" role="group" aria-label="Schedule view">
           <button id="wkTable" aria-pressed="true">Table</button><button id="wkTime" aria-pressed="false">Timeline</button>
@@ -279,12 +281,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=20260925d"></script>
-<script src="assets/core.js?v=20260925d"></script>
-<script src="assets/game.js?v=20260925d"></script>
-<script src="assets/schedule.js?v=20260925d"></script>
-<script src="assets/payroll.js?v=20260925d"></script>
-<script src="assets/api.js?v=20260925d"></script>
-<script src="assets/staff.js?v=20260925d"></script>
+<script src="config.js?v=20260926a"></script>
+<script src="assets/core.js?v=20260926a"></script>
+<script src="assets/game.js?v=20260926a"></script>
+<script src="assets/schedule.js?v=20260926a"></script>
+<script src="assets/payroll.js?v=20260926a"></script>
+<script src="assets/api.js?v=20260926a"></script>
+<script src="assets/staff.js?v=20260926a"></script>
 </body>
 </html>

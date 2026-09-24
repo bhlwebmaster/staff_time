@@ -254,25 +254,42 @@
   $("editProfile").onclick = openProfile;
   // ---------- weekly schedule ----------
   (function () { const st = document.createElement("style"); st.textContent = B.sched.CSS; document.head.appendChild(st); })();
-  let wkFrom = null, wkView = "table", wkData = null, thisWeek = null;
+  // Range: "day" (default, opens on today) or "week". wkAt = the day shown, or any day in the week shown.
+  let wkFrom = null, wkView = "table", wkData = null, thisWeek = null, wkRange = "day", wkAt = null;
+  const wkCache = {};
   try { wkView = localStorage.getItem("bhl.wkView") || "table"; } catch {}
-  async function loadWeek(from) {
-    const S = B.sched, today = roster ? roster.today : B.dateIn(new Date(), tz());
-    wkFrom = from || S.weekStart(today);
-    try { wkData = await api.weekSchedule(wkFrom); } catch { return; }
+  const schedToday = () => roster ? roster.today : B.dateIn(new Date(), tz());
+  async function loadWeek(at) {
+    const S = B.sched, today = schedToday();
+    if (!at) delete wkCache[S.weekStart(today)]; // "Today" / "This week" / reload always fetch fresh
+    wkAt = at || today;
+    wkFrom = S.weekStart(wkAt);
+    try { wkData = wkCache[wkFrom] || (wkCache[wkFrom] = await api.weekSchedule(wkFrom)); } catch { return; }
     if (wkFrom === S.weekStart(today)) thisWeek = wkData;
     const ov = S.indexDays(wkData.staff.flatMap((p) => p.days.map((d) => ({ ...d, staff_id: p.id }))));
-    const end = S.addDays(wkFrom, 6);
-    const endTxt = B.prettyDate(end, { day: "numeric", month: "long", year: "numeric" });
-    $("weekTitle").textContent = wkFrom.slice(5, 7) === end.slice(5, 7) ? `${+wkFrom.slice(8)} – ${endTxt}` : `${B.prettyDate(wkFrom, { day: "numeric", month: "long" })} – ${endTxt}`;
-    $("weekView").innerHTML = wkView === "table" ? S.tableHtml(wkFrom, wkData.staff, ov, today) : S.timelineHtml(wkFrom, wkData.staff, ov, today);
+    const day = wkRange === "day";
+    if (day) {
+      const rel = wkAt === today ? "Today · " : wkAt === S.addDays(today, 1) ? "Tomorrow · " : wkAt === S.addDays(today, -1) ? "Yesterday · " : "";
+      $("weekTitle").textContent = rel + B.prettyDate(wkAt, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    } else {
+      const end = S.addDays(wkFrom, 6);
+      const endTxt = B.prettyDate(end, { day: "numeric", month: "long", year: "numeric" });
+      $("weekTitle").textContent = wkFrom.slice(5, 7) === end.slice(5, 7) ? `${+wkFrom.slice(8)} – ${endTxt}` : `${B.prettyDate(wkFrom, { day: "numeric", month: "long" })} – ${endTxt}`;
+    }
+    const from = day ? wkAt : wkFrom, opts = { n: day ? 1 : 7, colorFrom: wkFrom };
+    $("weekView").innerHTML = wkView === "table" ? S.tableHtml(from, wkData.staff, ov, today, opts) : S.timelineHtml(from, wkData.staff, ov, today, opts);
     $("wkTable").setAttribute("aria-pressed", wkView === "table"); $("wkTime").setAttribute("aria-pressed", wkView !== "table");
+    $("wkDay").setAttribute("aria-pressed", day); $("wkWeek").setAttribute("aria-pressed", !day);
+    $("wkPrev").setAttribute("aria-label", day ? "Previous day" : "Previous week"); $("wkNext").setAttribute("aria-label", day ? "Next day" : "Next week");
     $("weekBox").hidden = !wkData.staff.length;
   }
-  $("wkPrev").onclick = () => loadWeek(B.sched.addDays(wkFrom, -7));
-  $("wkNext").onclick = () => loadWeek(B.sched.addDays(wkFrom, 7));
-  $("wkNow").onclick = () => loadWeek(null);
-  const setView = (v) => { wkView = v; try { localStorage.setItem("bhl.wkView", v); } catch {} loadWeek(wkFrom); };
+  const step = (dir) => loadWeek(B.sched.addDays(wkAt, dir * (wkRange === "day" ? 1 : 7)));
+  $("wkPrev").onclick = () => step(-1);
+  $("wkNext").onclick = () => step(1);
+  // Tapping Today / This week always jumps back to the current day / week
+  $("wkDay").onclick = () => { wkRange = "day"; loadWeek(null); };
+  $("wkWeek").onclick = () => { wkRange = "week"; loadWeek(null); };
+  const setView = (v) => { wkView = v; try { localStorage.setItem("bhl.wkView", v); } catch {} loadWeek(wkAt); };
   $("wkTable").onclick = () => setView("table"); $("wkTime").onclick = () => setView("time");
   /** Today's plan for a person from this week's schedule (falls back to their usual hours). */
   function todayPlan(st) {

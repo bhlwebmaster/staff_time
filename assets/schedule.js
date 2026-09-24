@@ -38,16 +38,18 @@
   function cellText(e) { return e.kind === "shift" ? `${ampm(e.start)}-${ampm(e.end)}` : KINDS[e.kind]?.label || e.kind; }
 
   /** Bottom table in the WhatsApp sheet: one row per person, one column per day. */
-  function tableHtml(from, people, overrides, today) {
-    const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
-    return `<table class="wk-table"><thead><tr><th>UK time</th>${days.map((d) => `<th class="${d === today ? "is-today" : ""}">${DAY[dow(d)]}<span>${+d.slice(8)}</span></th>`).join("")}</tr></thead>
-      <tbody>${people.map((p) => `<tr><th style="--pc:${laneColors(from, people, overrides)[p.id] || "#9aa6a0"}"><span class="dot"></span>${B.esc(p.display_name)}</th>${days.map((d) => {
+  // opts.n = number of days to show (7 = week, 1 = one day); opts.colorFrom = week start used for stable colours
+  function tableHtml(from, people, overrides, today, opts = {}) {
+    const n = opts.n || 7, days = Array.from({ length: n }, (_, i) => addDays(from, i));
+    const colors = laneColors(opts.colorFrom || from, people, overrides);
+    return `<table class="wk-table ${n === 1 ? "one" : ""}"><thead><tr><th>UK time</th>${days.map((d) => `<th class="${d === today ? "is-today" : ""}">${DAY[dow(d)]}<span>${+d.slice(8)}</span></th>`).join("")}</tr></thead>
+      <tbody>${people.map((p) => `<tr><th style="--pc:${colors[p.id] || "#9aa6a0"}"><span class="dot"></span>${B.esc(p.display_name)}</th>${days.map((d) => {
         const e = effective(p, d, overrides);
         return `<td class="${KINDS[e.kind]?.cls || ""} ${d === today ? "is-today" : ""}" title="${B.esc(e.note || "")}">${cellText(e)}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
   }
 
 
-  const HOUR = 28; // px per hour
+  const HOUR_WEEK = 28, HOUR_DAY = 44; // px per hour
 
   function laneColors(from, people, overrides) {
     const days = Array.from({ length: 7 }, (_, i) => addDays(from, i)), c = {};
@@ -55,13 +57,23 @@
     return c;
   }
   /** Calendar-style week: one coloured bar per person per shift, each person in their own lane. */
-  function timelineHtml(from, people, overrides, today) {
-    const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
-    // lanes: only people with at least one shift this week, in a stable order
+  function timelineHtml(from, people, overrides, today, opts = {}) {
+    const nd = opts.n || 7, days = Array.from({ length: nd }, (_, i) => addDays(from, i));
+    // lanes: only people with at least one shift in view, in a stable order
     const lanes = people.filter((p) => days.some((d) => effective(p, d, overrides).kind === "shift"));
-    const color = laneColors(from, people, overrides);
+    const color = laneColors(opts.colorFrom || from, people, overrides);
     const n = Math.max(1, lanes.length);
-    const hours = Array.from({ length: 24 }, (_, h) => new Date(Date.UTC(2000, 0, 1, h)).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "UTC" }));
+    // One day: zoom in on the hours people actually work (1 hour either side)
+    let h0 = 0, h1 = 24, HOUR = HOUR_WEEK;
+    if (nd === 1) {
+      HOUR = HOUR_DAY;
+      const sh = lanes.map((p) => effective(p, days[0], overrides)).filter((e) => e.kind === "shift" && e.start && e.end);
+      if (sh.length) {
+        h0 = Math.max(0, Math.floor(Math.min(...sh.map((e) => mins(e.start))) / 60) - 1);
+        h1 = Math.min(24, Math.ceil(Math.max(...sh.map((e) => { const st = mins(e.start), en = mins(e.end); return en <= st ? 1440 : en; })) / 60) + 1);
+      } else { h0 = 6; h1 = 18; }
+    }
+    const hours = Array.from({ length: h1 - h0 }, (_, i) => new Date(Date.UTC(2000, 0, 1, h0 + i)).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "UTC" }));
     const col = (d) => {
       const items = [], off = [];
       for (const p of lanes) {
@@ -77,14 +89,16 @@
       for (const it of items) { let c = colEnd.findIndex((end) => end <= it.st); if (c < 0) { c = colEnd.length; colEnd.push(0); } colEnd[c] = it.en; it.col = c; }
       const cols = Math.max(1, colEnd.length);
       const bars = items.map(({ p, e, st, en, col }) => {
-        const top = (st / 60) * HOUR, h = Math.max(HOUR * 0.75, ((en - st) / 60) * HOUR);
-        return `<div class="bar ${cols > 2 ? "narrow" : ""}" style="top:${top}px;height:${h}px;left:calc(${(col / cols) * 100}% + 2px);width:calc(${100 / cols}% - 4px);--c:${color[p.id]}"
-          title="${B.esc(p.display_name)} · ${ampm(e.start)}–${ampm(e.end)}"><b>${B.esc(p.display_name)}</b><span>${cols > 2 ? `${shortT(e.start)}–${shortT(e.end)}` : `${ampm(e.start)}–${ampm(e.end)}`}</span></div>`;
+        const top = (st / 60 - h0) * HOUR, h = Math.max(HOUR * 0.75, ((en - st) / 60) * HOUR);
+        const nar = cols > 2 && nd > 1;
+        return `<div class="bar ${nar ? "narrow" : ""}" style="top:${top}px;height:${h}px;left:calc(${(col / cols) * 100}% + 2px);width:calc(${100 / cols}% - 4px);--c:${color[p.id]}"
+          title="${B.esc(p.display_name)} · ${ampm(e.start)}–${ampm(e.end)}"><b>${B.esc(p.display_name)}</b><span>${nar ? `${shortT(e.start)}–${shortT(e.end)}` : `${ampm(e.start)}–${ampm(e.end)}`}</span></div>`;
       });
       return `<div class="tl-day ${d === today ? "is-today" : ""}">${bars.join("")}${off.length ? `<div class="tl-off">${off.join("<br>")}</div>` : ""}</div>`;
     };
-    return `<div class="tl" style="--h:${HOUR}px;--n:${n}">
-      <div class="tl-head"><div class="tl-corner">UK time</div>${days.map((d) => `<div class="tl-dh ${d === today ? "is-today" : ""}">${DAY[dow(d)].slice(0, 3)}<span>${+d.slice(8)}</span></div>`).join("")}</div>
+    const head = nd === 1 ? `${DAY[dow(days[0])]}<span>${+days[0].slice(8)}</span>` : "";
+    return `<div class="tl ${nd === 1 ? "one" : ""}" style="--h:${HOUR}px;--n:${n};--days:${nd};--rows:${h1 - h0}">
+      <div class="tl-head"><div class="tl-corner">UK time</div>${nd === 1 ? `<div class="tl-dh ${days[0] === today ? "is-today" : ""}">${head}</div>` : days.map((d) => `<div class="tl-dh ${d === today ? "is-today" : ""}">${DAY[dow(d)].slice(0, 3)}<span>${+d.slice(8)}</span></div>`).join("")}</div>
       <div class="tl-body"><div class="tl-hours">${hours.map((h) => `<div>${h}</div>`).join("")}</div>${days.map(col).join("")}</div>
     </div>
     <div class="tl-legend">${lanes.map((p) => `<span><i style="background:${color[p.id]}"></i>${B.esc(p.display_name)}</span>`).join("")}</div>`;
@@ -108,14 +122,18 @@
   .wk-table td.k-unpaid { background: #e4e4e4; color: #333; font-family: var(--body); font-weight: 700; }
   .wk-time { table-layout: fixed; } .wk-time thead th:first-child { width: 78px; }
   .tl { min-width: 760px; font-size: 12px; }
-  .tl-head, .tl-body { display: grid; grid-template-columns: 56px repeat(7, 1fr); }
+  .tl-head, .tl-body { display: grid; grid-template-columns: 56px repeat(var(--days, 7), 1fr); }
+  .tl.one { min-width: 0; font-size: 13px; }
+  .tl.one .tl-day .bar { padding: 6px 8px; } .tl.one .tl-day .bar b { font-size: 13.5px; } .tl.one .tl-day .bar span { font-size: 11.5px; white-space: normal; }
+  .wk-table.one thead th:first-child, .wk-table.one tbody th { width: 38%; }
+  .wk-table.one { min-width: 0; } .wk-table.one td { font-size: 13px; padding: 9px 10px; } .wk-table.one tbody th { padding: 9px 12px; }
   .tl-head > div { background: #0f5c56; color: #fff; text-align: center; font-weight: 700; font-size: 11px; letter-spacing: .05em; padding: 7px 2px; border-left: 1px solid #2c7a73; }
   .tl-head > div span { display: block; font-size: 14px; }
   .tl-head .tl-corner { border-left: 0; display: grid; place-items: center; font-size: 10.5px; }
   .tl-head .is-today { background: #0a3f3b; box-shadow: inset 0 -3px #ffe45c; }
   .tl-hours > div { height: var(--h); font-size: 10.5px; color: var(--muted); text-align: right; padding: 0 8px; transform: translateY(-7px); font-variant-numeric: tabular-nums; }
   .tl-hours > div:first-child { transform: none; }
-  .tl-day { position: relative; height: calc(var(--h) * 24); border-left: 1px solid #d5dedb;
+  .tl-day { position: relative; height: calc(var(--h) * var(--rows, 24)); border-left: 1px solid #d5dedb;
     background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--h) - 1px), #e4ebe8 calc(var(--h) - 1px), #e4ebe8 var(--h)); }
   .tl-day.is-today { background-color: #fffbe0; }
   .tl-day .bar { position: absolute; border-radius: 7px; background: var(--c); color: #fff; padding: 4px 4px; overflow: hidden;
