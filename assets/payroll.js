@@ -183,9 +183,9 @@
 
   /** Employer details printed at the foot of every payslip. */
   const EMPLOYER_CLAUSE = "THE BIOHACK GROUP, a company registered in Cyprus, with its registered/business address at 9, Kastellorizou, 4532, " +
-    "Agios Tychonas, Limassol, Cyprus, represented by its Human Resources department, hereinafter referred to as the “Employer”.";
+    "Agios Tychonas, Limassol, Cyprus, represented by Myles Gerrome Jessop, hereinafter referred to as the “Employer”.";
   const SLIP_NOTE = "This is a computer-generated payslip and does not require a signature or company stamp. It is issued electronically by the " +
-    "Employer and is confidential to the employee named above. Please check the details and report any discrepancy to the Employer as soon as possible.";
+    "Employer and is confidential to the employee named above. Please check the details and report any discrepancy to the Company Human Resources as soon as possible.";
 
   /** One full A4 payslip page: logo header, employee details, earnings, deductions, payment, and a footer. */
   function slipPdf(doc, s, company, first) {
