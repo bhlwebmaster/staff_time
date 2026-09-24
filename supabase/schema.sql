@@ -53,6 +53,12 @@ create table if not exists public.attendance (
   updated_at   timestamptz not null default now(),
   unique (staff_id, work_date)
 );
+-- The day's PLANNED schedule (from the weekly schedule) when they clocked in. sched_start/end can differ if they
+-- started later or left earlier using yesterday's OT; expected hours come from the plan.
+alter table public.attendance add column if not exists plan_start time;
+alter table public.attendance add column if not exists plan_end   time;
+-- Extra OT credit (minutes) an admin granted for this day, e.g. to use OT that already expired
+alter table public.attendance add column if not exists ot_adjust  int not null default 0;
 -- Profile touches (chosen by the staff member)
 alter table public.staff add column if not exists avatar  text;   -- preset avatar key, e.g. 'mango'
 alter table public.staff add column if not exists photo   text;   -- own photo as small JPEG data URL (≤ 60 KB)
@@ -179,7 +185,7 @@ language sql stable security definer set search_path = public as $$
         'sched_start', st.sched_start, 'sched_end', st.sched_end, 'lunch_mins', st.lunch_mins, 'week_pattern', st.week_pattern,
         'avatar', st.avatar, 'photo', st.photo, 'tagline', st.tagline, 'color', st.color,
         'recent', coalesce((select json_agg(json_build_object('work_date', r.work_date, 'sched_start', r.sched_start,
-            'sched_end', r.sched_end, 'time_in', r.time_in, 'lunch_out', r.lunch_out, 'lunch_in', r.lunch_in,
+            'sched_end', r.sched_end, 'plan_start', r.plan_start, 'plan_end', r.plan_end, 'ot_adjust', r.ot_adjust, 'time_in', r.time_in, 'lunch_out', r.lunch_out, 'lunch_in', r.lunch_in,
             'time_out', r.time_out) order by r.work_date)
           from attendance r where r.staff_id = st.id and r.work_date >= (select today from d) - 45), '[]'::json),
         'today', case when a.id is null then null else json_build_object(
@@ -261,12 +267,13 @@ begin
     if p_sched_start is not null and coalesce(p_sched_end, s.sched_end) <= p_sched_start then
       return json_build_object('ok', false, 'error', 'Schedule end must be after start.');
     end if;
-    -- Default to the day's planned schedule (weekly schedule add-on), else the usual hours
-    if p_sched_start is null and to_regprocedure('public.day_schedule(uuid,date)') is not null then
+    -- The day's planned schedule (weekly schedule add-on), else the usual hours
+    if to_regprocedure('public.day_schedule(uuid,date)') is not null then
       execute 'select start_time, end_time from public.day_schedule($1, $2)' into v_ss, v_se using p_staff, v_day;
     end if;
-    insert into attendance (staff_id, work_date, sched_start, sched_end, time_in, note)
-      values (p_staff, v_day, coalesce(p_sched_start, v_ss, s.sched_start), coalesce(p_sched_end, v_se, s.sched_end), now(), v_note);
+    insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end, time_in, note)
+      values (p_staff, v_day, coalesce(p_sched_start, v_ss, s.sched_start), coalesce(p_sched_end, v_se, s.sched_end),
+              coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), now(), v_note);
   elsif p_action = 'lunch_start' then
     if a.time_in is null then return json_build_object('ok', false, 'error', 'Clock in first.'); end if;
     if a.time_out is not null then return json_build_object('ok', false, 'error', 'You already clocked out.'); end if;
@@ -300,7 +307,7 @@ begin
                'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours) from settings where id = 1),
     -- this month + last month, for the personal OT bank
     'rows', coalesce((select json_agg(x order by x.work_date) from (
-               select work_date, sched_start, sched_end, time_in, lunch_out, lunch_in, time_out, note
+               select work_date, sched_start, sched_end, plan_start, plan_end, ot_adjust, time_in, lunch_out, lunch_in, time_out, note
                from attendance where staff_id = p_staff
                  and work_date >= date_trunc('month', v_day - interval '1 month')::date) x), '[]'::json)
   );

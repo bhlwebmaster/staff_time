@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260929a">
+<link rel="stylesheet" href="assets/style.css?v=20260929b">
 <style>
   main { padding-block: 20px 60px; }
   .hello { display: grid; gap: 4px; margin-bottom: 18px; }
@@ -115,6 +115,10 @@
   .seg button[aria-pressed=true] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
   main.wrap.narrow.wide { max-width: 980px; }
   .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+  .otbox { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; font-size: 14px; }
+  .otbox .seg { justify-self: start; flex-wrap: wrap; }
+  .otbox #otPreview { font-size: 13px; }
+  .otbox.info .seg, .otbox.info #otPreview { display: none; }
   .quick { display: flex; gap: 10px; flex-wrap: wrap; }
   .quick .btn { flex: 1 1 200px; justify-content: center; }
   .btn.wa { background: #1fa855; border-color: #1fa855; color: #fff; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
@@ -223,8 +227,15 @@
         <div><div class="eyebrow">Today's schedule</div><div class="mono" id="tSched" style="font-size:17px;font-weight:600"></div></div>
         <div id="tFlags" class="row"></div>
       </div>
+      <div class="otbox" id="otBox" hidden>
+        <div><b id="otTitle"></b> <span class="muted" id="otSub"></span></div>
+        <div class="seg" id="otPick" role="radiogroup" aria-label="Use OT today">
+          <button type="button" data-o="late" aria-pressed="false">Start later</button><button type="button" data-o="early" aria-pressed="false">Leave earlier</button><button type="button" data-o="no" aria-pressed="true">No</button>
+        </div>
+        <div class="mono" id="otPreview"></div>
+      </div>
       <details id="schedEdit">
-        <summary>Different schedule today? (offset, half day)</summary>
+        <summary>Different hours today? (shifted start, swap)</summary>
         <div class="grid2" style="margin-top:12px">
           <label class="f">Start (UK)<input type="time" id="sStart"></label>
           <label class="f">End (UK)<input type="time" id="sEnd"></label>
@@ -277,9 +288,9 @@
       <div class="stats">
         <div><b id="mDays">0</b><span>days</span></div>
         <div><b id="mHours">0:00</b><span>hours worked</span></div>
-        <div><b id="mBank">0:00</b><span>OT bank</span></div>
+        <div><b id="mBank">0:00</b><span>OT to use today</span></div>
       </div>
-      <p class="muted" style="margin:0;font-size:12.5px">OT bank = overtime earned (in <span id="mBlock">15</span>-min blocks) minus time used as offset or undertime.</p>
+      <p class="muted" style="margin:0;font-size:12.5px">OT is counted in <span id="mBlock">30</span>-minute blocks and can only be used on your next work day (start later or leave earlier). Unused OT expires at the end of that day.</p>
     </div>
 
     <div class="row">
@@ -330,13 +341,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=20260929a"></script>
-<script src="assets/core.js?v=20260929a"></script>
-<script src="assets/game.js?v=20260929a"></script>
-<script src="assets/schedule.js?v=20260929a"></script>
-<script src="assets/logo.js?v=20260929a"></script>
-<script src="assets/payroll.js?v=20260929a"></script>
-<script src="assets/api.js?v=20260929a"></script>
-<script src="assets/staff.js?v=20260929a"></script>
+<script src="config.js?v=20260929b"></script>
+<script src="assets/core.js?v=20260929b"></script>
+<script src="assets/game.js?v=20260929b"></script>
+<script src="assets/schedule.js?v=20260929b"></script>
+<script src="assets/logo.js?v=20260929b"></script>
+<script src="assets/payroll.js?v=20260929b"></script>
+<script src="assets/api.js?v=20260929b"></script>
+<script src="assets/staff.js?v=20260929b"></script>
 </body>
 </html>

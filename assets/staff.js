@@ -125,7 +125,8 @@
     if (!row?.time_in) { $("sStart").value ||= ss.slice(0, 5); $("sEnd").value ||= se.slice(0, 5); }
     if (document.activeElement !== $("tNote")) $("tNote").value = row?.note || "";
 
-    const c = row ? B.calcDay(row, st, set) : null;
+    const c = row ? B.calcDays(data.rows, st, set).get(row.work_date) : null;
+    renderOt(row, c, ss, se, today);
     const flags = [];
     if (c?.late) flags.push(`<span class="flag late">Late ${B.fmtMins(c.late)}</span>`);
     if (c?.complete && c.ot) flags.push(`<span class="flag ot">OT +${B.fmtMins(c.ot)}</span>`);
@@ -155,12 +156,13 @@
 
     // month
     const month = today.slice(0, 7);
-    const sum = B.summarise(data.rows.filter((r) => r.work_date.startsWith(month)), st, set, today);
+    const sum = B.summarise(data.rows, st, set, today, { from: month + "-01" });
     $("mLabel").textContent = B.prettyDate(month + "-01", { month: "long", year: "numeric" });
     $("mDays").textContent = sum.days;
     $("mHours").textContent = B.fmtMins(sum.worked);
-    $("mBank").textContent = B.fmtMins(sum.bank, { sign: true });
-    $("mBank").style.color = sum.bank < 0 ? "var(--late)" : sum.bank > 0 ? "var(--accent)" : "";
+    const otNow = B.otToday(data.rows, st, set, today);
+    $("mBank").textContent = B.fmtMins(otNow.mins);
+    $("mBank").style.color = otNow.mins > 0 ? "var(--accent)" : "";
     $("mBlock").textContent = set.ot_block_mins;
     renderWa();
     renderTeam();
@@ -176,6 +178,13 @@
     }
     const extra = { note: $("tNote").value };
     if (a === "in" && $("schedEdit").open) { extra.sched_start = $("sStart").value; extra.sched_end = $("sEnd").value; }
+    if (a === "in" && otPlan && otPick !== "no") {
+      // Use yesterday's OT: shift today's times and note it (expected hours stay the same, the OT covers the gap)
+      const adj = otAdjusted();
+      extra.sched_start = adj.s; extra.sched_end = adj.e;
+      const tag = `Offset: ${B.fmtMins(otPlan.mins)} OT from ${B.prettyDate(otPlan.from, { weekday: "short", day: "numeric", month: "short" })}`;
+      extra.note = extra.note ? `${tag}. ${extra.note}` : tag;
+    }
     btn.disabled = true;
     const r = await api.punch(me.id, pin, a, extra).catch((e) => ({ ok: false, error: e.message }));
     btn.disabled = false;
@@ -192,7 +201,7 @@
     if (newBadges.length) msg = `Badge unlocked: ${newBadges.map((b) => b.name).join(", ")}! ` + (gained > 0 ? `+${gained} XP` : "");
     B.toast(msg);
     fresh = new Set(newBadges.map((b) => b.key));
-    const onTimeIn = a === "in" && !B.calcDay(todayRow(), data.staff, data.settings).late;
+    const onTimeIn = a === "in" && !B.calcDays(data.rows, data.staff, data.settings).get(todayRow().work_date).late;
     if (newBadges.length || onTimeIn || after.level.n > before.level.n) B.confetti();
     renderToday(); loadRoster(); bumpIdle();
     // Only the start and end of the shift go to the group (not lunch)
@@ -206,6 +215,42 @@
   $("actMain").onclick = (e) => act(e.currentTarget.dataset.a, e.currentTarget);
   $("actAlt").addEventListener("click", (e) => { const b = e.target.closest("button[data-a]"); if (b) act(b.dataset.a, b); });
 
+
+  // ---------- use yesterday's OT ----------
+  let otPick = "no", otPlan = null;   // otPlan = { mins, from, ss, se } while not clocked in
+  const addM = (hhmm, m) => { const [h, mm] = hhmm.slice(0, 5).split(":").map(Number); let t = h * 60 + mm + m; t = Math.max(0, Math.min(1439, t)); return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
+  function otAdjusted() {
+    const p = otPlan; if (!p) return null;
+    return otPick === "late" ? { s: addM(p.ss, p.mins), e: p.se.slice(0, 5) } : otPick === "early" ? { s: p.ss.slice(0, 5), e: addM(p.se, -p.mins) } : { s: p.ss.slice(0, 5), e: p.se.slice(0, 5) };
+  }
+  function renderOt(row, c, ss, se, today) {
+    const box = $("otBox"), when = (d) => B.prettyDate(d, { weekday: "short", day: "numeric", month: "short" });
+    otPlan = null;
+    if (!row?.time_in) {
+      const o = B.otToday(data.rows, data.staff, data.settings, today);
+      if (!o.mins || !ss) { box.hidden = true; otPick = "no"; return; }
+      otPlan = { mins: o.mins, from: o.from, ss, se };
+      box.hidden = false; box.classList.remove("info");
+      $("otTitle").textContent = `You have ${B.fmtMins(o.mins)} OT from ${when(o.from)}.`;
+      $("otSub").textContent = "Use it today? It expires at the end of today.";
+      for (const b of $("otPick").children) b.setAttribute("aria-pressed", b.dataset.o === otPick);
+      const adj = otAdjusted();
+      $("otPreview").textContent = otPick === "no" ? `Today: ${B.clockStr(ss)} – ${B.clockStr(se)} UK` : `Today: ${B.clockStr(adj.s)} – ${B.clockStr(adj.e)} UK (was ${B.clockStr(ss)} – ${B.clockStr(se)})`;
+      return;
+    }
+    otPick = "no";
+    if (!c || !c.otAvail) { box.hidden = true; return; }
+    box.hidden = false; box.classList.add("info");
+    const from = c.otFrom ? ` from ${when(c.otFrom)}` : "";
+    if (c.complete) {
+      $("otTitle").textContent = c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT${from} today.` : `Your ${B.fmtMins(c.otAvail)} OT${from} wasn't needed today.`;
+      $("otSub").textContent = c.otUsed && c.otUsed < c.otAvail ? `The other ${B.fmtMins(c.otAvail - c.otUsed)} expired.` : c.otUsed ? "" : "It has now expired.";
+    } else {
+      $("otTitle").textContent = `${B.fmtMins(c.otAvail)} OT${from} covers you today.`;
+      $("otSub").textContent = "Start later or leave earlier by up to that much. Unused OT expires at the end of today.";
+    }
+  }
+  $("otPick").addEventListener("click", (e) => { const b = e.target.closest("button[data-o]"); if (!b) return; otPick = b.dataset.o; renderToday(); });
 
   // ---------- season (XP, level, streak, badges) ----------
   let fresh = new Set();

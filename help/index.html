@@ -254,8 +254,8 @@ a.brand:hover .mark { filter: brightness(1.08); }
     <div class="prose">
       <ol class="steps">
         <li><div>Check <b>Today's schedule</b>. It's your usual shift in UK time.</div></li>
-        <li><div><b>Working a different shift today?</b> For example, you're taking an offset or a half day. Open <b>Different schedule today?</b> and set the start and end first.</div></li>
-        <li><div>Add a <b>Note</b> if needed, e.g. <i>"Offset against 30-minute OT yesterday"</i>.</div></li>
+        <li><div><b>Have OT from your last work day?</b> A green box shows it, e.g. <i>"You have 1:00 OT from Thu 24 Sept."</i> Pick <b>Start later</b> or <b>Leave earlier</b> to use it today (your times and a note update automatically), or <b>No</b>.</div></li>
+        <li><div>Working shifted hours for another reason? Open <b>Different hours today?</b> and set the start and end first. Add a <b>Note</b> if needed.</div></li>
         <li><div>Tap <b>Clock in</b>. You'll see the time, the XP you earned and your streak.</div></li>
       </ol>
       <div class="tip"><b>Tip</b><span>Clock in within 5 minutes of your start time to count as on time and keep your streak going.</span></div>
@@ -357,9 +357,10 @@ a.brand:hover .mark { filter: brightness(1.08); }
   <div class="split">
     <div class="prose">
       <ul>
-        <li><b>OT earned:</b> time worked beyond your normal paid day, counted in 15-minute blocks (36 extra minutes counts as 30).</li>
-        <li><b>Offset / short:</b> a shorter day is taken from your bank.</li>
-        <li><b>OT bank</b> = OT earned − offsets. Green means you have time banked; red means you owe time.</li>
+        <li><b>OT earned:</b> time worked beyond your expected hours, counted in 30-minute blocks (45 extra minutes counts as 30, 1:20 as 1:00).</li>
+        <li><b>Use it on your next work day only:</b> start later or leave earlier by up to that much. Rest days, leave and holidays are skipped, so Friday's OT can be used on Monday.</li>
+        <li><b>It expires</b> at the end of that next work day if you don't use it. It isn't paid and doesn't carry over.</li>
+        <li><b>OT to use today</b> shows what you can still use. Short time that your OT can't cover counts as undertime on your payslip.</li>
       </ul>
     </div>
     <figure><div class="crop" style="max-width:330px"><img src="img/s-month.jpg" alt="This month card with days, hours and OT bank"></div><figcaption>This month</figcaption></figure>
@@ -450,8 +451,8 @@ a.brand:hover .mark { filter: brightness(1.08); }
     <div><b>PIN</b>Your own 4-digit code. Don't share it: it stops anyone else clocking in as you.</div>
     <div><b>Clock in / Clock out</b>Tapping the button when you start and finish work.</div>
     <div><b>Overtime (OT)</b>Extra time you work beyond your normal day, counted in 15-minute steps.</div>
-    <div><b>OT bank</b>Your saved overtime. You can use it later for a shorter day (an "offset").</div>
-    <div><b>Offset</b>Working a shorter day using time from your OT bank. Add a note when you do.</div>
+    <div><b>OT to use today</b>Overtime from your last work day. Use it today (start later or leave earlier) or it expires tonight.</div>
+    <div><b>Offset</b>Using your OT to work a shorter day. The app adds the note for you.</div>
     <div><b>XP (points)</b>Points for being on time, taking lunch and finishing your day. They reset each month.</div>
     <div><b>Streak</b>How many days in a row you've clocked in on time.</div>
     <div><b>Rest day</b>A day you're not scheduled to work. It never counts as an absence.</div>
@@ -606,7 +607,8 @@ a.brand:hover .mark { filter: brightness(1.08); }
           <tr><td><b>Worked</b></td><td>Time out − time in − the lunch they tapped. No lunch tapped = nothing taken off.</td></tr>
           <tr><td><b>Expected</b></td><td>That day's schedule minus its planned lunch (Staff → Usual week). Example: 6:00–15:00 with 60 lunch = 8:00; 7:00–11:00 with 0 lunch = 4:00.</td></tr>
           <tr><td><b>OT earned</b></td><td>Worked − expected, counted in whole 30-minute blocks. 30 min extra = 0:30, 45 min = 0:30, 1:20 = 1:00, 1:30 = 1:30.</td></tr>
-          <tr><td><b>Short</b></td><td>Worked below expected. It's covered by OT earned in the same cut-off first; only what's left counts as undertime in payroll.</td></tr>
+          <tr><td><b>Short</b></td><td>Worked below expected. OT from the person's last work day covers it first ("OT used"); only what's left counts as undertime in payroll.</td></tr>
+          <tr><td><b>OT expiry</b></td><td>OT can only be used on the next work day (the next day they clock in, within 4 days, so Friday → Monday works). Unused OT expires. To make an exception, open the day in <b>Edit</b> and set <b>Extra OT credit</b>.</td></tr>
           <tr><td><b>Late</b></td><td>Clocked in after the start + grace (default 5 min). With <b>Judge by hours</b> on, a day with its full hours isn't marked late.</td></tr>
           <tr><td><b>No lunch logged</b></td><td>A day with a planned lunch but no lunch taps. The time counts as worked, so check it if they did take a break.</td></tr>
           <tr><td><b>Billable</b></td><td>Regular hours + OT earned.</td></tr>

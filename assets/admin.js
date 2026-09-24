@@ -63,6 +63,7 @@
     const f = [];
     if (c.late) f.push(`<span class="flag late">Late ${B.fmtMins(c.late)}</span>`);
     if (c.ot) f.push(`<span class="flag ot">OT +${B.fmtMins(c.ot)}</span>`);
+    if (c.otUsed) f.push(`<span class="flag ot" title="OT from ${c.otFrom ? B.prettyDate(c.otFrom) : "the last work day"} used today">OT used ${B.fmtMins(c.otUsed)}</span>`);
     if (c.short) f.push(`<span class="flag short">Short ${B.fmtMins(c.short)}</span>`);
     if (c.open && !isToday) f.push(`<span class="flag miss">No clock-out</span>`);
     if (c.noLunch) f.push(`<span class="flag short" title="Planned lunch ${c.planLunch} min, but no lunch was tapped. Worked time includes it.">No lunch logged</span>`);
@@ -75,14 +76,16 @@
   async function loadDay() {
     const day = $("dayPick").value || today();
     $("dayTitle").textContent = day === today() ? "Today · " + B.prettyDate(day) : B.prettyDate(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    const [rows, sdays] = await Promise.all([A.attendance(day, day), A.scheduleDays(day, day)]);
+    // a few days before, so today knows the OT from each person's last work day
+    const [pre, sdays] = await Promise.all([A.attendance(addDays(day, -5), day), A.scheduleDays(day, day)]);
+    const rows = pre.filter((r) => r.work_date === day);
     const planOv = B.sched.indexDays(sdays);
     const act = staff.filter((s) => s.active || rows.some((r) => r.staff_id === s.id));
     let n = { in: 0, lunch: 0, out: 0, absent: 0, late: 0 };
     $("dayRows").innerHTML = act.map((s) => {
       const r = rows.find((x) => x.staff_id === s.id);
       const plan = B.sched.effective(s, day, planOv);
-      const c = r ? B.calcDay(r, s, settings) : { status: plan.kind === "shift" ? "absent" : "off" };
+      const c = r ? B.calcDays(pre.filter((x) => x.staff_id === s.id), s, settings).get(day) : { status: plan.kind === "shift" ? "absent" : "off" };
       if (c.status !== "off") n[c.status]++; if (c.late) n.late++;
       const [k, label] = c.status === "off" ? ["out", B.sched.KINDS[plan.kind].label] : pillFor(c);
       let worked = "—";
@@ -125,27 +128,28 @@
   $("who").onchange = () => renderSheets();
 
   async function loadSheets() {
-    sheetRows = await A.attendance($("from").value, $("to").value);
+    sheetRows = await A.attendance(addDays($("from").value, -5), $("to").value);   // earlier days only feed OT
     renderSheets();
   }
   function computeSheets() {
     const who = $("who").value;
-    const people = staff.filter((s) => (!who || s.id === who) && (s.active || sheetRows.some((r) => r.staff_id === s.id)));
-    return people.map((s) => ({ s, sum: B.summarise(sheetRows.filter((r) => r.staff_id === s.id), s, settings, today()) }));
+    const from = $("from").value;
+    const people = staff.filter((s) => (!who || s.id === who) && (s.active || sheetRows.some((r) => r.staff_id === s.id && r.work_date >= from)));
+    return people.map((s) => ({ s, sum: B.summarise(sheetRows.filter((r) => r.staff_id === s.id), s, settings, today(), { from }) }));
   }
   function renderSheets() {
     const list = computeSheets();
     const period = `${B.prettyDate($("from").value, { day: "numeric", month: "short", year: "numeric" })} – ${B.prettyDate($("to").value, { day: "numeric", month: "short", year: "numeric" })}`;
     $("sheetTitle").textContent = period;
     $("printTitle").textContent = `${settings.company_name} · Timesheet · ${period}`;
-    const tot = list.reduce((a, { sum }) => { for (const k of ["days", "worked", "regular", "ot", "short", "bank", "late", "missingOut", "billable"]) a[k] = (a[k] || 0) + sum[k]; return a; }, {});
+    const tot = list.reduce((a, { sum }) => { for (const k of ["days", "worked", "regular", "ot", "otUsed", "short", "bank", "late", "missingOut", "billable"]) a[k] = (a[k] || 0) + sum[k]; return a; }, {});
     $("sheetKpis").innerHTML = [
       [B.hoursDec(tot.billable || 0), "billable hours"], [tot.days || 0, "days worked"],
       [B.fmtMins(tot.ot || 0), "OT earned (h:mm)"], [tot.late || 0, "late arrivals", tot.late], [tot.missingOut || 0, "missing clock-outs", tot.missingOut],
     ].map(([v, l, w]) => `<div class="card kpi ${w ? "warn" : ""}"><b>${v}</b><span>${l}</span></div>`).join("");
     const cells = (x) => `<td class="num">${x.days}</td><td class="num">${B.fmtMins(x.worked)}</td><td class="num">${B.fmtMins(x.regular)}</td>
-      <td class="num">${B.fmtMins(x.ot)}</td><td class="num">${B.fmtMins(x.short)}</td>
-      <td class="num" style="color:${x.bank < 0 ? "var(--late)" : x.bank > 0 ? "var(--accent)" : "inherit"}">${B.fmtMins(x.bank, { sign: true })}</td>
+      <td class="num">${B.fmtMins(x.ot)}</td><td class="num">${B.fmtMins(x.otUsed)}</td>
+      <td class="num" style="${x.short ? "color:var(--late)" : ""}">${B.fmtMins(x.short)}</td>
       <td class="num">${x.late}</td><td class="num" style="${x.missingOut ? "color:var(--late)" : ""}">${x.missingOut}</td><td class="num"><b>${B.hoursDec(x.billable)}</b></td>`;
     $("sumRows").innerHTML = list.map(({ s, sum }) => `<tr class="click ${$("who").value === s.id ? "sel" : ""}" data-id="${B.esc(s.id)}"><td><b>${B.esc(s.display_name)}</b><span class="sub">${B.esc(s.full_name)}</span></td>${cells(sum)}</tr>`).join("")
       || `<tr><td colspan="10" class="muted">No entries in this period.</td></tr>`;
@@ -172,14 +176,14 @@
   }
   const period = () => `${$("from").value}_to_${$("to").value}`;
   $("csvSum").onclick = () => download(`BHL-timesheet-summary_${period()}.csv`, [
-    ["Name", "Timesheet name", "Period from", "Period to", "Days worked", "Worked hours", "Regular hours", "OT earned hours", "Offset/short hours", "OT bank hours", "Late arrivals", "Late minutes", "Missing clock-outs", "Billable hours"],
+    ["Name", "Timesheet name", "Period from", "Period to", "Days worked", "Worked hours", "Regular hours", "OT earned hours", "OT used hours", "Short hours (not covered)", "Late arrivals", "Late minutes", "Missing clock-outs", "Billable hours"],
     ...computeSheets().map(({ s, sum }) => [s.display_name, s.full_name, $("from").value, $("to").value, sum.days, B.hoursDec(sum.worked), B.hoursDec(sum.regular),
-      B.hoursDec(sum.ot), B.hoursDec(sum.short), B.hoursDec(sum.bank), sum.late, sum.lateMins, sum.missingOut, B.hoursDec(sum.billable)]),
+      B.hoursDec(sum.ot), B.hoursDec(sum.otUsed), B.hoursDec(sum.short), sum.late, sum.lateMins, sum.missingOut, B.hoursDec(sum.billable)]),
   ]);
   $("csvDay").onclick = () => download(`BHL-timesheet-daily_${period()}.csv`, [
-    ["Date", "Name", "Timesheet name", "Sched start (UK)", "Sched end (UK)", "Time in (UK)", "Lunch out", "Lunch in", "Time out (UK)", "Worked hours", "Late minutes", "OT earned minutes", "Short minutes", "Note"],
+    ["Date", "Name", "Timesheet name", "Sched start (UK)", "Sched end (UK)", "Time in (UK)", "Lunch out", "Lunch in", "Time out (UK)", "Worked hours", "Late minutes", "OT earned minutes", "OT used minutes", "Short minutes", "Note"],
     ...computeSheets().flatMap(({ s, sum }) => sum.days_list.map(({ row: r, c }) => [r.work_date, s.display_name, s.full_name, r.sched_start.slice(0, 5), r.sched_end.slice(0, 5),
-      B.hhmmIn(c.tin, tz()), B.hhmmIn(c.lo, tz()), B.hhmmIn(c.li, tz()), B.hhmmIn(c.tout, tz()), c.worked != null ? B.hoursDec(c.worked) : "", c.late, c.ot, c.short, r.note || ""])),
+      B.hhmmIn(c.tin, tz()), B.hhmmIn(c.lo, tz()), B.hhmmIn(c.li, tz()), B.hhmmIn(c.tout, tz()), c.worked != null ? B.hoursDec(c.worked) : "", c.late, c.ot, c.otUsed, c.short, r.note || ""])),
   ]);
 
   // ---------- entry dialog ----------
@@ -194,6 +198,7 @@
     const h = (iso) => (iso ? B.hhmmIn(new Date(iso), tz()) : "");
     $("eIn").value = h(r?.time_in); $("eOut").value = h(r?.time_out); $("eLO").value = h(r?.lunch_out); $("eLI").value = h(r?.lunch_in);
     $("eNote").value = r?.note || "";
+    $("eOtAdj").value = r?.ot_adjust || "";
     $("eDel").hidden = !r;
     $("eHist").innerHTML = "";
     $("entryDlg").showModal();
@@ -208,7 +213,11 @@
     const date = $("eDate").value;
     const iso = (v) => (v ? B.zonedToDate(date, v, tz()).toISOString() : null);
     const rec = { staff_id: $("eWho").value, work_date: date, sched_start: $("eSS").value, sched_end: $("eSE").value,
-      time_in: iso($("eIn").value), lunch_out: iso($("eLO").value), lunch_in: iso($("eLI").value), time_out: iso($("eOut").value), note: $("eNote").value.trim() || null };
+      time_in: iso($("eIn").value), lunch_out: iso($("eLO").value), lunch_in: iso($("eLI").value), time_out: iso($("eOut").value), note: $("eNote").value.trim() || null,
+      ot_adjust: Math.max(0, Math.round(+$("eOtAdj").value || 0)) };
+    // Changing the schedule here is an admin decision: it becomes the planned schedule for the day
+    const hh = (t) => (t || "").slice(0, 5);
+    if (!editing || hh(editing.sched_start) !== rec.sched_start || hh(editing.sched_end) !== rec.sched_end) { rec.plan_start = rec.sched_start; rec.plan_end = rec.sched_end; }
     const seq = [rec.time_in, rec.lunch_out, rec.lunch_in, rec.time_out].filter(Boolean);
     if (seq.some((v, i) => i && v < seq[i - 1])) return B.toast("Times must run in order: in → lunch out → lunch in → out.", "err");
     if (rec.sched_end <= rec.sched_start) return B.toast("Schedule end must be after start.", "err");
@@ -375,8 +384,8 @@
 
   async function loadReport() {
     const R = reportRange();
-    const rows = await A.attendance(R.from, R.to);
-    report = { R, rows };
+    const all = await A.attendance(addDays(R.from, -5), R.to);   // earlier days only feed OT
+    report = { R, rows: all.filter((r) => r.work_date >= R.from), all };
     renderReport();
   }
   function buildReport() {
@@ -384,8 +393,7 @@
     const cols = buckets(R.from, R.to);
     const people = staff.filter((s) => (!who || s.id === who) && (s.active || rows.some((r) => r.staff_id === s.id)));
     const lines = people.map((s) => {
-      const mine = rows.filter((r) => r.staff_id === s.id);
-      const sum = B.summarise(mine, s, settings, today());
+      const sum = B.summarise(report.all.filter((r) => r.staff_id === s.id), s, settings, today(), { from: R.from });
       const cells = cols.map((c) => sum.days_list.filter((x) => x.row.work_date >= c.from && x.row.work_date <= c.to && x.c.complete).reduce((a, x) => a + x.c.worked, 0));
       const has = cols.map((c) => sum.days_list.some((x) => x.row.work_date >= c.from && x.row.work_date <= c.to && x.c.tin));
       return { s, sum, cells, has };
@@ -644,7 +652,7 @@
   $("paySel").onchange = () => openPeriod($("paySel").value);
   async function openPeriod(id) {
     curP = periods.find((p) => p.id === id);
-    const [saved, rows, sdays] = await Promise.all([A.payslips(id), A.attendance(curP.start_date, curP.end_date), A.scheduleDays(curP.start_date, curP.end_date)]);
+    const [saved, rows, sdays] = await Promise.all([A.payslips(id), A.attendance(addDays(curP.start_date, -5), curP.end_date), A.scheduleDays(curP.start_date, curP.end_date)]);
     payRows = rows; payPlanOv = B.sched.indexDays(sdays);
     payOver = {}; for (const r of saved) payOver[r.staff_id] = { ...(r.overrides || {}) };
     if (curP.status === "final") payLines = saved.map((r) => ({ ...r, auto: null }));

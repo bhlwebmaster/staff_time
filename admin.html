@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260929a">
+<link rel="stylesheet" href="assets/style.css?v=20260929b">
 <style>
   main { padding-block: 22px 70px; }
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -185,7 +185,7 @@
     <div class="kpis" id="sheetKpis" style="margin-bottom:14px"></div>
     <div class="card tablewrap" style="margin-bottom:18px"><table>
       <thead><tr><th>Name</th><th class="num">Days</th><th class="num">Worked</th><th class="num">Regular</th><th class="num">OT earned</th>
-        <th class="num">Offset / short</th><th class="num">OT bank</th><th class="num">Late</th><th class="num">No clock-out</th><th class="num">Billable hrs</th></tr></thead>
+        <th class="num">OT used</th><th class="num">Short</th><th class="num">Late</th><th class="num">No clock-out</th><th class="num">Billable hrs</th></tr></thead>
       <tbody id="sumRows"></tbody><tfoot id="sumFoot"></tfoot>
     </table></div>
     <div class="row" style="margin-bottom:10px">
@@ -391,6 +391,8 @@
       <label class="f">Lunch in<input type="time" id="eLI"></label>
     </div>
     <label class="f">Note<textarea id="eNote" rows="2"></textarea></label>
+    <label class="f" style="max-width:320px">Extra OT credit for this day (minutes)<input type="number" id="eOtAdj" min="0" max="600" step="30" placeholder="0">
+      <span class="muted" style="font-weight:400;font-size:12px">Use this to let someone use OT that already expired, e.g. 60.</span></label>
     <p class="muted" style="margin:0;font-size:12.5px">All times are UK time. Every change is kept in the history below.</p>
     <div class="hist" id="eHist"></div>
     <div class="row"><button class="btn danger" type="button" id="eDel">Delete entry</button><span class="spacer"></span>
@@ -452,13 +454,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20260929a"></script>
-<script src="assets/core.js?v=20260929a"></script>
-<script src="assets/game.js?v=20260929a"></script>
-<script src="assets/schedule.js?v=20260929a"></script>
-<script src="assets/logo.js?v=20260929a"></script>
-<script src="assets/payroll.js?v=20260929a"></script>
-<script src="assets/api.js?v=20260929a"></script>
-<script src="assets/admin.js?v=20260929a"></script>
+<script src="config.js?v=20260929b"></script>
+<script src="assets/core.js?v=20260929b"></script>
+<script src="assets/game.js?v=20260929b"></script>
+<script src="assets/schedule.js?v=20260929b"></script>
+<script src="assets/logo.js?v=20260929b"></script>
+<script src="assets/payroll.js?v=20260929b"></script>
+<script src="assets/api.js?v=20260929b"></script>
+<script src="assets/admin.js?v=20260929b"></script>
 </body>
 </html>

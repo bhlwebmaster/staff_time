@@ -75,8 +75,9 @@
     const list = (rows || []).filter((r) => r.time_in).slice().sort((a, b) => a.work_date.localeCompare(b.work_date));
     let xp = 0, early = 0, lunch = 0, days = 0, missing = 0, ot = 0, run = 0, best = 0;
     const weeks = {};
+    const all = B.calcDays(list, staff, settings);
     for (const r of list) {
-      const c = B.calcDay(r, staff, settings);
+      const c = all.get(r.work_date);
       const onTime = !c.late;
       run = onTime ? run + 1 : 0; best = Math.max(best, run);
       if (!r.work_date.startsWith(month)) continue;

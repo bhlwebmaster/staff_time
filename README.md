@@ -135,12 +135,13 @@ All times are **UK time** (Europe/London). That's the "GMT" the team already use
 | **Worked** | Time out − time in − the lunch actually tapped (no lunch tapped = nothing taken off). |
 | **Expected** | That day's schedule minus its planned lunch (Staff → Usual week, lunch per day). |
 | **OT earned** | Worked − expected, in whole blocks (default 30 min: 45 extra → 30, 1:20 → 1:00). |
-| **Short** | Worked below expected. Covered by OT in the same cut-off first; the rest is undertime in payroll. |
+| **Short** | Worked below expected. Covered by OT from the last work day first ("OT used"); the rest is undertime in payroll. |
+| **OT expiry** | OT can only be used on the next work day (next clock-in within 4 days), then it expires. Admins can add "Extra OT credit" to a day. |
 | **Late** | After start + grace. With "Judge by hours" (default), a day with its full hours isn't late. |
 | **No lunch logged** | Planned lunch but no lunch taps: shown as a flag to check. |
 | **Billable hrs** | Regular (capped at expected) + OT earned. |
 
-**Offset days:** before clocking in, staff can open "Different schedule today?" and set, for example, 6:30–15:00 with the note "Offset against 30-minute OT yesterday". The shorter day then draws from their OT bank.
+**Using OT:** at clock-in, staff with OT from their last work day see "You have 1:00 OT from Thu 24 Sept" and pick Start later / Leave earlier / No. Their times and note update automatically; expected hours stay the same and the OT covers the gap.
 
 ## Security model
 - Staff never read or write tables directly. Every clock action goes through database functions that check the PIN (stored bcrypt-hashed) and use the **server clock**, so a phone's time can't be changed to fake a punch. After 5 wrong PINs, that name is locked for 15 minutes.
