@@ -62,13 +62,21 @@
       if (d <= lastPast && ((k === "shift" && !workedOn.has(d)) || k === "unpaid")) absent++;
       if (k === "vacation" || k === "sick" || k === "emergency" || (k === "holiday" && !workedOn.has(d))) leave++;
     }
-    let late = 0, under = 0, hrs = 0;
+    // Lates / undertime.
+    // Judge by hours (default): a day with its full hours has nothing to deduct; short time is first covered by
+    //   OT earned in the same cut-off, and only what's left counts as undertime.
+    // Strict: minutes late after grace + minutes left before the scheduled end, as before.
+    const flex = settings.flex_hours !== false;
+    let late = 0, under = 0, hrs = 0, shortSum = 0, otSum = 0;
     for (const r of mine) {
       const c = B.calcDay(r, staff, settings);
-      late += c.late || 0;
-      if (c.complete) hrs += Math.min(c.worked, c.std);
-      if (c.tout && c.schedEnd && c.tout < c.schedEnd) under += Math.round((c.schedEnd - c.tout) / 60000);
+      if (c.complete) { hrs += Math.min(c.worked, c.std); shortSum += c.short; otSum += c.ot; }
+      if (!flex) {
+        late += c.late || 0;
+        if (c.tout && c.schedEnd && c.tout < c.schedEnd) under += Math.round((c.schedEnd - c.tout) / 60000);
+      }
     }
+    if (flex) { under = Math.max(0, shortSum - otSum); hrs += Math.min(shortSum, otSum); }
     const auto = { days_worked: mine.length, hours_worked: r2(hrs / 60), late_mins: late, undertime_mins: under, absences: absent, other_ded: 0, other_note: "" };
     const v = { ...auto };
     for (const k of Object.keys(auto)) if (over[k] !== undefined && over[k] !== null && over[k] !== "") v[k] = k === "other_note" ? over[k] : Number(over[k]);

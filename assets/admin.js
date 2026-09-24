@@ -65,6 +65,7 @@
     if (c.ot) f.push(`<span class="flag ot">OT +${B.fmtMins(c.ot)}</span>`);
     if (c.short) f.push(`<span class="flag short">Short ${B.fmtMins(c.short)}</span>`);
     if (c.open && !isToday) f.push(`<span class="flag miss">No clock-out</span>`);
+    if (c.noLunch) f.push(`<span class="flag short" title="Planned lunch ${c.planLunch} min, but no lunch was tapped. Worked time includes it.">No lunch logged</span>`);
     return f.join(" ");
   }
   const lunchCell = (r) => r.lunch_out ? `${t(r.lunch_out)}–${r.lunch_in ? t(r.lunch_in) : "…"}` : "—";
@@ -277,12 +278,13 @@
     $("stCompany").value = settings.company_name; $("stTz").value = settings.timezone;
     $("stGrace").value = settings.grace_mins; $("stBlock").value = settings.ot_block_mins; $("stEarly").checked = settings.count_early;
     $("stDpc").value = settings.days_per_cutoff ?? 10;
+    $("stFlex").checked = settings.flex_hours !== false;
     renderHolidays();
   }
   $("setForm").onsubmit = async (e) => {
     e.preventDefault();
     const s = { company_name: $("stCompany").value.trim(), timezone: $("stTz").value, grace_mins: +$("stGrace").value,
-      ot_block_mins: Math.max(1, +$("stBlock").value), count_early: $("stEarly").checked, days_per_cutoff: Math.max(1, Math.round(+$("stDpc").value || 10)) };
+      ot_block_mins: Math.max(1, +$("stBlock").value), count_early: $("stEarly").checked, flex_hours: $("stFlex").checked, days_per_cutoff: Math.max(1, Math.round(+$("stDpc").value || 10)) };
     try { await A.saveSettings(s); settings = { ...settings, ...s }; B.toast("Settings saved"); } catch (err) { B.toast(err.message, "err"); }
   };
 
@@ -503,17 +505,21 @@
   $("pPayType").onchange = payTypeLabel;
   function renderPattern(s) {
     const base = s || { sched_start: "06:00:00", sched_end: "15:00:00" };
-    $("pPattern").innerHTML = [1, 2, 3, 4, 5, 6, 0].map((d) => {
-      const x = S.patternDay({ ...base, week_pattern: s?.week_pattern ?? null }, d);
+    const defLunch = s?.lunch_mins ?? (+$("pLunch")?.value || 60);
+    $("pPattern").innerHTML = `<div class="pr pr-head"><span>Day</span><span>Start</span><span>End</span><span>Lunch (min)</span></div>` + [1, 2, 3, 4, 5, 6, 0].map((d) => {
+      const x = S.patternDay({ ...base, week_pattern: s?.week_pattern ?? null }, d), raw = s?.week_pattern?.[String(d)];
       const st = x.kind === "shift" ? x.start : S.hhmm(base.sched_start), en = x.kind === "shift" ? x.end : S.hhmm(base.sched_end);
+      const l = raw && raw.l != null ? raw.l : defLunch;
       return `<div class="pr" data-d="${d}"><label><input type="checkbox" ${x.kind === "shift" ? "checked" : ""}> ${DSHORT[d]}</label>
-        <input type="time" value="${st}" aria-label="${DSHORT[d]} start"><input type="time" value="${en}" aria-label="${DSHORT[d]} end"></div>`; }).join("");
+        <input type="time" value="${st}" aria-label="${DSHORT[d]} start"><input type="time" value="${en}" aria-label="${DSHORT[d]} end">
+        <input type="number" min="0" max="240" step="5" value="${l}" aria-label="${DSHORT[d]} lunch minutes"></div>`; }).join("");
   }
   function readPattern() {
     const out = {};
     for (const r of $("pPattern").querySelectorAll(".pr")) {
-      const [cb, a, b] = r.querySelectorAll("input");
-      out[r.dataset.d] = cb.checked ? { s: a.value, e: b.value } : null;
+      if (!r.dataset.d) continue;
+      const [cb, a, b, l] = r.querySelectorAll("input");
+      out[r.dataset.d] = cb.checked ? { s: a.value, e: b.value, l: Math.max(0, Math.round(+l.value || 0)) } : null;
     }
     return out;
   }

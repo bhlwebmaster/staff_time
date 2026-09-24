@@ -132,14 +132,13 @@ All times are **UK time** (Europe/London). That's the "GMT" the team already use
 
 | Term | Rule |
 |---|---|
-| **Late** | Clocked in more than *grace* minutes (default 5) after that day's scheduled start. |
-| **Worked** | Time out − time in − lunch. If someone arrives early, counting starts at their scheduled start (there's a setting to change this). Lunch is the actual lunch taken if both lunch taps exist, otherwise their standard unpaid lunch. |
-| **Paid day** | The person's default schedule minus lunch, e.g. 6:00–15:00 with 60 min lunch = 8:00. |
-| **OT earned** | Worked minus the paid day, when positive, rounded **down** to whole blocks (default 15 min). Example: 36 min extra counts as 30. |
-| **Offset / short** | Worked minus the paid day, when negative. It's taken from the OT bank. |
-| **OT bank** | OT earned − offset/short for the period. |
-| **Regular hrs** | Worked hours, capped at the paid day. |
-| **Billable hrs** | Regular + OT earned. This is the figure for invoicing. |
+| **Worked** | Time out − time in − the lunch actually tapped (no lunch tapped = nothing taken off). |
+| **Expected** | That day's schedule minus its planned lunch (Staff → Usual week, lunch per day). |
+| **OT earned** | Worked − expected, in whole blocks (default 30 min: 45 extra → 30, 1:20 → 1:00). |
+| **Short** | Worked below expected. Covered by OT in the same cut-off first; the rest is undertime in payroll. |
+| **Late** | After start + grace. With "Judge by hours" (default), a day with its full hours isn't late. |
+| **No lunch logged** | Planned lunch but no lunch taps: shown as a flag to check. |
+| **Billable hrs** | Regular (capped at expected) + OT earned. |
 
 **Offset days:** before clocking in, staff can open "Different schedule today?" and set, for example, 6:30–15:00 with the note "Offset against 30-minute OT yesterday". The shorter day then draws from their OT bank.
 

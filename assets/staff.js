@@ -130,6 +130,7 @@
     if (c?.late) flags.push(`<span class="flag late">Late ${B.fmtMins(c.late)}</span>`);
     if (c?.complete && c.ot) flags.push(`<span class="flag ot">OT +${B.fmtMins(c.ot)}</span>`);
     if (c?.complete && c.short) flags.push(`<span class="flag short">Short ${B.fmtMins(c.short)}</span>`);
+    if (c?.noLunch) flags.push(`<span class="flag short">No lunch logged</span>`);
     $("tFlags").innerHTML = flags.join("");
 
     // actions

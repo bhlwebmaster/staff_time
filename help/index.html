@@ -562,7 +562,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
       <ol class="steps">
         <li><div><b>Staff → + Add person.</b> Enter the <b>Display name</b> (shown on the clock-in screen) and the <b>Timesheet name</b> (e.g. <code>GAMOTAN, VERGE</code>).</div></li>
         <li><div>Set their usual <b>Start / End</b> in UK time and their <b>unpaid lunch</b> in minutes. The paid day is calculated automatically.</div></li>
-        <li><div>Under <b>Usual week</b>, tick the days they work. Each day can have its own times; unticked days are rest days.</div></li>
+        <li><div>Under <b>Usual week</b>, tick the days they work. Each day has its own start, end and <b>lunch (minutes)</b>: use 0 for days without lunch (e.g. part-time, or a no-lunch day to leave early another day). Unticked days are rest days.</div></li>
         <li><div>For payroll, set their <b>Start date</b>, <b>Pay type</b> (<b>Hourly</b>, <b>Daily</b>, <b>Weekly</b>, <b>Bi-monthly</b> or <b>Monthly</b>) and <b>rate</b> in £. See <a href="#payroll">Payroll</a>.</div></li>
         <li><div>Click <b>Save</b>, then send them the staff link. They create their own PIN.</div></li>
       </ol>
@@ -603,11 +603,12 @@ a.brand:hover .mark { filter: brightness(1.08); }
       <div class="tablewrap" style="margin-top:0"><table>
         <thead><tr><th>Term</th><th>Rule</th></tr></thead>
         <tbody>
-          <tr><td><b>Late</b></td><td>Clocked in more than the <b>grace</b> minutes (default 5) after that day's scheduled start.</td></tr>
-          <tr><td><b>Worked</b></td><td>Time out − time in − lunch. Early arrivals count from the scheduled start unless you tick the setting.</td></tr>
-          <tr><td><b>Paid day</b></td><td>Usual schedule minus unpaid lunch (6:00–15:00 with 60 min lunch = 8:00).</td></tr>
-          <tr><td><b>OT earned</b></td><td>Worked − paid day, rounded down to whole blocks (default 15 min).</td></tr>
-          <tr><td><b>Offset / short</b></td><td>Worked below the paid day. It's taken from the OT bank.</td></tr>
+          <tr><td><b>Worked</b></td><td>Time out − time in − the lunch they tapped. No lunch tapped = nothing taken off.</td></tr>
+          <tr><td><b>Expected</b></td><td>That day's schedule minus its planned lunch (Staff → Usual week). Example: 6:00–15:00 with 60 lunch = 8:00; 7:00–11:00 with 0 lunch = 4:00.</td></tr>
+          <tr><td><b>OT earned</b></td><td>Worked − expected, counted in whole 30-minute blocks. 30 min extra = 0:30, 45 min = 0:30, 1:20 = 1:00, 1:30 = 1:30.</td></tr>
+          <tr><td><b>Short</b></td><td>Worked below expected. It's covered by OT earned in the same cut-off first; only what's left counts as undertime in payroll.</td></tr>
+          <tr><td><b>Late</b></td><td>Clocked in after the start + grace (default 5 min). With <b>Judge by hours</b> on, a day with its full hours isn't marked late.</td></tr>
+          <tr><td><b>No lunch logged</b></td><td>A day with a planned lunch but no lunch taps. The time counts as worked, so check it if they did take a break.</td></tr>
           <tr><td><b>Billable</b></td><td>Regular hours + OT earned.</td></tr>
         </tbody></table></div>
     </div>

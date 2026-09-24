@@ -75,36 +75,52 @@
   /** Standard paid minutes for a staff member's normal day (e.g. 6:00–15:00 minus 60 lunch = 480). */
   const standardMins = (staff) => minsOf(staff.sched_end) - minsOf(staff.sched_start) - (staff.lunch_mins ?? 60);
 
+  /** Planned unpaid lunch for a date: that weekday's lunch in the usual week, else the person's standard lunch. */
+  function plannedLunch(staff, dateStr) {
+    const g = new Date(dateStr + "T12:00:00Z").getUTCDay(), p = staff.week_pattern && staff.week_pattern[String(g)];
+    if (p && p.l != null && p.l !== "") return Number(p.l) || 0;
+    return staff.lunch_mins ?? 60;
+  }
+
   /**
    * Work out one day.
-   * - Late: clocked in after the day's scheduled start + grace.
-   * - Worked: from max(time in, scheduled start) (or time in, if early minutes count) to time out, minus lunch
-   *   (actual lunch if both lunch punches exist, otherwise the staff member's standard lunch).
-   * - Variance vs their standard paid day: above → OT credit (whole blocks only); below → drawn from OT bank / undertime.
+   * - Worked = time out − time in − the lunch actually tapped (no lunch tapped = nothing taken off).
+   *   Minutes before the scheduled start count only if Settings → "count early minutes" is on.
+   * - Expected = that day's scheduled start→end − that day's planned lunch (Staff → Usual week).
+   * - OT = worked beyond expected, in whole blocks (Settings, e.g. 30 min: 45 min extra → 30).
+   * - Short = worked below expected (taken from OT first, then counted as undertime in payroll).
+   * - Late: clocked in after start + grace. With "judge by hours" on, a complete day with its full hours isn't late.
+   * - noLunch: a complete day with a planned lunch but no lunch taps (worth a check).
    */
   function calcDay(row, staff, settings, now = new Date()) {
     const tz = settings.timezone;
     const sStart = zonedToDate(row.work_date, row.sched_start, tz);
     const sEnd = zonedToDate(row.work_date, row.sched_end, tz);
     const tin = d(row.time_in), tout = d(row.time_out), lo = d(row.lunch_out), li = d(row.lunch_in);
-    const std = standardMins(staff);
-    const out = { date: row.work_date, std, late: 0, worked: null, variance: null, ot: 0, short: 0, lunch: null,
+    let span = row.sched_start && row.sched_end ? minsOf(row.sched_end) - minsOf(row.sched_start) : standardMins(staff) + (staff.lunch_mins ?? 60);
+    if (span <= 0) span += 1440;                              // overnight shift
+    const planLunch = plannedLunch(staff, row.work_date);
+    const std = Math.max(0, span - planLunch);
+    const flex = settings.flex_hours !== false;
+    const out = { date: row.work_date, std, planLunch, late: 0, lateRaw: 0, worked: null, variance: null, ot: 0, short: 0, lunch: null, noLunch: false,
                   complete: !!(tin && tout), open: !!(tin && !tout), status: "absent", tin, tout, lo, li };
     if (tin && sStart) {
       const lateMs = tin - sStart;
-      if (lateMs > (settings.grace_mins ?? 5) * 60000) out.late = Math.round(lateMs / 60000);
+      if (lateMs > (settings.grace_mins ?? 5) * 60000) out.late = out.lateRaw = Math.round(lateMs / 60000);
     }
     out.lunch = lo && li ? Math.round((li - lo) / 60000) : null;
     if (tin && !tout) out.status = lo && !li ? "lunch" : "in";
     if (tout) out.status = "out";
     if (tin && tout) {
       const effIn = settings.count_early ? tin : new Date(Math.max(tin, sStart || tin));
-      const lunchMs = lo && li ? li - lo : (staff.lunch_mins ?? 60) * 60000;
+      const lunchMs = lo && li ? li - lo : 0;
       out.worked = Math.max(0, Math.round((tout - effIn - lunchMs) / 60000));
       out.variance = out.worked - std;
       const block = Math.max(1, settings.ot_block_mins || 1);
       if (out.variance > 0) out.ot = Math.floor(out.variance / block) * block;
       if (out.variance < 0) out.short = -out.variance;
+      if (flex && out.variance >= 0) out.late = 0;          // full hours done: starting late doesn't count
+      out.noLunch = planLunch > 0 && !(lo && li);
     }
     out.schedStart = sStart; out.schedEnd = sEnd;
     return out;
@@ -162,5 +178,5 @@
   function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
 
   window.BHL = { cfg, sb, configured, tzOffsetMs, zonedToDate, dateIn, hhmmIn, clockIn, clockStr, tzShort, minsOf,
-    fmtMins, hoursDec, prettyDate, standardMins, calcDay, summarise, whatsappText, esc, toast, copyText, lsGet, lsSet };
+    fmtMins, hoursDec, prettyDate, standardMins, plannedLunch, calcDay, summarise, whatsappText, esc, toast, copyText, lsGet, lsSet };
 })();

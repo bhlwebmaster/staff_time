@@ -22,6 +22,11 @@ create table if not exists public.settings (
   company_name    text    not null default 'BioHack London'
 );
 insert into public.settings (id) values (1) on conflict (id) do nothing;
+-- Judge by hours: no Late/undertime when the day's hours are complete; short time uses OT first
+alter table public.settings add column if not exists flex_hours boolean not null default true;
+alter table public.settings add column if not exists rules_version int not null default 0;
+-- Sept 2026 rule update (runs once): OT in 30-minute blocks, count from actual time in
+update public.settings set ot_block_mins = 30, count_early = true, rules_version = 2 where rules_version < 2;
 
 create table if not exists public.staff (
   id               uuid primary key default gen_random_uuid(),
@@ -159,6 +164,9 @@ create trigger attendance_audit_trg
 -- ---------- Staff-facing functions (callable with the public anon key) ----------
 
 -- Who's on the team + today's status. No PINs, no history.
+-- Each person's usual week (also created in schedule.sql). Needed here because roster() returns it.
+alter table public.staff add column if not exists week_pattern jsonb;
+
 create or replace function public.roster() returns json
 language sql stable security definer set search_path = public as $$
   with s as (select * from settings where id = 1),
@@ -167,12 +175,12 @@ language sql stable security definer set search_path = public as $$
     'now',      now(),
     'today',    (select today from d),
     'settings', (select json_build_object('timezone', timezone, 'grace_mins', grace_mins,
-                   'ot_block_mins', ot_block_mins, 'count_early', count_early, 'company_name', company_name) from s),
+                   'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours, 'company_name', company_name) from s),
     'staff', coalesce((
       select json_agg(json_build_object(
         'id', st.id, 'display_name', st.display_name, 'full_name', st.full_name,
         'has_pin', st.pin_hash is not null,
-        'sched_start', st.sched_start, 'sched_end', st.sched_end, 'lunch_mins', st.lunch_mins,
+        'sched_start', st.sched_start, 'sched_end', st.sched_end, 'lunch_mins', st.lunch_mins, 'week_pattern', st.week_pattern,
         'avatar', st.avatar, 'photo', st.photo, 'tagline', st.tagline, 'color', st.color,
         'recent', coalesce((select json_agg(json_build_object('work_date', r.work_date, 'sched_start', r.sched_start,
             'sched_end', r.sched_end, 'time_in', r.time_in, 'lunch_out', r.lunch_out, 'lunch_in', r.lunch_in,
@@ -290,10 +298,10 @@ begin
     'ok', true,
     'now', now(),
     'staff', json_build_object('id', s.id, 'display_name', s.display_name, 'full_name', s.full_name,
-               'sched_start', s.sched_start, 'sched_end', s.sched_end, 'lunch_mins', s.lunch_mins,
+               'sched_start', s.sched_start, 'sched_end', s.sched_end, 'lunch_mins', s.lunch_mins, 'week_pattern', s.week_pattern,
                'avatar', s.avatar, 'photo', s.photo, 'tagline', s.tagline, 'color', s.color),
     'settings', (select json_build_object('timezone', timezone, 'grace_mins', grace_mins,
-               'ot_block_mins', ot_block_mins, 'count_early', count_early) from settings where id = 1),
+               'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours) from settings where id = 1),
     -- this month + last month, for the personal OT bank
     'rows', coalesce((select json_agg(x order by x.work_date) from (
                select work_date, sched_start, sched_end, time_in, lunch_out, lunch_in, time_out, note
@@ -779,5 +787,50 @@ grant execute on function public.my_payslips(uuid, text)                        
 grant execute on function public.request_week(uuid, text, date, jsonb, text)                to anon, authenticated;
 grant execute on function public.my_schedule_requests(uuid, text)                           to anon, authenticated;
 grant execute on function public.cancel_schedule_request(uuid, text, uuid)                  to anon, authenticated;
+
+-- ------------------------------------------------------------
+-- Keep the privileged code out of the public API (Supabase's recommended pattern)
+-- Each function below is moved into a "private" schema (not reachable through the API).
+-- A thin public wrapper with the same name runs with the caller's own rights and just
+-- calls the private version, so the app keeps working exactly as before.
+-- Safe to re-run: it only moves a function that is still the privileged version.
+-- ------------------------------------------------------------
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to anon, authenticated;
+
+do $mv$
+declare
+  f record; def text; roles text;
+begin
+  for f in
+    select p.oid, p.proname, p.prosecdef,
+           pg_get_function_arguments(p.oid) as args,
+           pg_get_function_identity_arguments(p.oid) as ident,
+           pg_get_function_result(p.oid) as result,
+           coalesce(array_to_string(array(select quote_ident(a) from unnest(p.proargnames) a), ', '), '') as names
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname in (
+      'roster', 'week_schedule', 'punch', 'set_pin', 'set_profile', 'my_payslips', 'request_week',
+      'my_schedule_requests', 'cancel_schedule_request',                                   -- staff app (PIN-checked, no login)
+      'admin_staff', 'decide_schedule_request', 'is_admin', 'is_full_admin', 'my_role')    -- signed-in admin / finance
+  loop
+    if f.prosecdef then
+      -- 1. the privileged version goes to private (create or replace keeps anything that depends on it)
+      def := regexp_replace(pg_get_functiondef(f.oid), 'FUNCTION public\.', 'FUNCTION private.');
+      execute def;
+      -- 2. the public name becomes a plain wrapper that runs with the caller's own rights
+      execute format('create or replace function public.%I(%s) returns %s language sql volatile security invoker set search_path = %L as %L',
+                     f.proname, f.args, f.result, '', format('select private.%I(%s)', f.proname, f.names));
+    end if;
+    roles := case when f.proname in ('admin_staff', 'decide_schedule_request', 'is_admin', 'is_full_admin', 'my_role')
+                  then 'authenticated' else 'anon, authenticated' end;
+    execute format('revoke all on function private.%I(%s) from public, anon, authenticated', f.proname, f.ident);
+    execute format('grant execute on function private.%I(%s) to %s', f.proname, f.ident, roles);
+    execute format('revoke all on function public.%I(%s) from public, anon, authenticated', f.proname, f.ident);
+    execute format('grant execute on function public.%I(%s) to %s', f.proname, f.ident, roles);
+  end loop;
+end
+$mv$;
 
 notify pgrst, 'reload schema';
