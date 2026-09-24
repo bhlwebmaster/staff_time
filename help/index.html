@@ -563,7 +563,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
         <li><div><b>Staff → + Add person.</b> Enter the <b>Display name</b> (shown on the clock-in screen) and the <b>Timesheet name</b> (e.g. <code>GAMOTAN, VERGE</code>).</div></li>
         <li><div>Set their usual <b>Start / End</b> in UK time and their <b>unpaid lunch</b> in minutes. The paid day is calculated automatically.</div></li>
         <li><div>Under <b>Usual week</b>, tick the days they work. Each day can have its own times; unticked days are rest days.</div></li>
-        <li><div>For payroll, set their <b>Start date</b>, <b>Pay type</b> (<b>Daily rate</b> or <b>Per pay period</b>) and <b>rate</b> in £. See <a href="#payroll">Payroll</a>.</div></li>
+        <li><div>For payroll, set their <b>Start date</b>, <b>Pay type</b> (<b>Hourly</b>, <b>Daily</b>, <b>Weekly</b>, <b>Bi-monthly</b> or <b>Monthly</b>) and <b>rate</b> in £. See <a href="#payroll">Payroll</a>.</div></li>
         <li><div>Click <b>Save</b>, then send them the staff link. They create their own PIN.</div></li>
       </ol>
       <ul>
@@ -640,8 +640,8 @@ a.brand:hover .mark { filter: brightness(1.08); }
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div><b>Once per person:</b> in <b>Staff → Edit</b>, set their <b>Start date</b>, <b>Pay type</b> and <b>rate</b>. With <b>Daily rate</b>, enter what they earn per day (e.g. £30). With <b>Per pay period</b>, enter the fixed amount for the whole period (e.g. £300).</div></li>
-        <li><div>Go to <b>Payroll → + New period</b>. Enter the start, end and payment dates, the <b>exchange rate</b> (₱ per £1) and the <b>total transfer fee</b> (₱).</div></li>
+        <li><div><b>Once per person:</b> in <b>Staff → Edit</b>, set their <b>Start date</b>, <b>Pay type</b> and <b>rate</b> (see the table below). Most of the team is <b>Bi-monthly</b>: the rate is what they earn per cut-off (e.g. £300).</div></li>
+        <li><div>Go to <b>Payroll → + New period</b>. Pay is <b>bi-monthly</b>: pick the <b>Cut-off</b> (1st–15th or 16th–end of the month) and the dates fill in. Check the payment date, then add the <b>exchange rate</b> (₱ per £1) and the <b>total transfer fee</b> (₱).</div></li>
         <li><div>Check the sheet. <b>Days worked, lates, undertime and absences fill in automatically</b> from attendance and the schedule. To change a number, type over it: it turns orange, and <b>↺</b> puts the automatic value back. Add <b>Other deductions</b> (CA, loans, taxes) with a short note.</div></li>
         <li><div>Click <b>Save draft</b> any time. When it's right, click <b>Finalise &amp; publish</b> (twice). Staff can then see their payslips in the app.</div></li>
         <li><div>Pick an <b>Employee name</b> to see their payslip, then click <b>Download this payslip (PDF)</b>. Or use <b>All payslips PDF</b> for everyone at once. Use <b>CSV</b> for Excel.</div></li>
@@ -654,14 +654,21 @@ a.brand:hover .mark { filter: brightness(1.08); }
   <div class="tablewrap"><table>
     <thead><tr><th>Item</th><th>Rule</th></tr></thead>
     <tbody>
-      <tr><td><b>Pay type: Daily rate</b></td><td>Pay = (days worked + paid leave days) × daily rate. Example: 9 days worked + 1 vacation day × £30 = £300. Days not worked simply aren't paid.</td></tr>
-      <tr><td><b>Pay type: Per pay period</b></td><td>A fixed amount for the period, like a salary. Absent days are taken off at rate ÷ working days. Example: £300 ÷ 10 days = £30 per absent day.</td></tr>
-      <tr><td><b>Working days</b></td><td>Days in the period with a shift or paid leave in the schedule. Rest days don't count.</td></tr>
-      <tr><td><b>Per-minute rate</b></td><td>Daily rate ÷ paid minutes in their day. Example: £30 ÷ 480 = £0.0625 a minute.</td></tr>
+      <tr><td><b>Cut-offs</b></td><td>Two pay periods a month: <b>1st–15th</b> and <b>16th–end</b> (30th or 31st). A cut-off is usually <b>10 working days</b> (Settings → Working days per cut-off).</td></tr>
+      <tr><td><b>Hourly</b></td><td>Pay = (regular hours worked + paid leave/holiday days × their paid hours per day) × hourly rate. Being late or leaving early already means fewer hours, so it isn't deducted again.</td></tr>
+      <tr><td><b>Daily</b></td><td>Pay = (days worked + paid leave and holiday days) × daily rate. Example: 9 days worked + 1 holiday × £30 = £300. Days not worked simply aren't paid.</td></tr>
+      <tr><td><b>Weekly</b></td><td>Daily rate = weekly rate ÷ 5. Pay per cut-off = daily rate × 10 (two weeks). Example: £150 a week → £30 a day → £300 per cut-off.</td></tr>
+      <tr><td><b>Bi-monthly</b></td><td>The rate is the pay for one cut-off. Daily rate = rate ÷ 10. Example: £300 per cut-off → £30 a day.</td></tr>
+      <tr><td><b>Monthly</b></td><td>Half the monthly rate each cut-off. Example: £600 a month → £300 per cut-off → £30 a day.</td></tr>
+      <tr><td><b>Weekly, Bi-monthly, Monthly: absences</b></td><td>The cut-off pay stays the same whether it has 10 or 11 working days. Absent days are taken off at the daily rate.</td></tr>
+      <tr><td><b>Mixed pay types</b></td><td>Everyone can be on a different pay type in the same cut-off. Each person's line uses their own type and rate. The totals, peso amounts and transfer-fee split then work on everyone's net pay together.</td></tr>
+      <tr><td><b>Payslip PDF</b></td><td>A full A4 page with The Biohack Group logo, the employee and pay details, earnings, deductions, net pay and the peso amount received. The footer says it's computer-generated (no signature needed) and names the Employer.</td></tr>
+      <tr><td><b>Public holidays (Philippines)</b></td><td>A holiday on someone's working day is a <b>paid day off</b>, like leave. It's already in the schedule, so there's nothing to do. The list for 2026 and 2027 is under <b>Settings → Public holidays</b>. Add new dates (such as Eid'l Fitr and Eid'l Adha for 2027, when they're announced) there, or untick <b>Paid</b> for a no-work-no-pay day. Extra holiday pay for working on a holiday isn't added automatically: use the Days worked box or add it separately.</td></tr>
+      <tr><td><b>Per-minute rate</b></td><td>Daily rate ÷ paid minutes in their day. Example: £30 ÷ 480 = £0.0625 a minute. Used for lates and undertime (not for Hourly).</td></tr>
       <tr><td><b>Lates</b></td><td>Minutes after the day's start time (beyond the grace minutes) × per-minute rate.</td></tr>
       <tr><td><b>Undertime</b></td><td>Minutes before the day's end time × per-minute rate.</td></tr>
-      <tr><td><b>Absences</b></td><td>Planned shifts with no clock-in (counted up to yesterday, so today never shows as absent), plus unpaid leave days. <b>Per period:</b> deducted at the daily rate. <b>Daily rate:</b> shown for information, since those days aren't paid anyway. Vacation, sick leave, emergency leave and holidays are paid.</td></tr>
-      <tr><td><b>New starter</b></td><td>Per period: paid only for working days from their start date. Daily rate: paid for days worked, as normal.</td></tr>
+      <tr><td><b>Absences</b></td><td>Planned shifts with no clock-in (counted up to yesterday, so today never shows as absent), plus unpaid leave days. <b>Weekly, Bi-monthly, Monthly:</b> deducted at the daily rate. <b>Hourly, Daily:</b> shown for information, since those days aren't paid anyway. Vacation, sick leave, emergency leave and holidays are paid.</td></tr>
+      <tr><td><b>New starter</b></td><td>Weekly, Bi-monthly, Monthly: paid the daily rate for each working day from their start date (never more than the full cut-off). Hourly and Daily: paid for what they worked, as normal.</td></tr>
       <tr><td><b>Net pay</b></td><td>Gross − lates − undertime − absences − other deductions.</td></tr>
       <tr><td><b>Pesos</b></td><td>Net pay × exchange rate.</td></tr>
       <tr><td><b>Transfer fee share</b></td><td>The total fee is split by each person's share of everyone's net pay. Amount received = net in pesos − their share of the fee.</td></tr>

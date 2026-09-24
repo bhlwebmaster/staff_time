@@ -43,6 +43,17 @@ begin
   if extract(isodow from p_date) >= 6 then return query select 'rest'::text, null::time, null::time; return; end if;
   return query select 'shift'::text, s.sched_start, s.sched_end;
 end $$;
+-- Same as above, but a public holiday on a working day counts as 'holiday' (what the schedule shows by default)
+create or replace function public._base_day(p_staff uuid, p_date date)
+returns table (kind text, start_time time, end_time time)
+language plpgsql stable security definer set search_path = public as $$
+declare pd record;
+begin
+  select * into pd from _pattern_day(p_staff, p_date);
+  if pd.kind = 'shift' and exists (select 1 from holidays h where h.holiday_date = p_date) then
+    return query select 'holiday'::text, pd.start_time, pd.end_time; return; end if;
+  return query select pd.kind, pd.start_time, pd.end_time;
+end $$;
 
 -- Staff: send (or replace) a request for one week
 create or replace function public.request_week(p_staff uuid, p_pin text, p_week date, p_days jsonb, p_note text)
@@ -111,7 +122,7 @@ begin
   select email into v_by from admins where user_id = auth.uid();
   if p_approve then
     for k, v in select * from jsonb_each(r.days) loop
-      select * into pd from _pattern_day(r.staff_id, k::date);
+      select * into pd from _base_day(r.staff_id, k::date);
       if v->>'kind' = pd.kind and (v->>'kind' <> 'shift' or ((v->>'s')::time = pd.start_time and (v->>'e')::time = pd.end_time)) then
         delete from schedule_days where staff_id = r.staff_id and work_date = k::date;   -- same as usual week
       else
@@ -132,6 +143,7 @@ begin
 end $$;
 
 revoke all on function public._pattern_day(uuid, date) from public, anon, authenticated;
+revoke all on function public._base_day(uuid, date) from public, anon, authenticated;
 revoke all on function public._team_today() from public, anon, authenticated;
 grant execute on function public.request_week(uuid, text, date, jsonb, text) to anon, authenticated;
 grant execute on function public.my_schedule_requests(uuid, text) to anon, authenticated;

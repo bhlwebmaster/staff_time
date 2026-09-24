@@ -11,6 +11,7 @@
   const friendly = (e) => /duplicate|unique/i.test(e.message) ? "There is already an entry for that person on that date." : e.message;
 
   // ---------- auth ----------
+  let holidays = [];
   async function boot() {
     if (!api.ready) return;
     const session = await A.session();
@@ -21,7 +22,8 @@
     const me = await A.me().catch(() => null); meId = me?.id; $("meEmail").textContent = me?.email || "";
     $("vLogin").hidden = true; $("tabs").hidden = false; $("signOut").hidden = false;
     settings = await A.settings();
-    staff = await A.staff();
+    [staff, holidays] = await Promise.all([A.staff(), A.holidays().catch(() => [])]);
+    B.sched.setHolidays(holidays);
     fillPeople();
     setRange("tm");
     $("dayPick").value = today();
@@ -242,7 +244,7 @@
     $("pSS").value = (s?.sched_start || "06:00").slice(0, 5); $("pSE").value = (s?.sched_end || "15:00").slice(0, 5);
     $("pLunch").value = s?.lunch_mins ?? 60; $("pActive").value = String(s?.active ?? true);
     $("pStartDate").value = s?.start_date || ""; $("pRate").value = s?.pay_rate ?? "";
-    $("pPayType").value = s?.pay_type || "daily"; payTypeLabel();
+    $("pPayType").value = s ? B.payroll.payType(s.pay_type) : "bimonthly"; payTypeLabel();
     renderPattern(s);
     $("pReset").hidden = !s?.has_pin;
     $("pPhotoRow").hidden = !s?.photo; $("pAv").innerHTML = s ? B.avatarHtml(s, 36) : "";
@@ -274,12 +276,48 @@
   function renderSettings() {
     $("stCompany").value = settings.company_name; $("stTz").value = settings.timezone;
     $("stGrace").value = settings.grace_mins; $("stBlock").value = settings.ot_block_mins; $("stEarly").checked = settings.count_early;
+    $("stDpc").value = settings.days_per_cutoff ?? 10;
+    renderHolidays();
   }
   $("setForm").onsubmit = async (e) => {
     e.preventDefault();
     const s = { company_name: $("stCompany").value.trim(), timezone: $("stTz").value, grace_mins: +$("stGrace").value,
-      ot_block_mins: Math.max(1, +$("stBlock").value), count_early: $("stEarly").checked };
+      ot_block_mins: Math.max(1, +$("stBlock").value), count_early: $("stEarly").checked, days_per_cutoff: Math.max(1, Math.round(+$("stDpc").value || 10)) };
     try { await A.saveSettings(s); settings = { ...settings, ...s }; B.toast("Settings saved"); } catch (err) { B.toast(err.message, "err"); }
+  };
+
+  // ---------- public holidays ----------
+  function renderHolidays() {
+    const years = [...new Set([today().slice(0, 4), ...holidays.map((h) => String(h.holiday_date).slice(0, 4))])].sort();
+    const cur = $("holYear").value || today().slice(0, 4);
+    $("holYear").innerHTML = years.map((y) => `<option ${y === cur ? "selected" : ""}>${y}</option>`).join("");
+    const list = holidays.filter((h) => String(h.holiday_date).startsWith($("holYear").value)), edit = role === "admin";
+    $("holTable").innerHTML = `<thead><tr><th>Date</th><th>Holiday</th><th>Type</th><th>Paid</th>${edit ? "<th></th>" : ""}</tr></thead><tbody>${list.map((h) => `<tr data-d="${h.holiday_date}">
+      <td class="num">${B.prettyDate(h.holiday_date, { weekday: "short", day: "numeric", month: "short" })}</td><td>${B.esc(h.name)}</td>
+      <td>${h.kind === "special" ? "Special non-working" : "Regular"}</td>
+      <td><input type="checkbox" data-paid ${h.paid !== false ? "checked" : ""} ${edit ? "" : "disabled"} aria-label="Paid"></td>
+      ${edit ? `<td><button class="btn ghost sm" type="button" data-rm>Remove</button></td>` : ""}</tr>`).join("") || `<tr><td colspan="5" class="muted">No holidays for this year yet.</td></tr>`}</tbody>`;
+  }
+  async function reloadHolidays() { holidays = await A.holidays(); B.sched.setHolidays(holidays); renderHolidays(); }
+  $("holYear").onchange = renderHolidays;
+  $("holTable").addEventListener("change", async (e) => {
+    const cb = e.target.closest("input[data-paid]"); if (!cb) return;
+    const h = holidays.find((x) => x.holiday_date === cb.closest("tr").dataset.d);
+    try { await A.saveHoliday({ ...h, paid: cb.checked }); h.paid = cb.checked; B.sched.setHolidays(holidays); B.toast(cb.checked ? "Paid holiday" : "Marked as unpaid (no work, no pay)"); }
+    catch (err) { cb.checked = !cb.checked; B.toast(err.message, "err"); }
+  });
+  $("holTable").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-rm]"); if (!b) return;
+    const d = b.closest("tr").dataset.d;
+    if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Click again"; return; }
+    try { await A.deleteHoliday(d); location.reload(); } catch (err) { B.toast(err.message, "err"); }
+  });
+  $("holForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const h = { holiday_date: $("holDate").value, name: $("holName").value.trim(), kind: $("holKind").value, paid: true };
+    if (!h.holiday_date || !h.name) return;
+    try { await A.saveHoliday(h); $("holName").value = ""; $("holYear").value = h.holiday_date.slice(0, 4); await reloadHolidays(); B.toast("Holiday added"); }
+    catch (err) { B.toast(err.message, "err"); }
   };
 
   // ---------- reports (tally by day / week / month / custom) ----------
@@ -459,8 +497,8 @@
   let schFrom = null, schDays = [], schDraft = {};
   const DSHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   function payTypeLabel() {
-    const d = $("pPayType").value === "daily";
-    $("pRateLabel").textContent = d ? "Daily rate (£)" : "Rate per pay period (£)"; $("pRate").placeholder = d ? "e.g. 30" : "e.g. 300";
+    const t = B.payroll.TYPES[$("pPayType").value] || B.payroll.TYPES.daily;
+    $("pRateLabel").textContent = t.rateLabel; $("pRate").placeholder = t.eg;
   }
   $("pPayType").onchange = payTypeLabel;
   function renderPattern(s) {
@@ -531,7 +569,7 @@
     renderSchedule();
   }
   function isChanged(s, d, e) {
-    const u = S.patternDay(s, S.dow(d));
+    const u = S.effective(s, d, null);   // usual week, with public holidays
     return e.kind !== u.kind || (e.kind === "shift" && (e.start !== u.start || e.end !== u.end));
   }
   function renderSchedule() {
@@ -562,7 +600,7 @@
   $("schNext").onclick = () => loadSchedule(S.addDays(schFrom, 7));
   $("schNow").onclick = () => loadSchedule(S.weekStart(today()));
   $("schReset").onclick = () => {
-    for (const k of Object.keys(schDraft)) { const [sid, d] = k.split("|"); schDraft[k] = { ...S.patternDay(byId(sid), S.dow(d)) }; }
+    for (const k of Object.keys(schDraft)) { const [sid, d] = k.split("|"); schDraft[k] = S.effective(byId(sid), d, null); }
     renderSchedule(); B.toast("Reset to everyone's usual week. Click Save week to keep it.");
   };
   $("schCopy").onclick = async () => {
@@ -629,7 +667,7 @@
     $("paySave").hidden = $("payFinal").hidden = final; $("payReopen").hidden = !final;
     const noRate = payLines.filter((l) => !l.rate).map((l) => l.employee_name);
     $("payHint").innerHTML = (noRate.length ? `<span class="warn">No pay rate set for ${noRate.map(B.esc).join(", ")}. Add it under Staff → Edit.</span> ` : "") +
-      (edit ? "Days worked, lates, undertime and absences are filled in from attendance and the schedule. Type in any box to change it (it turns orange); click ↺ to go back to the attendance value." : final ? "This period is locked. Reopen it to make changes." : "");
+      (edit ? "Days and hours worked, lates, undertime and absences are filled in from attendance, the schedule and public holidays. Hours only affect hourly pay. Type in any box to change it (it turns orange); click ↺ to go back to the attendance value." : final ? "This period is locked. Reopen it to make changes." : "");
     const T = P.totals(payLines);
     const inp = (l, k, cls = "") => {
       const ov = payOver[l.staff_id]?.[k];
@@ -643,17 +681,17 @@
         title="${has ? `Changed by admin. From attendance: ${autoV}` : "From attendance. Type to change."}">${has ? `<button type="button" class="undo" data-s="${l.staff_id}" data-k="${k}" title="Back to the attendance value (${B.esc(autoV)})" aria-label="Reset to ${B.esc(autoV)}">↺</button>` : ""}</span>`;
     };
     $("paySheet").innerHTML = `<thead><tr><th style="text-align:left">Employee name</th><th>Start date</th><th>Payroll period</th><th>Rate</th>
-      <th>Days worked</th><th>Lates<br>(mins)</th><th>Undertime<br>(mins)</th><th>Absences</th><th>Other deductions<br>(CA, loans, taxes)</th><th>Note</th>
+      <th>Days worked</th><th>Hours<br>worked</th><th>Lates<br>(mins)</th><th>Undertime<br>(mins)</th><th>Absences</th><th>Other deductions<br>(CA, loans, taxes)</th><th>Note</th>
       <th>Total deductions</th><th>Gross pay</th><th>Net pay</th><th>Exchange rate</th><th>Gross pay<br>(PHP)</th><th>Net pay<br>(PHP)</th><th>Fee share</th><th>Received<br>(PHP)</th></tr></thead>
       <tbody>${payLines.map((l) => `<tr>
         <td><b>${B.esc(l.employee_name)}</b></td><td class="num">${P.usDate(l.start_date)}</td><td>${P.period(curP)}</td>
-        <td class="num">${P.GBP(l.rate)}<span class="sub">${l.pay_type === "daily" ? `per day · ${l.paid_days} paid` : "per period"}</span></td><td class="num">${inp(l, "days_worked")}</td><td class="num">${inp(l, "late_mins")}</td>
+        <td class="num">${P.GBP(l.rate)}<span class="sub">${P.TYPES[l.pay_type].short}${l.pay_type === "hourly" ? ` · ${l.paid_hours} h paid` : l.pay_type === "daily" ? ` · ${l.paid_days} paid` : ""}</span></td><td class="num">${inp(l, "days_worked")}</td><td class="num">${inp(l, "hours_worked")}</td><td class="num">${inp(l, "late_mins")}</td>
         <td class="num">${inp(l, "undertime_mins")}</td><td class="num">${inp(l, "absences")}</td><td class="num">${inp(l, "other_ded")}</td><td>${inp(l, "other_note", "note")}</td>
         <td class="num">${P.GBP(l.total_ded)}</td><td class="num">${P.GBP(l.gross)}</td><td class="num"><b>${P.GBP(l.net)}</b></td>
         <td class="num">${l.exchange_rate ? Number(l.exchange_rate).toFixed(2) : "—"}</td><td class="num">${P.PHP(l.gross_php)}</td><td class="num hl">${P.PHP(l.net_php)}</td>
         <td class="num">${((+l.fee_share || 0) * 100).toFixed(2)}%</td><td class="num"><b>${P.PHP(l.received_php)}</b></td></tr>`).join("")
-        || `<tr><td colspan="18" class="muted">No active staff in this period.</td></tr>`}</tbody>
-      <tfoot><tr><td colspan="10" style="text-align:right">TOTAL</td><td class="num">${P.GBP(T.total_ded)}</td><td class="num">${P.GBP(T.gross)}</td><td class="num">${P.GBP(T.net)}</td>
+        || `<tr><td colspan="19" class="muted">No active staff in this period.</td></tr>`}</tbody>
+      <tfoot><tr><td colspan="11" style="text-align:right">TOTAL</td><td class="num">${P.GBP(T.total_ded)}</td><td class="num">${P.GBP(T.gross)}</td><td class="num">${P.GBP(T.net)}</td>
         <td></td><td class="num">${P.PHP(T.gross_php)}</td><td class="num">${P.PHP(T.net_php)}</td><td></td><td class="num">${P.PHP(T.received_php)}</td></tr></tfoot>`;
     const cur = $("slipWho").value;
     $("slipWho").innerHTML = payLines.map((l) => `<option value="${l.staff_id}">${B.esc(l.employee_name)}</option>`).join("");
@@ -693,14 +731,14 @@
     doc.save(`Payslips_${curP.start_date}_to_${curP.end_date}.pdf`);
   };
   $("payCsv").onclick = () => download(`Payroll_${curP.start_date}_to_${curP.end_date}.csv`, [
-    ["Employee name", "Start date", "Payroll period", "Pay type", "Rate (GBP)", "Paid days", "Days worked", "Lates (mins)", "Undertime (mins)", "Absences", "Late ded (GBP)", "Undertime ded (GBP)",
+    ["Employee name", "Start date", "Payroll period", "Pay type", "Rate (GBP)", "Paid days", "Paid hours", "Days worked", "Hours worked", "Lates (mins)", "Undertime (mins)", "Absences", "Late ded (GBP)", "Undertime ded (GBP)",
       "Absence ded (GBP)", "Other deductions (GBP)", "Note", "Total deductions (GBP)", "Gross pay (GBP)", "Net pay (GBP)", "Exchange rate", "Gross pay (PHP)", "Net pay (PHP)",
       "Transfer fee share", "Transfer fee (PHP)", "Amount received (PHP)"],
-    ...payLines.map((l) => [l.employee_name, P.usDate(l.start_date), P.period(curP), l.pay_type === "daily" ? "Daily" : "Per period", l.rate, l.paid_days, l.days_worked, l.late_mins, l.undertime_mins, l.absences, l.late_ded,
+    ...payLines.map((l) => [l.employee_name, P.usDate(l.start_date), P.period(curP), P.TYPES[l.pay_type].label, l.rate, l.paid_days, l.paid_hours, l.days_worked, l.hours_worked, l.late_mins, l.undertime_mins, l.absences, l.late_ded,
       l.undertime_ded, l.absence_ded, l.other_ded, l.other_note || "", l.total_ded, l.gross, l.net, l.exchange_rate ?? "", l.gross_php ?? "", l.net_php ?? "",
       ((+l.fee_share || 0) * 100).toFixed(2) + "%", l.fee_php ?? "", l.received_php ?? ""]),
   ]);
-  const KEEP = ["employee_name", "start_date", "rate", "pay_type", "paid_days", "days_scheduled", "days_worked", "late_mins", "undertime_mins", "absences", "late_ded", "undertime_ded",
+  const KEEP = ["employee_name", "start_date", "rate", "pay_type", "paid_days", "paid_hours", "days_scheduled", "days_worked", "hours_worked", "late_mins", "undertime_mins", "absences", "late_ded", "undertime_ded",
     "absence_ded", "other_ded", "other_note", "total_ded", "gross", "net", "exchange_rate", "gross_php", "net_php", "fee_share", "fee_php", "received_php"];
   async function savePayroll(status) {
     const p = { id: curP.id, exchange_rate: $("payFx").value === "" ? null : +$("payFx").value, transfer_fee: +$("payFee").value || 0 };
@@ -728,15 +766,25 @@
 
   // period dialog
   let editingPeriod = null;
+  const cutLabel = (c) => `${+c.start_date.slice(8)}–${+c.end_date.slice(8)} ${B.prettyDate(c.start_date, { month: "long", year: "numeric" })}`;
+  function fillCut(c) { $("ppStart").value = c.start_date; $("ppEnd").value = c.end_date; $("ppPay").value = P.addDays(c.end_date, 1); }
   function openPeriodDlg(p) {
     editingPeriod = p;
     const last = periods[0];
-    const start = p?.start_date || (last ? P.addDays(last.end_date, 1) : today());
+    // New period: the cut-off after the latest one, or the current cut-off (1–15 / 16–end)
+    const def = p ? P.cutoffOf(p.start_date) : last ? P.nextCutoff(P.cutoffOf(last.end_date)) : P.cutoffOf(today());
+    const opts = []; let c = P.prevCutoff(P.prevCutoff(def));
+    for (let i = 0; i < 7; i++) { opts.push(c); c = P.nextCutoff(c); }
+    const isCut = !p || (p.start_date === def.start_date && p.end_date === def.end_date);
+    $("ppCut").innerHTML = opts.map((o) => `<option value="${o.start_date}|${o.end_date}" ${o.start_date === def.start_date && isCut ? "selected" : ""}>${cutLabel(o)}</option>`).join("")
+      + `<option value="" ${isCut ? "" : "selected"}>Custom dates</option>`;
     $("periodTitle").textContent = p ? "Edit pay period" : "New pay period";
-    $("ppStart").value = start; $("ppEnd").value = p?.end_date || P.addDays(start, 13); $("ppPay").value = p?.pay_date || P.addDays(start, 14);
+    if (p) { $("ppStart").value = p.start_date; $("ppEnd").value = p.end_date; $("ppPay").value = p.pay_date; } else fillCut(def);
     $("ppFx").value = p?.exchange_rate ?? (last?.exchange_rate ?? ""); $("ppFee").value = p?.transfer_fee ?? 0;
     $("ppDel").hidden = !p; $("periodDlg").showModal();
   }
+  $("ppCut").onchange = () => { const v = $("ppCut").value; if (!v) return; const [a, b] = v.split("|"); fillCut({ start_date: a, end_date: b }); };
+  ["ppStart", "ppEnd"].forEach((id) => $(id).addEventListener("input", () => { $("ppCut").value = ""; }));
   $("payNewPeriod").onclick = () => openPeriodDlg(null);
   $("payFirst").onclick = () => openPeriodDlg(null);
   $("payEditPeriod").onclick = () => openPeriodDlg(curP);

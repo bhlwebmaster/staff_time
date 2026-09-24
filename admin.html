@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260926d">
+<link rel="stylesheet" href="assets/style.css?v=20260928a">
 <style>
   main { padding-block: 22px 70px; }
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -309,10 +309,25 @@
         <label class="f">Credit OT in blocks of (minutes)<input type="number" id="stBlock" min="1" max="60"></label>
       </div>
       <label class="check"><input type="checkbox" id="stEarly"> Count minutes before scheduled start as worked time</label>
+      <label class="f" style="max-width:300px">Working days per cut-off<input type="number" id="stDpc" min="1" max="16" step="1"></label>
+      <p class="muted" style="margin:0;font-size:13px">Pay is bi-monthly (1st–15th, 16th–end). For Weekly, Bi-monthly and Monthly pay, the daily rate = pay per cut-off ÷ this number. Absences, lates and undertime are deducted from that.</p>
       <p class="muted" style="margin:0;font-size:13px">Worked time = time out − (time in, or scheduled start if they arrived early) − lunch. Anything above the person's normal paid day
         is OT credit in whole blocks; anything below is drawn from their OT bank (an offset) or shows as short.</p>
       <div><button class="btn primary" type="submit">Save settings</button></div>
     </form>
+    <div class="card pad stack" style="max-width:820px;margin-top:16px">
+      <div class="row" style="flex-wrap:wrap;gap:8px"><div><div class="eyebrow">Philippines</div><h2 style="font-size:19px;margin-top:2px">Public holidays</h2></div><span class="spacer"></span>
+        <select id="holYear" aria-label="Year" style="width:auto;min-width:110px"></select></div>
+      <p class="muted" style="margin:0;font-size:13px">On a holiday, anyone scheduled to work gets a paid day off. It shows on the schedule and in payroll automatically.
+        Untick <b>Paid</b> for a no-work-no-pay day. To have someone work on a holiday, change their day in the Schedule tab.</p>
+      <div class="tablewrap"><table class="tbl" id="holTable"></table></div>
+      <form id="holForm" class="row adminonly" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <label class="f">Date<input type="date" id="holDate" required></label>
+        <label class="f" style="flex:1 1 200px">Name<input type="text" id="holName" required maxlength="60" placeholder="e.g. Eid'l Fitr"></label>
+        <label class="f">Type<select id="holKind"><option value="regular">Regular holiday</option><option value="special">Special non-working day</option></select></label>
+        <button class="btn primary" type="submit">Add holiday</button>
+      </form>
+    </div>
   </section>
   <!-- ACCESS -->
   <section id="tab-access" hidden>
@@ -379,6 +394,7 @@
   <form method="dialog" id="periodForm">
     <div class="row"><h2 style="font-size:20px" id="periodTitle">New pay period</h2><span class="spacer"></span>
       <button class="btn ghost sm" value="cancel" formnovalidate>Close</button></div>
+    <label class="f">Cut-off<select id="ppCut"></select></label>
     <div class="grid2">
       <label class="f">Period start<input type="date" id="ppStart" required></label>
       <label class="f">Period end<input type="date" id="ppEnd" required></label>
@@ -386,7 +402,7 @@
       <label class="f">Exchange rate (₱ per £1)<input type="number" id="ppFx" step="0.0001" min="0" placeholder="can be added later"></label>
       <label class="f">Total transfer fee (₱)<input type="number" id="ppFee" step="0.01" min="0" value="0"></label>
     </div>
-    <p class="muted" style="margin:0;font-size:12.5px">Weekdays in the period are the working days used for daily and per-minute rates.</p>
+    <p class="muted" style="margin:0;font-size:12.5px">Pay is bi-monthly: 1st–15th and 16th–end of the month. Fixed pay types use the working days per cut-off from Settings (usually 10) for the daily rate. Philippine public holidays on a working day are paid days off.</p>
     <div class="row"><button class="btn danger" type="button" id="ppDel" hidden>Delete period</button><span class="spacer"></span>
       <button class="btn primary" type="submit" value="save">Save period</button></div>
   </form>
@@ -404,7 +420,12 @@
       <label class="f">Unpaid lunch (min)<input type="number" id="pLunch" min="0" max="180" required></label>
       <label class="f">Status<select id="pActive"><option value="true">Active</option><option value="false">Inactive</option></select></label>
       <label class="f">Start date<input type="date" id="pStartDate"></label>
-      <label class="f">Pay type<select id="pPayType"><option value="daily">Daily rate: paid per day worked</option><option value="period">Per pay period: fixed amount</option></select></label>
+      <label class="f">Pay type<select id="pPayType">
+        <option value="hourly">Hourly: paid per hour worked</option>
+        <option value="daily">Daily: paid per day worked</option>
+        <option value="weekly">Weekly: fixed pay per week</option>
+        <option value="bimonthly">Bi-monthly: fixed pay per cut-off (1–15, 16–end)</option>
+        <option value="monthly">Monthly: fixed pay per month (half each cut-off)</option></select></label>
       <label class="f"><span id="pRateLabel">Daily rate (£)</span><input type="number" id="pRate" min="0" step="0.01" placeholder="e.g. 30"></label>
     </div>
     <div>
@@ -423,12 +444,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20260926d"></script>
-<script src="assets/core.js?v=20260926d"></script>
-<script src="assets/game.js?v=20260926d"></script>
-<script src="assets/schedule.js?v=20260926d"></script>
-<script src="assets/payroll.js?v=20260926d"></script>
-<script src="assets/api.js?v=20260926d"></script>
-<script src="assets/admin.js?v=20260926d"></script>
+<script src="config.js?v=20260928a"></script>
+<script src="assets/core.js?v=20260928a"></script>
+<script src="assets/game.js?v=20260928a"></script>
+<script src="assets/schedule.js?v=20260928a"></script>
+<script src="assets/logo.js?v=20260928a"></script>
+<script src="assets/payroll.js?v=20260928a"></script>
+<script src="assets/api.js?v=20260928a"></script>
+<script src="assets/admin.js?v=20260928a"></script>
 </body>
 </html>

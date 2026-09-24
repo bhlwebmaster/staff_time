@@ -28,15 +28,22 @@
     if (p.week_pattern) { const x = p.week_pattern[String(d)]; return x ? { kind: "shift", start: x.s, end: x.e } : { kind: "rest" }; }
     return d === 0 || d === 6 ? { kind: "rest" } : { kind: "shift", start: hhmm(p.sched_start), end: hhmm(p.sched_end) };
   }
-  /** What a person is planned to do on a date: a changed day wins over their usual week. */
+  /** Public holidays (Philippines), keyed by date: { name, kind: regular|special, paid }. Loaded by each page. */
+  const HOL = {};
+  function setHolidays(list) { for (const h of list || []) HOL[String(h.holiday_date).slice(0, 10)] = h; }
+  const holidayOn = (ds) => HOL[ds] || null;
+  /** What a person is planned to do on a date: a changed day wins, then a public holiday (on a working day), then their usual week. */
   function effective(p, ds, overrides) {
     const o = overrides && overrides[p.id + "|" + ds];
-    if (o) return { kind: o.kind, start: hhmm(o.start_time) || patternDay(p, dow(ds)).start || hhmm(p.sched_start), end: hhmm(o.end_time) || patternDay(p, dow(ds)).end || hhmm(p.sched_end), note: o.note, changed: true };
-    return { ...patternDay(p, dow(ds)), changed: false };
+    const base = patternDay(p, dow(ds)), h = HOL[ds];
+    if (o) return { kind: o.kind, start: hhmm(o.start_time) || base.start || hhmm(p.sched_start), end: hhmm(o.end_time) || base.end || hhmm(p.sched_end), note: o.note, changed: true,
+      ...(o.kind === "holiday" && h ? { holiday: h.name, paid: h.paid !== false } : {}) };
+    if (h && base.kind === "shift") return { kind: "holiday", start: base.start, end: base.end, note: h.name, holiday: h.name, paid: h.paid !== false, changed: false };
+    return { ...base, changed: false };
   }
   const indexDays = (list) => { const m = {}; for (const d of list || []) m[d.staff_id + "|" + d.work_date] = d; return m; };
 
-  function cellText(e) { return e.kind === "shift" ? `${ampm(e.start)}-${ampm(e.end)}` : KINDS[e.kind]?.label || e.kind; }
+  function cellText(e) { if (e.kind === "holiday" && e.holiday) return e.holiday; return e.kind === "shift" ? `${ampm(e.start)}-${ampm(e.end)}` : KINDS[e.kind]?.label || e.kind; }
 
   /** Bottom table in the WhatsApp sheet: one row per person, one column per day. */
   // opts.n = number of days to show (7 = week, 1 = one day); opts.colorFrom = week start used for stable colours
@@ -44,7 +51,7 @@
     const n = opts.n || 7, days = Array.from({ length: n }, (_, i) => addDays(from, i));
     const colors = laneColors(opts.colorFrom || from, people, overrides);
     const stCol = typeof opts.status === "function"; // optional live "Status" column (homepage, today only)
-    return `<table class="wk-table ${n === 1 ? "one" : ""} ${stCol ? "has-st" : ""}"><thead><tr><th>UK time</th>${days.map((d) => `<th class="${d === today ? "is-today" : ""}">${DAY[dow(d)]}<span>${+d.slice(8)}</span></th>`).join("")}${stCol ? "<th>Status</th>" : ""}</tr></thead>
+    return `<table class="wk-table ${n === 1 ? "one" : ""} ${stCol ? "has-st" : ""}"><thead><tr><th>UK time</th>${days.map((d) => `<th class="${d === today ? "is-today" : ""}">${DAY[dow(d)]}<span>${+d.slice(8)}</span>${HOL[d] ? `<em class="hol">${B.esc(HOL[d].name)}</em>` : ""}</th>`).join("")}${stCol ? "<th>Status</th>" : ""}</tr></thead>
       <tbody>${people.map((p) => `<tr><th style="--pc:${colors[p.id] || "#9aa6a0"}"><span class="dot"></span>${B.esc(p.display_name)}</th>${days.map((d) => {
         const e = effective(p, d, overrides);
         return `<td class="${KINDS[e.kind]?.cls || ""} ${d === today ? "is-today" : ""}" title="${B.esc(e.note || "")}">${cellText(e)}</td>`; }).join("")}${stCol ? `<td class="st">${opts.status(p, effective(p, days[0], overrides))}</td>` : ""}</tr>`).join("")}</tbody></table>`;
@@ -80,7 +87,7 @@
       const items = [], off = [];
       for (const p of lanes) {
         const e = effective(p, d, overrides);
-        if (e.kind !== "shift") { if (e.kind !== "rest") off.push(`${B.esc(p.display_name)}: ${KINDS[e.kind].label}`); continue; }
+        if (e.kind !== "shift") { if (e.kind !== "rest") off.push(`${B.esc(p.display_name)}: ${B.esc(e.holiday || KINDS[e.kind].label)}`); continue; }
         if (!e.start || !e.end) continue;
         const st = mins(e.start); let en = mins(e.end); if (en <= st) en = 24 * 60; // overnight shows to midnight
         items.push({ p, e, st, en });
@@ -98,15 +105,17 @@
       });
       return `<div class="tl-day ${d === today ? "is-today" : ""}">${bars.join("")}${off.length ? `<div class="tl-off">${off.join("<br>")}</div>` : ""}</div>`;
     };
-    const head = nd === 1 ? `${DAY[dow(days[0])]}<span>${+days[0].slice(8)}</span>` : "";
+    const head = nd === 1 ? `${DAY[dow(days[0])]}<span>${+days[0].slice(8)}</span>${HOL[days[0]] ? `<em class="hol">${B.esc(HOL[days[0]].name)}</em>` : ""}` : "";
     return `<div class="tl ${nd === 1 ? "one" : ""}" style="--h:${HOUR}px;--n:${n};--days:${nd};--rows:${h1 - h0}">
-      <div class="tl-head"><div class="tl-corner">UK time</div>${nd === 1 ? `<div class="tl-dh ${days[0] === today ? "is-today" : ""}">${head}</div>` : days.map((d) => `<div class="tl-dh ${d === today ? "is-today" : ""}">${DAY[dow(d)].slice(0, 3)}<span>${+d.slice(8)}</span></div>`).join("")}</div>
+      <div class="tl-head"><div class="tl-corner">UK time</div>${nd === 1 ? `<div class="tl-dh ${days[0] === today ? "is-today" : ""}">${head}</div>` : days.map((d) => `<div class="tl-dh ${d === today ? "is-today" : ""}">${DAY[dow(d)].slice(0, 3)}<span>${+d.slice(8)}</span>${HOL[d] ? `<em class="hol">${B.esc(HOL[d].name)}</em>` : ""}</div>`).join("")}</div>
       <div class="tl-body"><div class="tl-hours">${hours.map((h) => `<div>${h}</div>`).join("")}</div>${days.map(col).join("")}</div>
     </div>
     <div class="tl-legend">${lanes.map((p) => `<span><i style="background:${color[p.id]}"></i>${B.esc(p.display_name)}</span>`).join("")}</div>`;
   }
 
   const CSS = `
+  .wk-table thead th em.hol, .tl-head em.hol { display: block; font-style: normal; font-size: 10px; font-weight: 600; color: #ffe45c; letter-spacing: 0; text-transform: none; white-space: normal; line-height: 1.2; margin-top: 2px; }
+  .wk-table td.k-hol { font-size: 11px; white-space: normal; }
   .wk-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
   .wk-table, .wk-time { border-collapse: collapse; width: 100%; font-size: 12.5px; min-width: 640px; }
   .wk-table th, .wk-table td, .wk-time th, .wk-time td { border: 1px solid #d5dedb; padding: 6px 6px; text-align: center; }
@@ -155,5 +164,5 @@
   .wk-legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
   .wk-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }`;
 
-  Object.assign(B, { sched: { KINDS, DAY, addDays, dow, weekStart, effective, patternDay, indexDays, tableHtml, timelineHtml, cellText, hhmm, ampm, CSS } });
+  Object.assign(B, { sched: { setHolidays, holidayOn, KINDS, DAY, addDays, dow, weekStart, effective, patternDay, indexDays, tableHtml, timelineHtml, cellText, hhmm, ampm, CSS } });
 })();

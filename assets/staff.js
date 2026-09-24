@@ -277,6 +277,7 @@
     wkAt = at || today;
     wkFrom = S.weekStart(wkAt);
     try { wkData = wkCache[wkFrom] || (wkCache[wkFrom] = await api.weekSchedule(wkFrom)); } catch { return; }
+    S.setHolidays(wkData.holidays);
     if (wkFrom === S.weekStart(today)) { const first = !thisWeek; thisWeek = wkData; if (first && roster) loadRoster(); }
     const ov = S.indexDays(wkData.staff.flatMap((p) => p.days.map((d) => ({ ...d, staff_id: p.id }))));
     const day = wkRange === "day";
@@ -300,6 +301,7 @@
   function liveStatus(p, plan) {
     const r = roster.staff.find((x) => x.id === p.id), t = r?.today;
     if (!t?.time_in && plan.kind !== "shift") {
+      if (plan.kind === "holiday" && plan.holiday) return `<span class="pill leave k-holiday">${B.esc(plan.holiday)}</span>`;
       const k = { rest: "Rest day", vacation: "Vacation", sick: "Sick", emergency: "Emergency leave", holiday: "Holiday", unpaid: "Unpaid leave" }[plan.kind] || plan.kind;
       return `<span class="pill leave k-${plan.kind}">${k}</span>`;
     }
@@ -380,6 +382,7 @@
     if (refresh) delete wkCache[msFrom];
     try { msWk = wkCache[msFrom] || (wkCache[msFrom] = await api.weekSchedule(msFrom)); }
     catch { $("msBody").innerHTML = `<p class="muted" style="margin:0">Couldn't load your schedule. Check your connection.</p>`; return; }
+    S.setHolidays(msWk.holidays);
     if (msFrom === w0) thisWeek = msWk;
     if (refresh) { const r = await api.myScheduleRequests(me.id, pin).catch((e) => ({ ok: false, error: e.message })); if (r.ok) msReqs = r.requests || []; }
     renderMySched();

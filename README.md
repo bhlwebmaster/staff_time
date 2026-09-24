@@ -101,8 +101,10 @@ The anon key is designed to be public. **Never** put the service_role key in thi
 After clocking in or out, staff tap **Copy & Send to WhatsApp Group**: the message is copied in the group's format, and they paste it into the WhatsApp group.
 
 ## Payroll
-- Staff → Edit: set **Start date**, **Pay type** and rate. **Daily rate** = pay per day worked (plus paid leave). **Per pay period** = fixed amount, minus absent days.
-- Payroll → **+ New period** (dates, payment date, exchange rate ₱/£, total transfer fee ₱).
+- Pay is **bi-monthly**: cut-offs 1st–15th and 16th–end, usually 10 working days (Settings → Working days per cut-off).
+- Staff → Edit: set **Start date**, **Pay type** (Hourly, Daily, Weekly, Bi-monthly, Monthly) and rate. Fixed types: daily rate = pay per cut-off ÷ 10 (weekly: ÷ 5; monthly: half per cut-off); absences deducted at that rate.
+- **Philippine public holidays** (Settings → Public holidays; 2026 and 2027 preloaded) make a working day a paid day off.
+- Payroll → **+ New period**: pick the cut-off, check the payment date, add the exchange rate ₱/£ and total transfer fee ₱.
 - Days worked, lates, undertime and absences come from attendance + schedule; type over any value to change it; add other deductions (CA, loans, taxes).
 - Rules (per period): daily rate = rate ÷ working days; minute rate = daily ÷ paid minutes; lates/undertime × minute rate; absences (missed shifts + unpaid leave) × daily rate; paid leave is paid; transfer fee split by share of net pay.
 - **Save draft**, then **Finalise & publish** → staff see their payslips under **My payslips**. Payslip PDF per person or all at once; CSV export.
