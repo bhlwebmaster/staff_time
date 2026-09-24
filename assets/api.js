@@ -21,6 +21,9 @@
       p_avatar: p.avatar || null, p_photo: p.photo || null, p_tagline: p.tagline || null, p_color: p.color || null })),
     weekSchedule: async (from) => unwrap(await sb.rpc("week_schedule", { p_from: from })),
     myPayslips: async (staff, pin) => unwrap(await sb.rpc("my_payslips", { p_staff: staff, p_pin: pin })),
+    requestWeek: async (staff, pin, week, days, note) => unwrap(await sb.rpc("request_week", { p_staff: staff, p_pin: pin, p_week: week, p_days: days, p_note: note || null })),
+    myScheduleRequests: async (staff, pin) => unwrap(await sb.rpc("my_schedule_requests", { p_staff: staff, p_pin: pin })),
+    cancelScheduleRequest: async (staff, pin, id) => unwrap(await sb.rpc("cancel_schedule_request", { p_staff: staff, p_pin: pin, p_id: id })),
     punch: async (staff, pin, action, extra = {}) =>
       unwrap(await sb.rpc("punch", { p_staff: staff, p_pin: pin, p_action: action,
         p_sched_start: extra.sched_start || null, p_sched_end: extra.sched_end || null, p_note: extra.note ?? null })),
@@ -47,6 +50,8 @@
       deleteAttendance: async (id) => unwrap(await sb.from("attendance").delete().eq("id", id)),
       scheduleDays: async (from, to) => unwrap(await sb.from("schedule_days").select("*").gte("work_date", from).lte("work_date", to)),
       saveScheduleDays: async (rows) => rows.length ? unwrap(await sb.from("schedule_days").upsert(rows, { onConflict: "staff_id,work_date" })) : null,
+      scheduleRequests: async () => unwrap(await sb.from("schedule_requests").select("*").eq("status", "pending").order("created_at")),
+      decideScheduleRequest: async (id, approve, note) => unwrap(await sb.rpc("decide_schedule_request", { p_id: id, p_approve: approve, p_note: note || null })),
       deleteScheduleDays: async (ids) => ids.length ? unwrap(await sb.from("schedule_days").delete().in("id", ids)) : null,
       periods: async () => unwrap(await sb.from("pay_periods").select("*").order("start_date", { ascending: false })),
       savePeriod: async (p) => p.id ? unwrap(await sb.from("pay_periods").update(p).eq("id", p.id).select().single())
@@ -80,5 +85,5 @@
   if (cfgMissing) showSetupProblem("This app isn't set up yet", "The connection settings in <code>config.js</code> are missing. Ask the webmaster (biohack.webmaster@gmail.com) to add the Supabase URL and key.");
   else if (libMissing) showSetupProblem("Can't connect right now", "Part of the app couldn't load. Check your internet connection and try again.");
   const broken = new Proxy({}, { get: () => async () => { throw new Error("The app isn't connected. Try again in a moment."); } });
-  window.BHL.api = cfgMissing || libMissing ? Object.assign(Object.create(null), { ready: false, admin: broken, roster: broken.x, punch: broken.x, myPayslips: broken.x, weekSchedule: broken.x, setPin: broken.x, setProfile: broken.x }) : Object.assign(live, { ready: true });
+  window.BHL.api = cfgMissing || libMissing ? Object.assign(Object.create(null), { ready: false, admin: broken, roster: broken.x, punch: broken.x, myPayslips: broken.x, weekSchedule: broken.x, requestWeek: broken.x, myScheduleRequests: broken.x, cancelScheduleRequest: broken.x, setPin: broken.x, setProfile: broken.x }) : Object.assign(live, { ready: true });
 })();

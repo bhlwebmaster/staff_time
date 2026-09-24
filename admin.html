@@ -8,11 +8,26 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260926a">
+<link rel="stylesheet" href="assets/style.css?v=20260926b">
 <style>
   main { padding-block: 22px 70px; }
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
   .tabs button { border: 0; background: transparent; padding: 8px 12px; border-radius: 9px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  .tab-badge { display: inline-grid; place-items: center; min-width: 19px; height: 19px; padding: 0 5px; margin-left: 6px; border-radius: 999px; background: #d9622b; color: #fff; font-size: 11px; font-weight: 700; vertical-align: 1px; }
+  .reqs { display: grid; gap: 12px; }
+  .req { border: 1px solid #f0c89a; background: #fff8ef; border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; }
+  .req-h { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 700; }
+  .req-h .muted { font-weight: 500; font-size: 12.5px; }
+  .req-t { border-collapse: collapse; font-size: 13px; width: auto !important; }
+  .req-t td { padding: 3px 10px 3px 0; }
+  .req-t td:first-child { font-weight: 700; width: 70px; }
+  .req-t .old { color: var(--muted); text-decoration: line-through; font-family: var(--mono); font-size: 12px; }
+  .req-t .new { font-family: var(--mono); font-weight: 600; color: #8a3f00; }
+  .req-t .same { color: var(--muted); font-size: 12px; }
+  .req .note { font-size: 13px; font-style: italic; }
+  .req .acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .req .acts input { flex: 1 1 220px; font: inherit; font-size: 13px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); }
+  @media (prefers-color-scheme: dark) { .req { background: #2d2112; border-color: #6b4a1f; } .req-t .new { color: #ffc27a; } }
   .tabs button[aria-selected=true] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
   .head { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .head h1 { font-size: clamp(24px, 4vw, 30px); }
@@ -101,7 +116,7 @@
       <button role="tab" data-tab="today" aria-selected="true">Today</button>
       <button role="tab" data-tab="sheets" aria-selected="false">Timesheets</button>
       <button role="tab" data-tab="reports" aria-selected="false">Reports</button>
-      <button role="tab" data-tab="schedule" aria-selected="false">Schedule</button>
+      <button role="tab" data-tab="schedule" aria-selected="false">Schedule<span class="tab-badge" id="reqBadge" hidden></span></button>
       <button role="tab" data-tab="payroll" aria-selected="false">Payroll</button>
       <button role="tab" data-tab="staff" aria-selected="false" class="adminonly">Staff</button>
       <button role="tab" data-tab="settings" aria-selected="false" class="adminonly">Settings</button>
@@ -212,6 +227,10 @@
       <div><div class="eyebrow">Work schedule · UK time</div><h1 id="schTitle">Schedule</h1><p class="muted" style="margin:4px 0 0">Everyone sees this week on the clock-in homepage.</p></div>
       <span class="spacer"></span>
       <div class="row" style="gap:6px"><button class="btn sm" id="schPrev" aria-label="Previous week">←</button><button class="btn sm" id="schNow">This week</button><button class="btn sm" id="schNext" aria-label="Next week">→</button></div>
+    </div>
+    <div class="card pad stack" id="schReqs" style="margin-bottom:14px" hidden>
+      <div class="row"><div class="eyebrow">Change requests from staff</div><span class="spacer"></span><span class="muted" style="font-size:12.5px">Approving updates the schedule straight away.</span></div>
+      <div class="reqs" id="reqList"></div>
     </div>
     <div class="card pad stack" style="margin-bottom:14px">
       <div class="row">
@@ -404,12 +423,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20260926a"></script>
-<script src="assets/core.js?v=20260926a"></script>
-<script src="assets/game.js?v=20260926a"></script>
-<script src="assets/schedule.js?v=20260926a"></script>
-<script src="assets/payroll.js?v=20260926a"></script>
-<script src="assets/api.js?v=20260926a"></script>
-<script src="assets/admin.js?v=20260926a"></script>
+<script src="config.js?v=20260926b"></script>
+<script src="assets/core.js?v=20260926b"></script>
+<script src="assets/game.js?v=20260926b"></script>
+<script src="assets/schedule.js?v=20260926b"></script>
+<script src="assets/payroll.js?v=20260926b"></script>
+<script src="assets/api.js?v=20260926b"></script>
+<script src="assets/admin.js?v=20260926b"></script>
 </body>
 </html>

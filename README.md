@@ -94,11 +94,17 @@ The anon key is designed to be public. **Never** put the service_role key in thi
 - **Schedule tab:** change any date to a different shift, Rest Day, Vacation / Sick Leave, Holiday or Unpaid Leave, then **Save week**. **Copy last week** and **Reset to usual week** help.
 - The homepage shows the week as a **Table** or an hour-by-hour **Timeline**. Clock-ins use that day's planned shift; rest days don't count as absences.
 
+- **Staff requests:** staff can request changes to their own week (this week + next 2) from **My schedule**. Admins approve or reject under **Schedule** (orange number on the tab). Needs `supabase/requests.sql` (included in `database-update.sql`).
+- **Status column:** on the homepage's Today view, each person shows Working / On lunch / Clocked out / Not in yet / Late / Absent / Rest day / leave.
+
+## WhatsApp
+After clocking in or out, staff tap **Notify WhatsApp Group**: WhatsApp opens with the message typed, they pick the group and press Send. (WhatsApp doesn't allow a website to post into a group automatically.) The group link is `WA_GROUP` at the top of the WhatsApp section in `assets/staff.js`.
+
 ## Payroll
-- Staff → Edit: set **Start date** and **Rate per pay period (£)**.
+- Staff → Edit: set **Start date**, **Pay type** and rate. **Daily rate** = pay per day worked (plus paid leave). **Per pay period** = fixed amount, minus absent days.
 - Payroll → **+ New period** (dates, payment date, exchange rate ₱/£, total transfer fee ₱).
 - Days worked, lates, undertime and absences come from attendance + schedule; type over any value to change it; add other deductions (CA, loans, taxes).
-- Rules: daily rate = rate ÷ working days; minute rate = daily ÷ paid minutes; lates/undertime × minute rate; absences (missed shifts + unpaid leave) × daily rate; paid leave is paid; transfer fee split by share of net pay.
+- Rules (per period): daily rate = rate ÷ working days; minute rate = daily ÷ paid minutes; lates/undertime × minute rate; absences (missed shifts + unpaid leave) × daily rate; paid leave is paid; transfer fee split by share of net pay.
 - **Save draft**, then **Finalise & publish** → staff see their payslips under **My payslips**. Payslip PDF per person or all at once; CSV export.
 - Only admins edit payroll; finance can view and download.
 
@@ -160,6 +166,7 @@ supabase/database-update.sql   run this in Supabase: everything below in one fil
 supabase/schema.sql   core tables, security, functions (safe to re-run)
 supabase/payroll.sql  payroll tables
 supabase/schedule.sql weekly schedule tables
+supabase/requests.sql staff schedule requests + approval
 supabase/production-cleanup.sql   optional: clear test entries before go-live
 supabase/functions/admin-users/index.ts   Edge Function: create / change / remove logins
 .nojekyll         tells GitHub Pages to serve files as-is

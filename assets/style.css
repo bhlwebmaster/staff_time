@@ -97,6 +97,12 @@ a.brand:hover .mark { filter: brightness(1.08); }
 .pill.out { color: var(--off); background: var(--off-soft); }
 .pill.absent { color: var(--muted); background: transparent; border: 1px dashed var(--line); }
 .pill.absent::before { background: transparent; border: 1.5px solid currentColor; }
+.pill.late { color: #a3321f; background: #fde4e1; }
+.pill.leave { color: #3b3500; background: #fff59a; }
+.pill.leave.k-vacation, .pill.leave.k-holiday { color: #06300c; background: #c9f3cf; }
+.pill.leave.k-sick { color: #4a1606; background: #ffd9cc; }
+.pill.leave.k-unpaid { color: #333; background: #e8e8e8; }
+.pill.leave::before { display: none; }
 .flag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
 .flag.late { color: var(--late); background: var(--late-soft); }
 .flag.ot { color: var(--accent); background: var(--accent-soft); }

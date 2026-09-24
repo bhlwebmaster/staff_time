@@ -28,6 +28,7 @@
     $("rDay").value = today(); $("rMonth").value = today().slice(0, 7); $("rFrom").value = today().slice(0, 8) + "01"; $("rTo").value = today();
     const tab = (location.hash || "#today").slice(1);
     openTab(TABS().includes(tab) ? tab : "today");
+    loadRequests(); setInterval(() => { if (!document.hidden) loadRequests(); }, 120000);
     tick(); setInterval(tick, 10000);
     setInterval(() => { if (!document.hidden && !$("tab-today").hidden && $("dayPick").value === today()) loadDay(); }, 60000);
   }
@@ -478,7 +479,48 @@
     }
     return out;
   }
+  // ---------- staff change requests ----------
+  let reqs = [];
+  async function loadRequests() {
+    try { reqs = await A.scheduleRequests(); } catch { reqs = []; }
+    $("reqBadge").textContent = reqs.length; $("reqBadge").hidden = !reqs.length;
+    if ($("tab-schedule").hidden) return;
+    $("schReqs").hidden = !reqs.length;
+    if (!reqs.length) return;
+    const weeks = reqs.map((r) => r.week_start).sort();
+    const cur = S.indexDays(await A.scheduleDays(weeks[0], S.addDays(weeks[weeks.length - 1], 6)).catch(() => []));
+    const plain = (e) => e.kind === "shift" ? `${S.ampm(e.start)}–${S.ampm(e.end)}` : S.KINDS[e.kind]?.label || e.kind;
+    $("reqList").innerHTML = reqs.map((r) => {
+      const s = byId(r.staff_id); if (!s) return "";
+      const rows = Object.keys(r.days).sort().map((d) => {
+        const v = r.days[d], want = { kind: v.kind, start: v.s, end: v.e }, now = S.effective(s, d, cur);
+        const same = now.kind === want.kind && (want.kind !== "shift" || (now.start === want.start && now.end === want.end));
+        return `<tr><td>${DSHORT[S.dow(d)]} ${+d.slice(8)}</td><td class="old">${plain(now)}</td><td>→</td><td class="${same ? "same" : "new"}">${same ? "already the same" : plain(want)}</td></tr>`;
+      }).join("");
+      return `<div class="req" data-id="${r.id}">
+        <div class="req-h">${B.avatarHtml(s, 26)}${B.esc(s.display_name)} · week of ${B.prettyDate(r.week_start, { day: "numeric", month: "short" })}
+          <span class="muted">sent ${B.prettyDate(B.dateIn(new Date(r.created_at), tz()))}</span></div>
+        <table class="req-t">${rows}</table>
+        ${r.note ? `<div class="note">“${B.esc(r.note)}”</div>` : ""}
+        ${role === "admin" ? `<div class="acts"><input placeholder="Message to ${B.esc(s.display_name)} (optional)" aria-label="Message">
+          <button class="btn primary sm" data-dec="1">Approve</button><button class="btn sm" data-dec="0">Reject</button></div>` : `<div class="muted" style="font-size:12.5px">Waiting for an admin.</div>`}
+      </div>`;
+    }).join("");
+  }
+  $("reqList").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-dec]"); if (!b) return;
+    const card = b.closest(".req"), approve = b.dataset.dec === "1";
+    card.querySelectorAll("button").forEach((x) => (x.disabled = true));
+    try {
+      const r = await A.decideScheduleRequest(card.dataset.id, approve, card.querySelector("input")?.value.trim());
+      if (!r.ok) throw new Error(r.error);
+      B.toast(approve ? "Approved. The schedule is updated." : "Rejected. The person will see your message.");
+      loadSchedule(schFrom);
+    } catch (err) { B.toast(err.message, "err"); card.querySelectorAll("button").forEach((x) => (x.disabled = false)); }
+  });
+
   async function loadSchedule(from) {
+    loadRequests();
     schFrom = from || schFrom || S.weekStart(today());
     const end = S.addDays(schFrom, 6);
     schDays = await A.scheduleDays(schFrom, end);

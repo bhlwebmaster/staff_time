@@ -31,14 +31,16 @@
     $("people").innerHTML = roster.staff.map((s) => {
       const [k, label] = statusOf(s.today);
       const g = B.stats(s.recent, s, roster.settings, roster.today);
+      const plan = !s.today?.time_in ? todayPlan(s) : null, off = plan && plan.kind !== "shift";
       return `<button class="person" data-id="${B.esc(s.id)}" style="--card-tint:${B.colorOf(s)}">
         <span class="top">${B.avatarHtml(s, 46)}<span><span class="nm">${B.esc(s.display_name)}</span>${streakChip(g.streak)}</span></span>
         <span class="tagline">${B.esc(s.tagline || "")}</span>
-        <span class="pill ${k}">${label}</span>
-        <span class="sub">${B.clockStr(s.today?.sched_start || s.sched_start)}–${B.clockStr(s.today?.sched_end || s.sched_end)}</span>
+        ${off ? liveStatus(s, plan) : `<span class="pill ${k}">${label}</span>`}
+        <span class="sub">${off ? "&nbsp;" : plan ? `${B.clockStr(plan.start)}–${B.clockStr(plan.end)}` : `${B.clockStr(s.today?.sched_start || s.sched_start)}–${B.clockStr(s.today?.sched_end || s.sched_end)}`}</span>
       </button>`;
     }).join("") || `<p class="muted">No staff yet. An admin can add people from the admin page.</p>`;
     renderTeam();
+    if (wkData && wkRange === "day" && wkAt === roster.today && !$("vPick").hidden) loadWeek(wkAt);
   }
   function streakChip(n) {
     return n >= 2 ? `<span class="chip-streak" title="${n} on-time days in a row">${B.icon("flame", 13)}${n} on-time</span>` : "";
@@ -98,7 +100,9 @@
     }
     const r = await api.punch(me.id, typed, "check").catch((e) => ({ ok: false, error: e.message }));
     if (!r.ok) return fail(r.error);
-    pin = typed; data = r; renderToday(); show("vToday"); bumpIdle();
+    pin = typed; data = r; $("waHint").hidden = true; $("waNotify").classList.remove("nudge");
+    renderToday(); show("vToday"); bumpIdle();
+    msIdx = 0; msEditing = false; msReqs = []; loadMySched(true);
   }
   $("pinBack").onclick = () => { B.lsSet("bhl.me", null); me = null; show("vPick"); };
 
@@ -157,6 +161,7 @@
     $("mBank").textContent = B.fmtMins(sum.bank, { sign: true });
     $("mBank").style.color = sum.bank < 0 ? "var(--late)" : sum.bank > 0 ? "var(--accent)" : "";
     $("mBlock").textContent = set.ot_block_mins;
+    renderWa();
     renderTeam();
   }
 
@@ -189,6 +194,13 @@
     const onTimeIn = a === "in" && !B.calcDay(todayRow(), data.staff, data.settings).late;
     if (newBadges.length || onTimeIn || after.level.n > before.level.n) B.confetti();
     renderToday(); loadRoster(); bumpIdle();
+    // Only the start and end of the shift go to the group (not lunch)
+    if (a === "in" || a === "out") {
+      $("waHintTitle").textContent = a === "in" ? "Tell the group you're in" : "Tell the group you've clocked out";
+      $("waHint").hidden = false;
+      const w = $("waNotify"); w.classList.remove("nudge"); void w.offsetWidth; w.classList.add("nudge");
+      w.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
   }
   $("actMain").onclick = (e) => act(e.currentTarget.dataset.a, e.currentTarget);
   $("actAlt").addEventListener("click", (e) => { const b = e.target.closest("button[data-a]"); if (b) act(b.dataset.a, b); });
@@ -265,7 +277,7 @@
     wkAt = at || today;
     wkFrom = S.weekStart(wkAt);
     try { wkData = wkCache[wkFrom] || (wkCache[wkFrom] = await api.weekSchedule(wkFrom)); } catch { return; }
-    if (wkFrom === S.weekStart(today)) thisWeek = wkData;
+    if (wkFrom === S.weekStart(today)) { const first = !thisWeek; thisWeek = wkData; if (first && roster) loadRoster(); }
     const ov = S.indexDays(wkData.staff.flatMap((p) => p.days.map((d) => ({ ...d, staff_id: p.id }))));
     const day = wkRange === "day";
     if (day) {
@@ -277,11 +289,34 @@
       $("weekTitle").textContent = wkFrom.slice(5, 7) === end.slice(5, 7) ? `${+wkFrom.slice(8)} – ${endTxt}` : `${B.prettyDate(wkFrom, { day: "numeric", month: "long" })} – ${endTxt}`;
     }
     const from = day ? wkAt : wkFrom, opts = { n: day ? 1 : 7, colorFrom: wkFrom };
+    if (day && wkAt === today && roster) opts.status = liveStatus;
     $("weekView").innerHTML = wkView === "table" ? S.tableHtml(from, wkData.staff, ov, today, opts) : S.timelineHtml(from, wkData.staff, ov, today, opts);
     $("wkTable").setAttribute("aria-pressed", wkView === "table"); $("wkTime").setAttribute("aria-pressed", wkView !== "table");
     $("wkDay").setAttribute("aria-pressed", day); $("wkWeek").setAttribute("aria-pressed", !day);
     $("wkPrev").setAttribute("aria-label", day ? "Previous day" : "Previous week"); $("wkNext").setAttribute("aria-label", day ? "Next day" : "Next week");
     $("weekBox").hidden = !wkData.staff.length;
+  }
+  /** Live status for today's table: leave/rest from the schedule, otherwise what they've tapped today. */
+  function liveStatus(p, plan) {
+    const r = roster.staff.find((x) => x.id === p.id), t = r?.today;
+    if (!t?.time_in && plan.kind !== "shift") {
+      const k = { rest: "Rest day", vacation: "Vacation", sick: "Sick", holiday: "Holiday", unpaid: "Unpaid leave" }[plan.kind] || plan.kind;
+      return `<span class="pill leave k-${plan.kind}">${k}</span>`;
+    }
+    const tzn = tz(), now = new Date();
+    if (!t?.time_in) {
+      if (plan.start) {
+        const st = B.zonedToDate(roster.today, plan.start, tzn), en = B.zonedToDate(roster.today, plan.end, tzn);
+        const grace = (roster.settings?.grace_mins ?? 5) * 60000;
+        if (en > st && now > en) return `<span class="pill late">Absent</span>`;
+        if (now > new Date(st.getTime() + grace)) return `<span class="pill late">Late · not in</span>`;
+      }
+      return `<span class="pill absent">Not in yet</span>`;
+    }
+    const at = (v) => B.clockIn(new Date(v), tzn);
+    if (t.time_out) return `<span class="pill out">Clocked out</span><small>${at(t.time_in)}–${at(t.time_out)}</small>`;
+    if (t.lunch_out && !t.lunch_in) return `<span class="pill lunch">On lunch</span><small>since ${at(t.lunch_out)}</small>`;
+    return `<span class="pill in">Working</span><small>in ${at(t.time_in)}</small>`;
   }
   const step = (dir) => loadWeek(B.sched.addDays(wkAt, dir * (wkRange === "day" ? 1 : 7)));
   $("wkPrev").onclick = () => step(-1);
@@ -318,12 +353,126 @@
     B.payroll.slipPdf(doc, x, myCompany, true); doc.save(`Payslip_${x.period_start}_to_${x.period_end}.pdf`);
   };
 
-  $("copyWa").onclick = async () => {
-    const row = todayRow();
-    if (!row) return B.toast("Clock in first, then copy.", "err");
-    const ok = await B.copyText(B.whatsappText(row, data.staff, data.settings));
-    B.toast(ok ? "Copied. Paste it in the WhatsApp group." : "Couldn't copy on this device.", ok ? "ok" : "err");
-  };
+  // ---------- WhatsApp group ----------
+  // WhatsApp can't post into a group by itself: the button opens WhatsApp with the message typed out,
+  // the person picks the group and presses Send. The message is also copied, as a backup.
+  const WA_GROUP = "https://chat.whatsapp.com/E78LKtGQy4Q1QdAcda6Cx8";
+  const waText = () => { const row = data && todayRow(); return row?.time_in ? B.whatsappText(row, data.staff, data.settings) : ""; };
+  function renderWa() {
+    const t = waText(), a = $("waNotify");
+    a.setAttribute("aria-disabled", String(!t));
+    a.href = t ? "https://wa.me/?text=" + encodeURIComponent(t) : "#";
+    $("waGroup").href = WA_GROUP;
+  }
+  $("waNotify").addEventListener("click", (e) => {
+    const t = waText();
+    if (!t) { e.preventDefault(); return B.toast("Clock in first, then notify the group.", "err"); }
+    B.copyText(t); $("waHint").hidden = true; $("waNotify").classList.remove("nudge");
+  });
+  $("waGroup").addEventListener("click", () => { const t = waText(); if (t) { B.copyText(t); B.toast("Message copied. Paste it in the group and press Send."); } });
+
+  // ---------- my schedule (this week + next 2) and change requests ----------
+  let msIdx = 0, msReqs = [], msEditing = false, msWk = null, msFrom = null;
+  const MS_KINDS = ["shift", "rest", "vacation", "sick", "unpaid"];
+  const sameDay = (a, b) => a.kind === b.kind && (a.kind !== "shift" || (a.start === b.start && a.end === b.end));
+  async function loadMySched(refresh) {
+    if (!me || !pin) return;
+    const S = B.sched, today = B.dateIn(new Date(), tz()), w0 = S.weekStart(today);
+    const weeks = [0, 1, 2].map((i) => S.addDays(w0, 7 * i));
+    $("msWeeks").innerHTML = weeks.map((w, i) => `<button type="button" data-i="${i}" aria-pressed="${i === msIdx}">${i === 0 ? "This week" : i === 1 ? "Next week" : "Week of " + B.prettyDate(w, { day: "numeric", month: "short" })}</button>`).join("");
+    msFrom = weeks[msIdx];
+    if (refresh) delete wkCache[msFrom];
+    try { msWk = wkCache[msFrom] || (wkCache[msFrom] = await api.weekSchedule(msFrom)); }
+    catch { $("msBody").innerHTML = `<p class="muted" style="margin:0">Couldn't load your schedule. Check your connection.</p>`; return; }
+    if (msFrom === w0) thisWeek = msWk;
+    if (refresh) { const r = await api.myScheduleRequests(me.id, pin).catch((e) => ({ ok: false, error: e.message })); if (r.ok) msReqs = r.requests || []; }
+    renderMySched();
+  }
+  function renderMySched() {
+    const S = B.sched, today = B.dateIn(new Date(), tz()), from = msFrom;
+    const p = msWk?.staff.find((x) => x.id === me.id);
+    if (!p) { $("msBody").innerHTML = `<p class="muted" style="margin:0">Your schedule isn't set up yet. Ask an admin.</p>`; return; }
+    const ov = S.indexDays(p.days.map((d) => ({ ...d, staff_id: p.id })));
+    const days = Array.from({ length: 7 }, (_, i) => S.addDays(from, i));
+    const reqs = msReqs.filter((r) => r.week_start === from);
+    const pending = reqs.find((r) => r.status === "pending");
+    const latest = reqs.find((r) => r.status !== "cancelled");
+    const reqDay = (d) => { const v = pending?.days?.[d]; return v ? { kind: v.kind, start: v.s, end: v.e } : null; };
+    const label = (e) => S.KINDS[e.kind]?.label || e.kind;
+    const fmt = (e) => e.kind === "shift" ? `${S.ampm(e.start)} – ${S.ampm(e.end)}` : `<span class="k ${S.KINDS[e.kind]?.cls || ""}">${label(e)}</span>`;
+    const plain = (e) => e.kind === "shift" ? `${S.ampm(e.start)}–${S.ampm(e.end)}` : label(e);
+    const dayLbl = (d) => `<span class="d">${S.DAY[S.dow(d)].slice(0, 3)[0] + S.DAY[S.dow(d)].slice(1, 3).toLowerCase()} ${+d.slice(8)}${d === today ? "<small>Today</small>" : ""}</span>`;
+    const canEdit = days.some((d) => d >= today);
+    let html = "";
+    if (!msEditing) {
+      if (pending) html += `<div class="ms-state pending"><b>Waiting for admin approval.</b> Sent ${B.prettyDate(B.dateIn(new Date(pending.created_at), tz()))}. Your changes are shown in orange.${pending.note ? `<br>Your note: <i>${B.esc(pending.note)}</i>` : ""}</div>`;
+      else if (latest?.status === "rejected") html += `<div class="ms-state rejected"><b>Your change wasn't approved.</b>${latest.admin_note ? " " + B.esc(latest.admin_note) : ""} The schedule below is what's planned.</div>`;
+      else if (latest?.status === "approved") html += `<div class="ms-state approved"><b>Approved.</b> Your requested changes are now in the schedule.</div>`;
+      html += `<div class="ms-list">${days.map((d) => {
+        const cur = S.effective(p, d, ov), req = reqDay(d), chg = req && !sameDay(req, cur);
+        return `<div class="ms-row ${d === today ? "today" : ""} ${d < today ? "past" : ""} ${chg ? "chg" : ""}">${dayLbl(d)}
+          <span class="v">${chg ? `<span class="old">${plain(cur)}</span><span class="arrow">→</span>${fmt(req)}` : fmt(cur)}</span></div>`;
+      }).join("")}</div>`;
+      html += `<div class="row" style="gap:8px">${canEdit ? `<button type="button" class="btn" data-ms="edit">${pending ? "Edit my request" : "Request a change"}</button>` : ""}
+        ${pending ? `<button type="button" class="btn ghost" data-ms="withdraw">Withdraw request</button>` : ""}</div>
+        <p class="muted" style="margin:0;font-size:12.5px">Changes go to an admin for approval. When an admin updates the schedule, you'll see it here straight away.</p>`;
+    } else {
+      html += `<div class="ms-list">${days.map((d) => {
+        const cur = S.effective(p, d, ov), v = reqDay(d) || cur;
+        if (d < today) return `<div class="ms-row past">${dayLbl(d)}<span class="v">${fmt(cur)}</span></div>`;
+        return `<div class="ms-row" data-d="${d}">${dayLbl(d)}<span class="ed">
+          <select aria-label="Day type">${MS_KINDS.map((k) => `<option value="${k}" ${v.kind === k ? "selected" : ""}>${k === "shift" ? "Working" : S.KINDS[k].label}</option>`).join("")}</select>
+          <input type="time" aria-label="Start" value="${v.start || cur.start || S.hhmm(p.sched_start)}" ${v.kind === "shift" ? "" : "hidden"}>
+          <input type="time" aria-label="End" value="${v.end || cur.end || S.hhmm(p.sched_end)}" ${v.kind === "shift" ? "" : "hidden"}></span></div>`;
+      }).join("")}</div>
+      <label class="f">Note for the admin <span class="muted" style="font-weight:400">e.g. "Swapping Monday and Wednesday"</span>
+        <textarea id="msNote" rows="2" maxlength="300" placeholder="Optional">${B.esc(pending?.note || "")}</textarea></label>
+      <div class="row" style="gap:8px"><button type="button" class="btn primary" data-ms="send">Send for approval</button><button type="button" class="btn ghost" data-ms="cancel">Cancel</button></div>`;
+    }
+    $("msBody").innerHTML = html;
+    markChanged();
+  }
+  // Highlight edited rows and show times only for working days
+  function markChanged() {
+    if (!msEditing) return;
+    const S = B.sched, p = msWk.staff.find((x) => x.id === me.id), ov = S.indexDays(p.days.map((d) => ({ ...d, staff_id: p.id })));
+    $("msBody").querySelectorAll(".ms-row[data-d]").forEach((r) => {
+      const [sel, a, b] = r.querySelectorAll("select, input");
+      a.hidden = b.hidden = sel.value !== "shift";
+      r.classList.toggle("chg", !sameDay({ kind: sel.value, start: a.value, end: b.value }, S.effective(p, r.dataset.d, ov)));
+    });
+  }
+  $("msBody").addEventListener("change", markChanged);
+  $("msBody").addEventListener("input", markChanged);
+  $("msWeeks").addEventListener("click", (e) => { const b = e.target.closest("button[data-i]"); if (!b) return; msIdx = +b.dataset.i; msEditing = false; loadMySched(false); });
+  $("msBody").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-ms]"); if (!b) return;
+    const k = b.dataset.ms;
+    if (k === "edit") { msEditing = true; return renderMySched(); }
+    if (k === "cancel") { msEditing = false; return renderMySched(); }
+    if (k === "withdraw") {
+      const pnd = msReqs.find((r) => r.week_start === msFrom && r.status === "pending"); if (!pnd) return;
+      b.disabled = true;
+      const r = await api.cancelScheduleRequest(me.id, pin, pnd.id).catch((err) => ({ ok: false, error: err.message }));
+      if (!r.ok) { b.disabled = false; return B.toast(r.error, "err"); }
+      B.toast("Request withdrawn"); return loadMySched(true);
+    }
+    if (k === "send") {
+      const S = B.sched, p = msWk.staff.find((x) => x.id === me.id), ov = S.indexDays(p.days.map((d) => ({ ...d, staff_id: p.id })));
+      const days = {};
+      for (const r of $("msBody").querySelectorAll(".ms-row[data-d]")) {
+        const [sel, a, c] = r.querySelectorAll("select, input"), v = { kind: sel.value, start: a.value, end: c.value };
+        if (v.kind === "shift" && (!v.start || !v.end)) return B.toast("Add a start and end time for each working day.", "err");
+        if (!sameDay(v, S.effective(p, r.dataset.d, ov))) days[r.dataset.d] = v.kind === "shift" ? { kind: "shift", s: v.start, e: v.end } : { kind: v.kind };
+      }
+      if (!Object.keys(days).length) return B.toast("Nothing changed yet. Change a day first, or tap Cancel.", "err");
+      b.disabled = true;
+      const r = await api.requestWeek(me.id, pin, msFrom, days, $("msNote").value.trim()).catch((err) => ({ ok: false, error: err.message }));
+      b.disabled = false;
+      if (!r.ok) return B.toast(r.error, "err");
+      msEditing = false; B.toast("Sent to the admin for approval"); loadMySched(true);
+    }
+  });
   function lock() { pin = ""; data = null; if (me) pick(me); else show("vPick"); }
   $("switchUser").onclick = () => { pin = ""; data = null; B.lsSet("bhl.me", null); me = null; show("vPick"); loadRoster(); };
   function bumpIdle() { clearTimeout(idleT); idleT = setTimeout(() => { if (!$("vToday").hidden) lock(); }, 5 * 60 * 1000); }

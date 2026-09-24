@@ -42,10 +42,11 @@
   function tableHtml(from, people, overrides, today, opts = {}) {
     const n = opts.n || 7, days = Array.from({ length: n }, (_, i) => addDays(from, i));
     const colors = laneColors(opts.colorFrom || from, people, overrides);
-    return `<table class="wk-table ${n === 1 ? "one" : ""}"><thead><tr><th>UK time</th>${days.map((d) => `<th class="${d === today ? "is-today" : ""}">${DAY[dow(d)]}<span>${+d.slice(8)}</span></th>`).join("")}</tr></thead>
+    const stCol = typeof opts.status === "function"; // optional live "Status" column (homepage, today only)
+    return `<table class="wk-table ${n === 1 ? "one" : ""} ${stCol ? "has-st" : ""}"><thead><tr><th>UK time</th>${days.map((d) => `<th class="${d === today ? "is-today" : ""}">${DAY[dow(d)]}<span>${+d.slice(8)}</span></th>`).join("")}${stCol ? "<th>Status</th>" : ""}</tr></thead>
       <tbody>${people.map((p) => `<tr><th style="--pc:${colors[p.id] || "#9aa6a0"}"><span class="dot"></span>${B.esc(p.display_name)}</th>${days.map((d) => {
         const e = effective(p, d, overrides);
-        return `<td class="${KINDS[e.kind]?.cls || ""} ${d === today ? "is-today" : ""}" title="${B.esc(e.note || "")}">${cellText(e)}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
+        return `<td class="${KINDS[e.kind]?.cls || ""} ${d === today ? "is-today" : ""}" title="${B.esc(e.note || "")}">${cellText(e)}</td>`; }).join("")}${stCol ? `<td class="st">${opts.status(p, effective(p, days[0], overrides))}</td>` : ""}</tr>`).join("")}</tbody></table>`;
   }
 
 
@@ -126,7 +127,11 @@
   .tl.one { min-width: 0; font-size: 13px; }
   .tl.one .tl-day .bar { padding: 6px 8px; } .tl.one .tl-day .bar b { font-size: 13.5px; } .tl.one .tl-day .bar span { font-size: 11.5px; white-space: normal; }
   .wk-table.one thead th:first-child, .wk-table.one tbody th { width: 38%; }
-  .wk-table.one { min-width: 0; } .wk-table.one td { font-size: 13px; padding: 9px 10px; } .wk-table.one tbody th { padding: 9px 12px; }
+  .wk-table.one { min-width: 0; }
+  .wk-table.has-st thead th:first-child, .wk-table.has-st tbody th { width: 30%; }
+  .wk-table td.st { font-family: var(--body); white-space: nowrap; }
+  .wk-table td.st .pill { font-size: 12.5px; }
+  .wk-table td.st small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; font-family: var(--mono); } .wk-table.one td { font-size: 13px; padding: 9px 10px; } .wk-table.one tbody th { padding: 9px 12px; }
   .tl-head > div { background: #0f5c56; color: #fff; text-align: center; font-weight: 700; font-size: 11px; letter-spacing: .05em; padding: 7px 2px; border-left: 1px solid #2c7a73; }
   .tl-head > div span { display: block; font-size: 14px; }
   .tl-head .tl-corner { border-left: 0; display: grid; place-items: center; font-size: 10.5px; }
