@@ -354,22 +354,18 @@
   };
 
   // ---------- WhatsApp group ----------
-  // WhatsApp can't post into a group by itself: the button opens WhatsApp with the message typed out,
-  // the person picks the group and presses Send. The message is also copied, as a backup.
-  const WA_GROUP = "https://chat.whatsapp.com/E78LKtGQy4Q1QdAcda6Cx8";
+  // Copies the message in the group's format; the person pastes it into the WhatsApp group themselves.
   const waText = () => { const row = data && todayRow(); return row?.time_in ? B.whatsappText(row, data.staff, data.settings) : ""; };
-  function renderWa() {
-    const t = waText(), a = $("waNotify");
-    a.setAttribute("aria-disabled", String(!t));
-    a.href = t ? "https://wa.me/?text=" + encodeURIComponent(t) : "#";
-    $("waGroup").href = WA_GROUP;
-  }
-  $("waNotify").addEventListener("click", (e) => {
+  function renderWa() { $("waNotify").setAttribute("aria-disabled", String(!waText())); }
+  $("waNotify").addEventListener("click", async () => {
     const t = waText();
-    if (!t) { e.preventDefault(); return B.toast("Clock in first, then notify the group.", "err"); }
-    B.copyText(t); $("waHint").hidden = true; $("waNotify").classList.remove("nudge");
+    if (!t) return B.toast("Clock in first, then copy your message.", "err");
+    const ok = await B.copyText(t);
+    if (!ok) return B.toast("Couldn't copy on this device. Try again.", "err");
+    B.toast("Copied! Now paste it in the BHL Attendance WhatsApp group.");
+    $("waHint").hidden = true; $("waNotify").classList.remove("nudge");
+    $("waLabel").textContent = "Copied ✓"; setTimeout(() => { $("waLabel").textContent = "Copy & Send to WhatsApp Group"; }, 2500);
   });
-  $("waGroup").addEventListener("click", () => { const t = waText(); if (t) { B.copyText(t); B.toast("Message copied. Paste it in the group and press Send."); } });
 
   // ---------- my schedule (this week + next 2) and change requests ----------
   let msIdx = 0, msReqs = [], msEditing = false, msWk = null, msFrom = null;

@@ -98,7 +98,7 @@ The anon key is designed to be public. **Never** put the service_role key in thi
 - **Status column:** on the homepage's Today view, each person shows Working / On lunch / Clocked out / Not in yet / Late / Absent / Rest day / leave.
 
 ## WhatsApp
-After clocking in or out, staff tap **Notify WhatsApp Group**: WhatsApp opens with the message typed, they pick the group and press Send. (WhatsApp doesn't allow a website to post into a group automatically.) The group link is `WA_GROUP` at the top of the WhatsApp section in `assets/staff.js`.
+After clocking in or out, staff tap **Copy & Send to WhatsApp Group**: the message is copied in the group's format, and they paste it into the WhatsApp group.
 
 ## Payroll
 - Staff → Edit: set **Start date**, **Pay type** and rate. **Daily rate** = pay per day worked (plus paid leave). **Per pay period** = fixed amount, minus absent days.
