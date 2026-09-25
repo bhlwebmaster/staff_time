@@ -170,7 +170,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
   <section class="hero">
     <div class="eyebrow" id="heroEyebrow">Staff guide</div>
     <h1 id="heroTitle">Clock in, take lunch, clock out. That's it.</h1>
-    <p id="heroText">Everything the Philippine team needs to use BHL Attendance instead of posting in the WhatsApp group. It takes about ten seconds a day.</p>
+    <p id="heroText">Everything the Philippine team needs: clocking in, using your OT, your schedule, telling the WhatsApp group and your payslips. It takes about ten seconds a day.</p>
     <div class="links">
       <a class="linkcard" href="../"><b>← Open the staff app</b><span>bhlwebmaster.github.io/staff_time</span></a>
       <a class="linkcard" href="../admin.html"><b>Open the admin page</b><span>…/staff_time/admin.html</span></a>
@@ -188,8 +188,10 @@ a.brand:hover .mark { filter: brightness(1.08); }
       <a class="qcard" href="#q-no-name"><i>…</i><span>I can't see my name<small>Or I'm new to the team</small></span></a>
       <a class="qcard" href="#q-wont-load"><i>⟳</i><span>The page won't load<small>Or looks broken</small></span></a>
       <a class="qcard" href="#clock-in"><i>1</i><span>How do I clock in?<small>Step by step with pictures</small></span></a>
+      <a class="qcard" href="#hours-ot"><i>+</i><span>How does OT work?<small>30-min blocks, use it next work day</small></span></a>
+      <a class="qcard" href="#my-schedule"><i>▦</i><span>Change my schedule<small>Ask for a swap or leave</small></span></a>
+      <a class="qcard" href="#whatsapp"><i>✉</i><span>Tell the WhatsApp group<small>Copy &amp; send in one tap</small></span></a>
       <a class="qcard" href="#payslips"><i>£</i><span>Where's my payslip?<small>View and download it</small></span></a>
-      <a class="qcard" href="#week"><i>▦</i><span>When am I working?<small>This week's schedule</small></span></a>
     </div>
   </section>
   <section class="quick" data-quick="admin" hidden>
@@ -201,7 +203,9 @@ a.brand:hover .mark { filter: brightness(1.08); }
       <a class="qcard" href="#staff-mgmt"><i>+</i><span>Add a new team member<small>And what to send them</small></span></a>
       <a class="qcard" href="#access"><i>@</i><span>Give someone admin or finance access<small>Create a login</small></span></a>
       <a class="qcard" href="#payroll"><i>£</i><span>Run payroll and payslips<small>From attendance, in a few clicks</small></span></a>
-      <a class="qcard" href="#schedule-admin"><i>▦</i><span>Set this week's schedule<small>Shifts, rest days and leave</small></span></a>
+      <a class="qcard" href="#schedule-admin"><i>▦</i><span>Schedule and staff requests<small>Shifts, leave, approve changes</small></span></a>
+      <a class="qcard" href="#rules"><i>⏱</i><span>How hours and OT work<small>Rules and Settings</small></span></a>
+      <a class="qcard" href="#holidays"><i>☀</i><span>Public holidays<small>Add, remove, paid or not</small></span></a>
       <a class="qcard" href="#q-a-signin"><i>!</i><span>I can't sign in<small>Password or access problems</small></span></a>
     </div>
   </section>
@@ -218,13 +222,12 @@ a.brand:hover .mark { filter: brightness(1.08); }
       <ol class="steps">
         <li><div>On your phone, open <a href="../">bhlwebmaster.github.io/staff_time</a> in Chrome or Safari.</div></li>
         <li><div><b>iPhone:</b> tap <b>Share → Add to Home Screen</b>. <b>Android:</b> tap <b>⋮ → Add to Home screen</b>.</div></li>
-        <li><div>Everyone on the team is shown as a card with their avatar, status and schedule. Tap <b>your own name</b>.</div></li>
+        <li><div>Everyone is shown as a card with their photo, status and today's hours. Tap <b>your own name</b>.</div></li>
       </ol>
-      <p>Below the cards is the team's <b>work schedule for the week</b> (see <a href="#week">Your work schedule</a>).</p>
-      <p>At the top: tap the <b>BHL logo</b> or <b>Staff</b> to come back to this screen any time. <b>Admin</b> opens the admin page (for admins and finance only). <b>Help</b> opens this guide.</p>
-      <div class="tip"><b>Tip</b><span>The big green clock is <b>UK time</b>, which is what your schedule uses. The small grey clock is Manila time, for reference.</span></div>
+      <p>At the top: the <b>BHL logo</b> or <b>Staff</b> brings you back to this screen. <b>Admin</b> is for admins and finance only. <b>Help</b> opens this guide.</p>
+      <div class="tip"><b>Tip</b><span>The big green clock is <b>UK time</b>, which your schedule uses. The small grey clock is Manila time, for reference.</span></div>
     </div>
-    <figure><div class="phone"><img src="img/s-pick.jpg" alt="Who's clocking in screen with team cards"></div><figcaption>The home screen: pick your name</figcaption></figure>
+    <figure><div class="phone"><img src="img/s-pick.jpg" alt="Home screen with team cards"></div><figcaption>The home screen: tap your name</figcaption></figure>
   </div>
 </article>
 
@@ -234,109 +237,203 @@ a.brand:hover .mark { filter: brightness(1.08); }
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div>Tap your name. If you've never used the app, it asks you to <b>Create a 4-digit PIN</b>.</div></li>
+        <li><div>Tap your name. The first time, it asks you to <b>Create a 4-digit PIN</b>.</div></li>
         <li><div>Type 4 digits, then <b>type them again</b> to confirm.</div></li>
         <li><div>From then on, tap your name and enter your PIN each time.</div></li>
       </ol>
-      <div class="tip warn"><b>Heads up</b><span>After <b>5 wrong PINs</b>, your name locks for 15 minutes. If you forget your PIN, ask an admin to reset it, then create a new one.</span></div>
+      <div class="tip warn"><b>Heads up</b><span>After <b>5 wrong PINs</b> your name locks for 15 minutes. Forgot it? Ask an admin to reset it, then make a new one.</span></div>
     </div>
     <div class="shots">
-      <figure><div class="phone sm"><img src="img/s-pin-create.jpg" alt="Create a 4-digit PIN keypad"></div><figcaption>First time: create</figcaption></figure>
+      <figure><div class="phone sm"><img src="img/s-pin-create.jpg" alt="Create a PIN keypad"></div><figcaption>First time: create</figcaption></figure>
       <figure><div class="phone sm"><img src="img/s-pin-enter.jpg" alt="Enter your PIN keypad"></div><figcaption>Every day after: enter</figcaption></figure>
     </div>
   </div>
 </article>
 
 <article class="article" data-g="staff" id="clock-in" data-title="Clock in">
-  <h2><span class="n">03</span>Clock in</h2>
-  <p class="lede">One tap. The app uses its own clock, not your phone's, so the time is always correct.</p>
+  <h2><span class="n">03</span>Clock in (and use yesterday's OT)</h2>
+  <p class="lede">One tap. The app uses its own clock, not your phone's, so the time is always right.</p>
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div>Check <b>Today's schedule</b>. It's your usual shift in UK time.</div></li>
-        <li><div><b>Have OT from your last work day?</b> A green box shows it, e.g. <i>"You have 1:00 OT from Thu 24 Sept."</i> Pick <b>Start later</b> or <b>Leave earlier</b> to use it today (your times and a note update automatically), or <b>No</b>.</div></li>
-        <li><div>Working shifted hours for another reason? Open <b>Different hours today?</b> and set the start and end first. Add a <b>Note</b> if needed.</div></li>
-        <li><div>Tap <b>Clock in</b>. You'll see the time, the XP you earned and your streak.</div></li>
+        <li><div>Check <b>Today's schedule</b>. It's your shift in UK time, from the weekly schedule.</div></li>
+        <li><div><b>Have OT from your last work day?</b> A green box shows it, e.g. <i>"You have 1:30 OT from Thu, 24 Sept."</i> Pick <b>Start later</b> or <b>Leave earlier</b> to use it today, or <b>No</b>. Your times and a note are filled in for you.</div></li>
+        <li><div>Working shifted hours for another reason? Open <b>Different hours today?</b> and set the start and end. Add a <b>Note</b> if needed.</div></li>
+        <li><div>Tap <b>Clock in</b>. You'll see the time, your XP and your streak.</div></li>
       </ol>
-      <div class="tip"><b>Tip</b><span>Clock in within 5 minutes of your start time to count as on time and keep your streak going.</span></div>
+      <div class="tip"><b>Good to know</b><span>If you picked <b>No</b>, your OT still covers you if you end up leaving a little early today. It expires at the end of today.</span></div>
     </div>
     <div class="shots">
-      <figure><div class="phone sm"><img src="img/s-clockin.jpg" alt="Clock in screen with different schedule and note"></div><figcaption>Offset day with a note</figcaption></figure>
-      <figure><div class="phone sm"><img src="img/s-celebrate.jpg" alt="Clocked in with confetti and XP"></div><figcaption>On time: confetti and XP</figcaption></figure>
+      <figure><div class="crop" style="max-width:260px"><img src="img/s-ot-box.jpg" alt="Use yesterday's OT box"></div><figcaption>Use yesterday's OT</figcaption></figure>
+      <figure><div class="phone sm"><img src="img/s-celebrate.jpg" alt="Clocked in with XP"></div><figcaption>Clocked in</figcaption></figure>
     </div>
   </div>
 </article>
 
 <article class="article" data-g="staff" id="lunch" data-title="Lunch break">
   <h2><span class="n">04</span>Start and end lunch</h2>
-  <p class="lede">The big button always shows your next step: after clocking in it turns amber for lunch.</p>
+  <p class="lede">The big button always shows your next step. After clocking in, it turns amber for lunch.</p>
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div>When you go on break, open the app and tap <b>Start lunch</b>.</div></li>
-        <li><div>When you're back, tap <b>End lunch</b>.</div></li>
-        <li><div>Your lunch is unpaid. If you forget to log it, your standard lunch (usually 60 minutes) is taken off instead.</div></li>
+        <li><div>When you go on break, tap <b>Start lunch</b>. When you're back, tap <b>End lunch</b>.</div></li>
+        <li><div>Only the lunch you tap is taken off your hours. <b>No lunch today?</b> Just don't tap it.</div></li>
       </ol>
-      <div class="tip"><b>Tip</b><span>Logging your lunch earns <b>+5 XP</b> a day, and 10 logged lunches unlock the <b>Lunch Pro</b> badge.</span></div>
+      <div class="tip warn"><b>Please tap it</b><span>If you take a break but forget to tap, it counts as work time and the admin sees <b>"No lunch logged"</b>.</span></div>
     </div>
-    <figure><div class="phone"><img src="img/s-lunch.jpg" alt="On lunch status with End lunch button"></div><figcaption>On lunch: the button says End lunch</figcaption></figure>
+    <figure><div class="phone"><img src="img/s-lunch.jpg" alt="On lunch with End lunch button"></div><figcaption>On lunch: the button says End lunch</figcaption></figure>
   </div>
 </article>
 
 <article class="article" data-g="staff" id="clock-out" data-title="Clock out">
   <h2><span class="n">05</span>Clock out</h2>
-  <p class="lede">Tap <b>Clock out</b> at the end of your shift. If you're leaving early, the app asks you to tap again so you don't do it by mistake.</p>
+  <p class="lede">Tap <b>Clock out</b> at the end of your shift. Leaving before your end time? The app asks you to tap again so you don't do it by mistake.</p>
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div>Make sure lunch is ended (the app reminds you if it isn't).</div></li>
+        <li><div>End your lunch first (the app reminds you).</div></li>
         <li><div>Tap <b>Clock out</b>. Before your scheduled end, tap a second time to confirm.</div></li>
-        <li><div>Your timeline fills in: time in, lunch out, lunch in and time out, in UK and Manila time.</div></li>
+        <li><div>Your day fills in: time in, lunch out, lunch in and time out, in UK and Manila time.</div></li>
       </ol>
-      <div class="tip warn"><b>Forgot to clock out?</b><span>Tell an admin. They can fix the time, and every change is recorded.</span></div>
+      <div class="tip warn"><b>Forgot to clock out?</b><span>Tell an admin with the right time. They can fix it, and every change is recorded.</span></div>
     </div>
     <div class="shots">
-      <figure><div class="phone sm"><img src="img/s-clockout-confirm.jpg" alt="Tap again to clock out early confirmation"></div><figcaption>Leaving early: tap again</figcaption></figure>
-      <figure><div class="crop" style="max-width:300px"><img src="img/s-timeline.jpg" alt="Day timeline with times in UK and Manila"></div><figcaption>Your day at a glance</figcaption></figure>
+      <figure><div class="phone sm"><img src="img/s-clockout-confirm.jpg" alt="Tap again to clock out early"></div><figcaption>Leaving early: tap again</figcaption></figure>
+      <figure><div class="crop" style="max-width:300px"><img src="img/s-timeline.jpg" alt="Your day with times"></div><figcaption>Your day at a glance</figcaption></figure>
+    </div>
+  </div>
+</article>
+
+<article class="article" data-g="staff" id="whatsapp" data-title="WhatsApp group">
+  <h2><span class="n">06</span>Tell the WhatsApp group</h2>
+  <p class="lede">Only at the <b>start</b> and <b>end</b> of your shift. No message is needed for lunch.</p>
+  <div class="split">
+    <div class="prose">
+      <ol class="steps">
+        <li><div>After you clock in (and again after you clock out), the green button <b>Copy &amp; Send to WhatsApp Group</b> lights up.</div></li>
+        <li><div>Tap it. Your message is copied in the usual format: Date / Name / Sched / Time In / Time out.</div></li>
+        <li><div>Open the <b>BHL Attendance</b> group in WhatsApp, <b>paste</b> and press <b>Send</b>.</div></li>
+      </ol>
+      <p><b>My payslips</b> is right next to it (see <a href="#payslips">See your payslips</a>).</p>
+    </div>
+    <figure><div class="crop" style="max-width:330px"><img src="img/s-whatsapp.jpg" alt="Copy and Send to WhatsApp Group button"></div><figcaption>Copy, then paste in the group</figcaption></figure>
+  </div>
+</article>
+
+<article class="article" data-g="staff" id="hours-ot" data-title="Hours & OT">
+  <h2><span class="n">07</span>Your hours and OT</h2>
+  <p class="lede">Simple rules: you're paid for the time you actually work, and extra time can be used the next work day.</p>
+  <div class="split">
+    <div class="prose">
+      <ul>
+        <li><b>Worked</b> = time out − time in − the lunch you tapped.</li>
+        <li><b>Expected</b> = your schedule for that day minus its planned lunch (e.g. 9:00–6:00 with 1-hour lunch = 8:00; a 4-hour part-time day with no lunch = 4:00).</li>
+        <li><b>OT</b> counts in <b>30-minute blocks</b>: 30 min extra = 0:30, 45 min = 0:30, 1:20 = 1:00, 1:30 = 1:30.</li>
+        <li><b>Use OT on your next work day only</b> (start later or leave earlier). Rest days, leave and holidays are skipped, so Friday's OT works on Monday.</li>
+        <li><b>Unused OT expires</b> at the end of that day. It isn't paid and doesn't carry over.</li>
+        <li><b>Short</b>: time you're under your expected hours that your OT can't cover. It counts as undertime on your payslip.</li>
+        <li><b>Late</b> only shows if your day ends up short. Worked your full hours? No late mark.</li>
+      </ul>
+      <div class="tip"><b>OT to use today</b><span>The <b>This month</b> card shows how much OT you can still use today.</span></div>
+    </div>
+    <figure><div class="crop" style="max-width:330px"><img src="img/s-month.jpg" alt="This month card with OT to use today"></div><figcaption>This month</figcaption></figure>
+  </div>
+</article>
+
+<article class="article" data-g="staff" id="week" data-title="Team schedule">
+  <h2><span class="n">08</span>The team schedule on the home screen</h2>
+  <p class="lede">Below the name cards is the team's schedule in UK time. It opens on <b>Today</b>.</p>
+  <div class="split wide">
+    <div class="prose">
+      <ul>
+        <li><b>Today</b> shows just today's shifts, with a <b>Status</b> column: Working, On lunch, Clocked out, Not in yet, Late · not in, Absent, Rest day, Vacation, Sick, Emergency leave or a holiday.</li>
+        <li><b>This week</b> shows Sunday to Saturday. Yellow = rest day, green = vacation, orange = emergency leave, blue = holiday (with its name).</li>
+        <li><b>Table</b> or <b>Timeline</b>: the timeline shows each person as one coloured bar, like a calendar.</li>
+        <li>Use <b>←</b> / <b>→</b> to move a day (or a week). Tap <b>Today</b> or <b>This week</b> again to jump back to now.</li>
+      </ul>
+    </div>
+    <div class="shots">
+      <figure style="flex:1 1 440px"><div class="desk"><img src="img/s-home-desktop.jpg" alt="Home with today's table and status"></div><figcaption>Today, with live status</figcaption></figure>
+      <figure style="flex:1 1 440px"><div class="crop" style="max-width:none"><img src="img/s-week.jpg" alt="Weekly schedule table"></div><figcaption>This week (table)</figcaption></figure>
+    </div>
+  </div>
+  <figure style="margin-top:18px"><div class="crop" style="max-width:none"><img src="img/s-week-time.jpg" alt="Weekly timeline, one colour per person"></div><figcaption>This week (timeline)</figcaption></figure>
+</article>
+
+<article class="article" data-g="staff" id="my-schedule" data-title="My schedule & changes">
+  <h2><span class="n">09</span>My schedule and asking for changes</h2>
+  <p class="lede">After your PIN, <b>My schedule</b> shows this week and the next 2 weeks. You can ask to change your own days.</p>
+  <div class="split">
+    <div class="prose">
+      <ol class="steps">
+        <li><div>Pick <b>This week</b>, <b>Next week</b> or the week after. Today is highlighted.</div></li>
+        <li><div>Tap <b>Request a change</b>. For each upcoming day choose <b>Working</b> (with times), <b>Rest Day</b>, <b>Vacation</b>, <b>Sick</b>, <b>Emergency Leave</b> or <b>Unpaid Leave</b>.</div></li>
+        <li><div>Add a short note for the admin and tap <b>Send for approval</b>.</div></li>
+        <li><div>Your changes show in orange with <b>Waiting for admin approval</b>. You can edit or withdraw until an admin decides.</div></li>
+      </ol>
+      <div class="tip"><b>After a decision</b><span>Approved: the schedule updates for everyone. Not approved: you'll see the admin's message. Changes an admin makes show here straight away.</span></div>
+    </div>
+    <div class="shots">
+      <figure><div class="crop" style="max-width:250px"><img src="img/s-mysched-edit.jpg" alt="Requesting a change"></div><figcaption>Request a change</figcaption></figure>
+      <figure><div class="crop" style="max-width:250px"><img src="img/s-mysched-pending.jpg" alt="Waiting for approval"></div><figcaption>Waiting for approval</figcaption></figure>
+    </div>
+  </div>
+</article>
+
+<article class="article" data-g="staff" id="payslips" data-title="My payslips">
+  <h2><span class="n">10</span>See your payslips</h2>
+  <p class="lede">Pay is every cut-off (1st–15th and 16th–end). Once payroll is finalised, your payslip is in the app. Only you can see it, with your PIN.</p>
+  <div class="split">
+    <div class="prose">
+      <ol class="steps">
+        <li><div>Tap your name and enter your PIN.</div></li>
+        <li><div>Tap <b>My payslips</b> (next to the WhatsApp button).</div></li>
+        <li><div>Pick a <b>Pay period</b>: see your basic pay, deductions and the peso amount you receive.</div></li>
+        <li><div>Tap <b>Download PDF</b> for a full-page copy with The Biohack Group header.</div></li>
+      </ol>
+      <div class="tip warn"><b>Something looks wrong?</b><span>Message the Company Human Resources with the pay period and what doesn't match.</span></div>
+    </div>
+    <div class="shots">
+      <figure><div class="phone sm"><img src="img/s-myslips.jpg" alt="My payslips in the app"></div><figcaption>In the app</figcaption></figure>
+      <figure><div class="crop" style="max-width:230px"><img src="img/a-payslip-pdf.jpg" alt="Payslip PDF"></div><figcaption>The PDF</figcaption></figure>
     </div>
   </div>
 </article>
 
 <article class="article" data-g="staff" id="profile" data-title="Your profile">
-  <h2><span class="n">06</span>Make it yours: avatar, photo, colour, tagline</h2>
-  <p class="lede">Tap your avatar (the small <b>Edit</b> tag) or <b>Edit profile</b> to personalise your card. Everyone sees it on the home screen.</p>
+  <h2><span class="n">11</span>Make it yours: avatar, photo, colour, tagline</h2>
+  <p class="lede">Tap your avatar (the small <b>Edit</b> tag) or <b>Edit profile</b>. Everyone sees your card on the home screen.</p>
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div><b>Pick an avatar</b> from the 12 illustrations, or tap <b>Upload your photo</b>. It's cropped to a circle and shrunk automatically.</div></li>
-        <li><div>Choose a <b>card colour</b>. It tints your card and the ring around your avatar.</div></li>
-        <li><div>Add a <b>tagline</b> of up to 40 characters, like <i>"Coffee first, then conquer"</i>.</div></li>
+        <li><div><b>Pick an avatar</b> or tap <b>Upload your photo</b> (cropped and shrunk automatically).</div></li>
+        <li><div>Choose a <b>card colour</b> and add a <b>tagline</b> (up to 40 characters).</div></li>
         <li><div>Tap <b>Save profile</b>.</div></li>
       </ol>
-      <div class="tip"><b>Good to know</b><span>Keep photos work-appropriate. Admins can remove a photo, and you can switch back to an avatar any time.</span></div>
+      <div class="tip"><b>Good to know</b><span>Keep photos work-appropriate. Admins can remove a photo.</span></div>
     </div>
-    <figure><div class="crop" style="max-width:320px"><img src="img/s-profile.jpg" alt="Profile editor with avatars, colours and tagline"></div><figcaption>The profile editor</figcaption></figure>
+    <figure><div class="crop" style="max-width:320px"><img src="img/s-profile.jpg" alt="Profile editor"></div><figcaption>The profile editor</figcaption></figure>
   </div>
 </article>
 
 <article class="article" data-g="staff" id="season" data-title="XP, streaks & badges">
-  <h2><span class="n">07</span>Your season: XP, levels, streaks and badges</h2>
-  <p class="lede">Showing up on time earns points. XP resets on the 1st of every month, so everyone starts fresh.</p>
+  <h2><span class="n">12</span>Your season: XP, levels, streaks and badges</h2>
+  <p class="lede">Showing up earns points. XP resets on the 1st of every month, so everyone starts fresh.</p>
   <div class="split">
     <div class="prose">
       <div class="tablewrap" style="margin-top:0"><table>
         <thead><tr><th>You…</th><th>XP</th></tr></thead>
         <tbody>
-          <tr><td>Clock in on time (within 5 min of your start)</td><td class="num">+10</td></tr>
+          <tr><td>Clock in on time</td><td class="num">+10</td></tr>
           <tr><td>Clock in late (you still showed up)</td><td class="num">+3</td></tr>
           <tr><td>Complete the day (clock out)</td><td class="num">+10</td></tr>
           <tr><td>Log your lunch (start and end)</td><td class="num">+5</td></tr>
           <tr><td>Early bird: in 5+ minutes before your start</td><td class="num">+5</td></tr>
         </tbody></table></div>
       <p style="margin-top:14px"><b>Levels:</b> Rookie (0) → Regular (100) → Reliable (250) → Pro (450) → Ace (700) → Legend (1,000 XP).</p>
-      <p><b>Streak:</b> on-time days in a row. Days off don't break it; a late clock-in resets it to zero. Your streak also shows on your card on the home screen.</p>
+      <p><b>Streak:</b> on-time days in a row. Days off don't break it.</p>
     </div>
-    <figure><div class="crop" style="max-width:330px"><img src="img/s-season.jpg" alt="Season card with level ring, XP bar, streak and badges"></div><figcaption>Your season card</figcaption></figure>
+    <figure><div class="crop" style="max-width:330px"><img src="img/s-season.jpg" alt="Season card"></div><figcaption>Your season card</figcaption></figure>
   </div>
   <h3 style="margin-top:26px;font-size:19px">Badges to unlock each month</h3>
   <div class="badges">
@@ -351,353 +448,284 @@ a.brand:hover .mark { filter: brightness(1.08); }
   </div>
 </article>
 
-<article class="article" data-g="staff" id="month" data-title="Hours & OT bank">
-  <h2><span class="n">08</span>Your hours and OT bank</h2>
-  <p class="lede">The <b>This month</b> card shows the days you've worked, total hours and your OT bank.</p>
-  <div class="split">
-    <div class="prose">
-      <ul>
-        <li><b>OT earned:</b> time worked beyond your expected hours, counted in 30-minute blocks (45 extra minutes counts as 30, 1:20 as 1:00).</li>
-        <li><b>Use it on your next work day only:</b> start later or leave earlier by up to that much. Rest days, leave and holidays are skipped, so Friday's OT can be used on Monday.</li>
-        <li><b>It expires</b> at the end of that next work day if you don't use it. It isn't paid and doesn't carry over.</li>
-        <li><b>OT to use today</b> shows what you can still use. Short time that your OT can't cover counts as undertime on your payslip.</li>
-      </ul>
-    </div>
-    <figure><div class="crop" style="max-width:330px"><img src="img/s-month.jpg" alt="This month card with days, hours and OT bank"></div><figcaption>This month</figcaption></figure>
-  </div>
-</article>
-
-<article class="article" data-g="staff" id="team" data-title="Team & WhatsApp">
-  <h2><span class="n">09</span>Team today and the WhatsApp message</h2>
-  <p class="lede">See who's working, on lunch or finished. If the group still wants a message, the app writes it for you.</p>
-  <div class="split">
-    <div class="prose">
-      <ol class="steps">
-        <li><div>Scroll to <b>Team today</b> to see everyone's status.</div></li>
-        <li><div>After you <b>clock in</b> and after you <b>clock out</b>, tap the green <b>Copy &amp; Send to WhatsApp Group</b> button. Your message is copied (Date / Name / Sched / Time In / Time out). Open the <b>BHL Attendance</b> group in WhatsApp, paste and press <b>Send</b>. No message is needed for lunch.</div></li>
-        <li><div>Done for now? Tap <b>Switch person</b>. The app also locks itself after 5 minutes of no use.</div></li>
-      </ol>
-    </div>
-    <figure><div class="crop" style="max-width:330px"><img src="img/s-team.jpg" alt="Team today list with avatars and statuses"></div><figcaption>Team today</figcaption></figure>
-  </div>
-</article>
-
-<article class="article" data-g="staff" id="week" data-title="Work schedule">
-  <h2><span class="n">10</span>Your work schedule</h2>
-  <p class="lede">The home screen shows the team's schedule for today or the week, in UK time. Your shift for today is already filled in when you clock in.</p>
-  <div class="split wide">
-    <div class="prose">
-      <ul>
-        <li><b>Table</b> shows each person's shift per day. Yellow means a rest day, green means vacation leave, orange means emergency leave.</li>
-        <li><b>Timeline</b> shows each person as one coloured bar covering their shift, like a calendar. The colour key is at the bottom.</li>
-        <li>It opens on <b>Today</b>, showing just today's shifts. Tap <b>This week</b> to see the whole week.</li>
-        <li>Use <b>←</b> / <b>→</b> to go back or forward a day (or a week). Tap <b>Today</b> or <b>This week</b> again to jump back to now.</li>
-        <li>Weeks run <b>Sunday to Saturday</b>. The app remembers whether you like Table or Timeline.</li>
-        <li>Leave (vacation, sick, emergency, holiday) shows as a small note under that day.</li>
-        <li>On <b>Today</b>, the <b>Status</b> column shows what everyone is doing right now: Working, On lunch, Clocked out, Not in yet, Late, Absent, Rest day, Vacation or Sick.</li>
-      </ul>
-      <h3 style="margin-top:18px;font-size:17px">Your own schedule and changes</h3>
-      <ol class="steps">
-        <li><div>After you enter your PIN, scroll to <b>My schedule</b>. You can see <b>this week</b> and the <b>next 2 weeks</b>, with today highlighted.</div></li>
-        <li><div>Need a change (swap a day, rest day, leave, different hours)? Tap <b>Request a change</b>, change the days, add a note and tap <b>Send for approval</b>.</div></li>
-        <li><div>Your changes show in orange with <b>Waiting for admin approval</b>. You can edit or withdraw the request until an admin decides.</div></li>
-        <li><div>Once approved, the schedule updates for everyone. If it isn't approved, you'll see the admin's message.</div></li>
-      </ol>
-      <div class="tip"><b>Tip</b><span>Need to swap a shift or take leave? Ask an admin. They update it here, so everyone sees the change.</span></div>
-    </div>
-    <div class="shots">
-      <figure style="flex:1 1 440px"><div class="crop" style="max-width:none"><img src="img/s-week.jpg" alt="Weekly schedule table"></div><figcaption>Table view</figcaption></figure>
-      <figure style="flex:1 1 440px"><div class="crop" style="max-width:none"><img src="img/s-week-time.jpg" alt="Weekly schedule timeline"></div><figcaption>Timeline view</figcaption></figure>
-    </div>
-  </div>
-  <figure style="margin-top:18px"><div class="desk"><img src="img/s-home-desktop.jpg" alt="Timeline view on a computer: one coloured bar per person"></div><figcaption>On a computer: one colour per person, easy to see who overlaps</figcaption></figure>
-</article>
-
-<article class="article" data-g="staff" id="payslips" data-title="My payslips">
-  <h2><span class="n">11</span>See your payslips</h2>
-  <p class="lede">After payroll is done, your payslip appears in the app. Only you can see it, with your PIN.</p>
-  <div class="split">
-    <div class="prose">
-      <ol class="steps">
-        <li><div>Tap your name and enter your PIN.</div></li>
-        <li><div>Scroll down and tap <b>My payslips</b>.</div></li>
-        <li><div>Pick a <b>Pay period</b> to see your basic pay, any deductions (lates, undertime, absences, other) and the amount you receive in pesos (₱) after the transfer fee.</div></li>
-        <li><div>Tap <b>Download PDF</b> to save a copy.</div></li>
-      </ol>
-      <div class="tip"><b>No payslip yet?</b><span>Payslips appear only after an admin finalises the pay period. If the button says there are none, check again after payday.</span></div>
-      <div class="tip warn"><b>Something looks wrong?</b><span>Message an admin with the pay period and what doesn't match (for example "1 absence shown but I worked on the 15th").</span></div>
-    </div>
-    <figure><div class="phone"><img src="img/s-myslips.jpg" alt="My payslips screen with a payslip"></div><figcaption>My payslips in the app</figcaption></figure>
-  </div>
-</article>
-
 <article class="article" data-g="staff" id="staff-faq" data-title="Problems & answers">
-  <h2><span class="n">12</span>Problems and answers</h2>
-  <details class="faq" id="q-forgot-pin"><summary>I forgot my PIN</summary><div>No problem. Ask an admin to reset it. Next time you tap your name, the app asks you to make a new 4-digit PIN.</div></details>
-  <details class="faq" id="q-locked"><summary>It says "Too many wrong PINs"</summary><div>After 5 wrong tries your name is locked for 15 minutes, to keep your account safe. Wait 15 minutes and try again. If you've forgotten the PIN, ask an admin to reset it.</div></details>
-  <details class="faq" id="q-forgot-out"><summary>I forgot to clock out, or clocked in at the wrong time</summary><div>Send an admin the correct time (for example "Clocked out 3:05 PM UK yesterday"). They can fix it. You can't change past days yourself; this keeps records fair.</div></details>
-  <details class="faq" id="q-no-name"><summary>I can't see my name</summary><div>An admin needs to add you first. Ask them to add you under Staff. Once they have, refresh the page and your name appears.</div></details>
-  <details class="faq" id="q-wont-load"><summary>The page won't load or looks broken</summary><div>1. Check your internet connection. 2. Pull down on the page to refresh (on a computer, press Ctrl+R or Cmd+R). 3. Still stuck? Close the browser and open the link again. If it's still not working, tell an admin, and post your times in WhatsApp for now so nothing is lost.</div></details>
-  <details class="faq"><summary>Why doesn't my phone's time matter?</summary><div>The app uses its own clock, not your phone's. Changing the time on your phone makes no difference, which keeps everyone's records fair.</div></details>
-  <details class="faq"><summary>My streak went back to zero. Why?</summary><div>Clocking in more than 5 minutes after your start time resets your streak. Days you don't work don't affect it.</div></details>
-  <details class="faq"><summary>I clocked out by mistake</summary><div>Tell an admin. They can remove the clock-out time so you can carry on, or set the right time.</div></details>
-  <details class="faq"><summary>My shift today is wrong</summary><div>Your shift comes from the weekly schedule an admin sets. If today is different (an offset or swap), open <b>Different schedule today?</b> before you clock in and add a note. For a permanent change or leave, ask an admin to update the schedule.</div></details>
-  <details class="faq"><summary>I don't see "My payslips" or it's empty</summary><div>Payslips show only after payroll for that period is finalised. If a finalised period is missing, message an admin.</div></details>
-  <details class="faq"><summary>Can I use it on a laptop?</summary><div>Yes. The same link works in any browser, on a phone or a computer.</div></details>
+  <h2><span class="n">13</span>Problems and answers</h2>
+  <details class="faq" id="q-forgot-pin"><summary>I forgot my PIN</summary><div>Ask an admin to reset it. Next time you tap your name, make a new 4-digit PIN.</div></details>
+  <details class="faq" id="q-locked"><summary>It says "Too many wrong PINs"</summary><div>After 5 wrong tries your name is locked for 15 minutes. Wait, then try again, or ask an admin to reset your PIN.</div></details>
+  <details class="faq" id="q-forgot-out"><summary>I forgot to clock out, or clocked in at the wrong time</summary><div>Send an admin the correct time (e.g. "Clocked out 3:05 PM UK yesterday"). You can't change past days yourself; this keeps records fair.</div></details>
+  <details class="faq" id="q-no-name"><summary>I can't see my name</summary><div>An admin needs to add you first under Staff. Then refresh the page.</div></details>
+  <details class="faq" id="q-wont-load"><summary>The page won't load or looks broken</summary><div>Check your internet, then pull down to refresh (Ctrl+R / Cmd+R on a computer). Still stuck? Tell an admin, and post your times in WhatsApp for now.</div></details>
+  <details class="faq" id="q-ot"><summary>Where did my OT go?</summary><div>OT can only be used on your next work day, then it expires. Check <b>OT to use today</b> on the This month card. If you couldn't use it for a good reason, ask an admin: they can add it back to a day.</div></details>
+  <details class="faq"><summary>I didn't take lunch today</summary><div>That's fine: don't tap lunch. Your full time counts. If your schedule has no lunch on that day (e.g. part-time), ask an admin to set lunch to 0 so your expected hours are right.</div></details>
+  <details class="faq"><summary>My shift today is wrong</summary><div>Your shift comes from the weekly schedule. For today, open <b>Different hours today?</b> before clocking in. For future days, use <b>Request a change</b> in My schedule.</div></details>
+  <details class="faq"><summary>I can't find my payslip</summary><div>Payslips show only after payroll for that cut-off is finalised. If a finalised period is missing, message an admin.</div></details>
+  <details class="faq"><summary>Why doesn't my phone's time matter?</summary><div>The app uses its own clock, so changing your phone's time makes no difference. It keeps everyone's records fair.</div></details>
 
   <h3 style="margin-top:28px;font-size:19px">Words you'll see</h3>
   <div class="gloss">
-    <div><b>UK time</b>The time in London. Your schedule and all records use it. It's the "GMT" from the WhatsApp group.</div>
-    <div><b>PIN</b>Your own 4-digit code. Don't share it: it stops anyone else clocking in as you.</div>
-    <div><b>Clock in / Clock out</b>Tapping the button when you start and finish work.</div>
-    <div><b>Overtime (OT)</b>Extra time you work beyond your normal day, counted in 15-minute steps.</div>
-    <div><b>OT to use today</b>Overtime from your last work day. Use it today (start later or leave earlier) or it expires tonight.</div>
-    <div><b>Offset</b>Using your OT to work a shorter day. The app adds the note for you.</div>
-    <div><b>XP (points)</b>Points for being on time, taking lunch and finishing your day. They reset each month.</div>
-    <div><b>Streak</b>How many days in a row you've clocked in on time.</div>
-    <div><b>Rest day</b>A day you're not scheduled to work. It never counts as an absence.</div>
-    <div><b>Payslip</b>Your pay for a period: basic pay, deductions and the peso amount you receive.</div>
+    <div><b>UK time</b>The time in London. Your schedule and records use it (the "GMT" from WhatsApp).</div>
+    <div><b>Expected hours</b>Your scheduled day minus its planned lunch.</div>
+    <div><b>OT</b>Extra time beyond your expected hours, in 30-minute blocks.</div>
+    <div><b>OT to use today</b>OT from your last work day. Use it today or it expires tonight.</div>
+    <div><b>Offset</b>Starting later or leaving earlier using your OT. The app adds the note for you.</div>
+    <div><b>Short</b>Time under your expected hours that OT didn't cover (undertime on the payslip).</div>
+    <div><b>Cut-off</b>A pay period: 1st–15th or 16th–end of the month.</div>
+    <div><b>Rest day</b>A day you're not scheduled. It never counts as an absence.</div>
   </div>
-
   <div class="stuck"><b>Still stuck?</b><span>Message an admin in the BHL Attendance WhatsApp group with your name, the date and what went wrong. A screenshot helps.</span></div>
 </article>
 
 <!-- ===================== ADMIN ===================== -->
-<article class="article" data-g="admin" id="signin" data-title="Sign in">
-  <h2><span class="n">01</span>Sign in</h2>
+<article class="article" data-g="admin" id="signin" data-title="Sign in & roles">
+  <h2><span class="n">01</span>Sign in, and who can do what</h2>
   <p class="lede">Admins and finance use the admin page with an email and password.</p>
   <div class="split">
     <div class="prose">
       <ol class="steps">
         <li><div>Open <a href="../admin.html">bhlwebmaster.github.io/staff_time/admin.html</a> and bookmark it.</div></li>
         <li><div>Sign in with the email and password you were given.</div></li>
-        <li><div>If you got a temporary password, change it straight away under <b>Access → My password</b>.</div></li>
+        <li><div>Got a temporary password? Change it under <b>Access → My password</b>.</div></li>
       </ol>
-      <p>Use the <b>Staff / Admin</b> switch at the top to jump between the staff app and the admin page. The <b>BHL logo</b> takes you to the staff home screen.</p>
+      <p>The <b>Staff / Admin</b> switch at the top jumps between the staff app and this page.</p>
       <div class="tip"><b>Two roles</b><span><b>Admin</b> can do everything. <b>Finance</b> can view Today, Timesheets, Reports, Schedule and Payroll and download PDFs and CSVs, but can't change anything.</span></div>
     </div>
-    <figure><div class="crop" style="max-width:340px"><img src="img/a-signin.jpg" alt="Admin sign-in form"></div><figcaption>Admin sign-in</figcaption></figure>
+    <figure><div class="crop" style="max-width:340px"><img src="img/a-signin.jpg" alt="Admin sign-in"></div><figcaption>Admin sign-in</figcaption></figure>
   </div>
 </article>
 
 <article class="article" data-g="admin" id="today-board" data-title="Today board">
   <h2><span class="n">02</span>The live Today board</h2>
-  <p class="lede">See at a glance who's working, on lunch, clocked out or not in yet. It refreshes every minute.</p>
+  <p class="lede">Who's working, on lunch, clocked out, not in yet, off or on leave. It refreshes every minute.</p>
   <div class="split wide">
     <div class="prose">
       <ul>
-        <li>The totals at the top count <b>Working · On lunch · Clocked out · Not in · Late</b>.</li>
-        <li><b>Flags</b> show late arrivals, OT earned, short days and missing clock-outs. Notes from staff appear under the flags.</li>
-        <li>The <b>Schedule</b> column shows each person's shift for that day, from the weekly schedule.</li>
-        <li>People on a <b>Rest Day</b> or leave (vacation, sick, emergency, holiday, unpaid) show a grey pill and aren't counted as <b>Not in</b>.</li>
+        <li>Totals at the top: <b>Working · On lunch · Clocked out · Not in · Late</b>. People on a rest day, leave or a holiday aren't counted as Not in.</li>
+        <li><b>Flags</b>: Late, OT +x, <b>OT used</b> (yesterday's OT covering today), Short, No clock-out and <b>No lunch logged</b>. Staff notes show under the flags.</li>
         <li>Use the <b>Day</b> picker to look at any past date.</li>
       </ul>
     </div>
-    <figure><div class="desk"><img src="img/a-today.jpg" alt="Admin Today board with statuses and flags"></div><figcaption>Today board</figcaption></figure>
+    <figure><div class="desk"><img src="img/a-today.jpg" alt="Today board"></div><figcaption>Today board</figcaption></figure>
   </div>
 </article>
 
 <article class="article" data-g="admin" id="fix-entry" data-title="Fix or add an entry">
   <h2><span class="n">03</span>Fix or add an entry</h2>
-  <p class="lede">For a missed clock-out, a wrong time, or a day someone forgot to log.</p>
+  <p class="lede">For a missed clock-out, a wrong time, a day someone forgot to log, or an OT exception.</p>
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div>On <b>Today</b> or in <b>Timesheets → Daily entries</b>, click <b>Edit</b> (or <b>Add</b>, or <b>+ Add entry</b>).</div></li>
-        <li><div>Change the schedule, times (UK) or note, then click <b>Save</b>. Times must run in order: in → lunch out → lunch in → out.</div></li>
-        <li><div>The <b>History</b> at the bottom shows who changed what and when. Every edit is logged.</div></li>
+        <li><div>On <b>Today</b> or in <b>Timesheets → Daily entries</b>, click <b>Edit</b> (or <b>Add</b> / <b>+ Add entry</b>).</div></li>
+        <li><div>Change the times (UK) or note and click <b>Save</b>. Times must run in order: in → lunch out → lunch in → out.</div></li>
+        <li><div>Changing the <b>Sched start/end</b> here makes it that day's planned schedule (an admin decision).</div></li>
+        <li><div><b>Extra OT credit (minutes)</b>: lets someone use OT that already expired, e.g. 60 if they were too busy to use it.</div></li>
       </ol>
-      <div class="tip warn"><b>Delete</b><span>Deleting needs two clicks and is also recorded in the history.</span></div>
+      <div class="tip warn"><b>History</b><span>Every create, edit and delete is logged with who did it and when. It's shown at the bottom of the dialog.</span></div>
     </div>
-    <figure style="max-width:460px"><div class="crop" style="max-width:460px"><img src="img/a-edit.jpg" alt="Edit entry dialog"></div><figcaption>Edit an entry</figcaption></figure>
+    <figure style="max-width:420px"><div class="crop" style="max-width:420px"><img src="img/a-edit.jpg" alt="Edit entry dialog"></div><figcaption>Edit an entry</figcaption></figure>
   </div>
 </article>
 
 <article class="article" data-g="admin" id="timesheets" data-title="Timesheets">
-  <h2><span class="n">04</span>Timesheets for finance</h2>
+  <h2><span class="n">04</span>Timesheets</h2>
   <p class="lede">Hours per person for any period, ready for payroll or invoicing.</p>
   <div class="split wide">
     <div class="prose">
       <ol class="steps">
-        <li><div>Pick <b>This week, Last week, This month, Last month</b>, or set <b>From / To</b> dates.</div></li>
-        <li><div>Click a person's row to filter the daily entries to them.</div></li>
-        <li><div>Download <b>Summary CSV</b> (one row per person) or <b>Daily CSV</b> (every day). CSV files open in Excel or Google Sheets. Or use <b>Print / PDF</b>.</div></li>
+        <li><div>Pick <b>This week, Last week, This month, Last month</b>, or set <b>From / To</b>.</div></li>
+        <li><div>Click a person's row to filter the daily entries to them. The name column stays in place when you scroll sideways.</div></li>
+        <li><div>Download <b>Summary CSV</b> or <b>Daily CSV</b> for Excel/Sheets, or use <b>Print / PDF</b>.</div></li>
       </ol>
-      <p><b>Billable hrs</b> = regular hours (capped at the paid day) + OT earned. That's the number to invoice.</p>
+      <p>Columns: <b>OT earned</b>, <b>OT used</b> (OT spent the next work day), <b>Short</b> (time under expected hours that OT didn't cover), <b>Late</b>, <b>Billable hrs</b> (regular + OT earned).</p>
     </div>
-    <figure><div class="desk"><img src="img/a-timesheets.jpg" alt="Timesheets with summary per person"></div><figcaption>Timesheets</figcaption></figure>
+    <figure><div class="desk"><img src="img/a-timesheets.jpg" alt="Timesheets"></div><figcaption>Timesheets</figcaption></figure>
   </div>
 </article>
 
 <article class="article" data-g="admin" id="reports" data-title="Reports & PDF">
   <h2><span class="n">05</span>Reports and PDF export</h2>
-  <p class="lede">Hours tallied per person by day, week or month, or across any dates you choose.</p>
+  <p class="lede">Hours per person by day, week or month, or across any dates.</p>
   <div class="split wide">
     <div class="prose">
       <div class="tablewrap" style="margin-top:0"><table>
         <thead><tr><th>Report</th><th>What you pick</th><th>Columns</th></tr></thead>
         <tbody>
-          <tr><td><b>Daily</b></td><td>One date</td><td>Totals per person plus each person's in / lunch / out</td></tr>
-          <tr><td><b>Weekly</b></td><td>Any day in the week (Mon–Sun)</td><td>Hours per person per day</td></tr>
+          <tr><td><b>Daily</b></td><td>One date</td><td>Totals per person plus in / lunch / out</td></tr>
+          <tr><td><b>Weekly</b></td><td>Any day in the week</td><td>Hours per person per day</td></tr>
           <tr><td><b>Monthly</b></td><td>A month</td><td>Hours per person per week</td></tr>
-          <tr><td><b>Custom dates</b></td><td>From and To</td><td>By day (≤14 days), by week (≤4 months) or by month</td></tr>
+          <tr><td><b>Custom dates</b></td><td>From and To</td><td>By day, week or month depending on length</td></tr>
         </tbody></table></div>
       <ol class="steps" style="margin-top:16px">
-        <li><div>Choose the report type, then the date. Use <b>←</b> / <b>→</b> to step through periods and <b>Current</b> to jump back.</div></li>
-        <li><div>Optionally pick one <b>Person</b>.</div></li>
-        <li><div>Click <b>Export PDF</b> for a landscape A4 report with summary, hours table, daily detail and page numbers. Or click <b>CSV</b> for a file you can open in Excel or Google Sheets.</div></li>
+        <li><div>Choose the report and date. <b>←</b> / <b>→</b> step through periods; <b>Current</b> jumps back.</div></li>
+        <li><div>Optionally pick one <b>Person</b>, then <b>Export PDF</b> (landscape A4) or <b>CSV</b>.</div></li>
       </ol>
     </div>
     <div class="shots">
-      <figure style="flex:1 1 480px"><div class="desk"><img src="img/a-report-month.jpg" alt="Monthly report by week"></div><figcaption>Monthly report: hours by week</figcaption></figure>
-      <figure style="flex:1 1 480px"><div class="desk"><img src="img/a-report-week.jpg" alt="Weekly report by day"></div><figcaption>Weekly report: hours by day</figcaption></figure>
+      <figure style="flex:1 1 480px"><div class="desk"><img src="img/a-report-week.jpg" alt="Weekly report"></div><figcaption>Weekly report</figcaption></figure>
+      <figure style="flex:1 1 480px"><div class="desk"><img src="img/a-report-month.jpg" alt="Monthly report"></div><figcaption>Monthly report</figcaption></figure>
     </div>
   </div>
 </article>
 
-<article class="article" data-g="admin" id="staff-mgmt" data-title="Manage staff">
+<article class="article" data-g="admin" id="staff-mgmt" data-title="Staff & pay">
   <h2><span class="n">06</span>Add and manage staff</h2>
-  <p class="lede">Staff are the people who clock in. They don't need an email, just their name and a PIN.</p>
+  <p class="lede">Staff don't need an email, just their name and a PIN they create themselves.</p>
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div><b>Staff → + Add person.</b> Enter the <b>Display name</b> (shown on the clock-in screen) and the <b>Timesheet name</b> (e.g. <code>GAMOTAN, VERGE</code>).</div></li>
-        <li><div>Set their usual <b>Start / End</b> in UK time and their <b>unpaid lunch</b> in minutes. The paid day is calculated automatically.</div></li>
-        <li><div>Under <b>Usual week</b>, tick the days they work. Each day has its own start, end and <b>lunch (minutes)</b>: use 0 for days without lunch (e.g. part-time, or a no-lunch day to leave early another day). Unticked days are rest days.</div></li>
-        <li><div>For payroll, set their <b>Start date</b>, <b>Pay type</b> (<b>Hourly</b>, <b>Daily</b>, <b>Weekly</b>, <b>Bi-monthly</b> or <b>Monthly</b>) and <b>rate</b> in £. See <a href="#payroll">Payroll</a>.</div></li>
-        <li><div>Click <b>Save</b>, then send them the staff link. They create their own PIN.</div></li>
+        <li><div><b>Staff → + Add person.</b> Enter the <b>Display name</b> and the <b>Timesheet name</b> (e.g. <code>GAMOTAN, VERGE</code>).</div></li>
+        <li><div>Set their usual <b>Start / End</b> (UK) and standard <b>unpaid lunch</b>.</div></li>
+        <li><div><b>Usual week</b>: tick the working days. Each day has its own start, end and <b>Lunch (min)</b>. Use <b>0</b> for no-lunch days (part-time, or a no-lunch day to leave early on another day).</div></li>
+        <li><div>For payroll: <b>Start date</b>, <b>Pay type</b> and <b>rate</b> (see <a href="#payroll">Payroll</a>).</div></li>
+        <li><div>Click <b>Save</b> and send them the staff link.</div></li>
       </ol>
       <ul>
-        <li><b>Forgotten PIN:</b> Edit → <b>Reset PIN</b>.</li>
-        <li><b>Unsuitable photo:</b> Edit → <b>Remove photo</b>.</li>
-        <li><b>Someone leaves:</b> set Status to <b>Inactive</b>. Their history stays in reports.</li>
+        <li><b>Forgotten PIN:</b> Edit → <b>Reset PIN</b>. <b>Unsuitable photo:</b> Edit → <b>Remove photo</b>.</li>
+        <li><b>Someone leaves:</b> set Status to <b>Inactive</b>. Their history stays.</li>
       </ul>
     </div>
-    <figure style="max-width:460px"><div class="crop" style="max-width:460px"><img src="img/a-addstaff.jpg" alt="Add person dialog"></div><figcaption>Add a person: schedule, pay and usual week</figcaption></figure>
+    <figure style="max-width:420px"><div class="crop" style="max-width:420px"><img src="img/a-addstaff.jpg" alt="Staff dialog with pay type and usual week"></div><figcaption>Staff → Edit</figcaption></figure>
   </div>
-  <figure style="margin-top:18px"><div class="desk"><img src="img/a-staff.jpg" alt="Staff list with avatars"></div><figcaption>The staff list</figcaption></figure>
 </article>
 
-<article class="article" data-g="admin" id="access" data-title="Logins & roles">
-  <h2><span class="n">07</span>Create logins for admins and finance</h2>
-  <p class="lede">Give someone access to the admin page. Only admins can do this.</p>
-  <div class="split">
+<article class="article" data-g="admin" id="schedule-admin" data-title="Schedule & requests">
+  <h2><span class="n">07</span>Weekly schedule and staff requests</h2>
+  <p class="lede">The usual week comes from Staff → Edit. Change single days here. Everyone sees it on the home screen.</p>
+  <div class="split wide">
     <div class="prose">
       <ol class="steps">
-        <li><div>Go to <b>Access → Create a login</b>. Enter their email and pick <b>Finance</b> or <b>Admin</b>.</div></li>
-        <li><div>Click <b>Generate</b> for a temporary password, then <b>Create login</b>.</div></li>
-        <li><div>Click <b>Copy details</b> and send them privately. They'll change the password after signing in.</div></li>
-        <li><div>Change someone's role with the dropdown, or click <b>Remove</b> (twice) to take access away.</div></li>
+        <li><div>Open <b>Schedule</b>. Change any cell to a different shift, <b>Rest Day</b>, <b>Vacation</b>, <b>Sick</b>, <b>Emergency Leave</b>, <b>Holiday</b> or <b>Unpaid Leave</b>. Changed days are outlined in orange.</div></li>
+        <li><div>Click <b>Save week</b>. <b>Copy last week</b> and <b>Reset to usual week</b> help.</div></li>
+        <li><div><b>Staff requests:</b> an orange number on the Schedule tab means requests are waiting. Each shows the days, what's planned now and what they want, plus their note.</div></li>
+        <li><div>Type an optional message, then <b>Approve</b> (the schedule updates straight away) or <b>Reject</b> (they see your message).</div></li>
       </ol>
-      <div class="tip"><b>Safety net</b><span>You can't remove or demote yourself, so there's always at least one admin.</span></div>
+      <div class="tip"><b>Good to know</b><span>Public holidays show automatically. Finance can see requests but can't approve.</span></div>
     </div>
-    <figure style="max-width:520px"><div class="desk"><img src="img/a-access.jpg" alt="Access tab with create login form and user list"></div><figcaption>Access tab</figcaption></figure>
+    <figure><div class="crop" style="max-width:none"><img src="img/a-requests.jpg" alt="Staff change requests"></div><figcaption>A staff request waiting for approval</figcaption></figure>
   </div>
-  <figure style="margin-top:18px"><div class="desk"><img src="img/a-finance.jpg" alt="Finance view with read-only tabs"></div><figcaption>What finance sees: no Staff or Settings tabs, and nothing can be edited. Schedule and Payroll are view-only.</figcaption></figure>
+  <figure style="margin-top:18px"><div class="crop" style="max-width:none"><img src="img/a-schedule.jpg" alt="Schedule grid"></div><figcaption>The Schedule grid</figcaption></figure>
 </article>
 
-<article class="article" data-g="admin" id="settings" data-title="Settings & rules">
-  <h2><span class="n">08</span>Settings and how the numbers work</h2>
-  <p class="lede">These rules apply to everyone's hours, reports and exports.</p>
+<article class="article" data-g="admin" id="rules" data-title="Hours & OT rules">
+  <h2><span class="n">08</span>How hours and OT work (Settings)</h2>
+  <p class="lede">One set of rules for everyone. Change them under <b>Settings</b>.</p>
   <div class="split">
     <div class="prose">
       <div class="tablewrap" style="margin-top:0"><table>
         <thead><tr><th>Term</th><th>Rule</th></tr></thead>
         <tbody>
           <tr><td><b>Worked</b></td><td>Time out − time in − the lunch they tapped. No lunch tapped = nothing taken off.</td></tr>
-          <tr><td><b>Expected</b></td><td>That day's schedule minus its planned lunch (Staff → Usual week). Example: 6:00–15:00 with 60 lunch = 8:00; 7:00–11:00 with 0 lunch = 4:00.</td></tr>
-          <tr><td><b>OT earned</b></td><td>Worked − expected, counted in whole 30-minute blocks. 30 min extra = 0:30, 45 min = 0:30, 1:20 = 1:00, 1:30 = 1:30.</td></tr>
-          <tr><td><b>Short</b></td><td>Worked below expected. OT from the person's last work day covers it first ("OT used"); only what's left counts as undertime in payroll.</td></tr>
-          <tr><td><b>OT expiry</b></td><td>OT can only be used on the next work day (the next day they clock in, within 4 days, so Friday → Monday works). Unused OT expires. To make an exception, open the day in <b>Edit</b> and set <b>Extra OT credit</b>.</td></tr>
-          <tr><td><b>Late</b></td><td>Clocked in after the start + grace (default 5 min). With <b>Judge by hours</b> on, a day with its full hours isn't marked late.</td></tr>
-          <tr><td><b>No lunch logged</b></td><td>A day with a planned lunch but no lunch taps. The time counts as worked, so check it if they did take a break.</td></tr>
-          <tr><td><b>Billable</b></td><td>Regular hours + OT earned.</td></tr>
+          <tr><td><b>Expected</b></td><td>That day's planned schedule minus its planned lunch (Staff → Usual week).</td></tr>
+          <tr><td><b>OT</b></td><td>Worked − expected, in whole blocks (default <b>30 min</b>: 45 → 0:30, 1:20 → 1:00).</td></tr>
+          <tr><td><b>OT use</b></td><td>Only on the next work day (the next clock-in within 4 days, so Friday → Monday). Unused OT expires. Staff choose Start later / Leave earlier at clock-in.</td></tr>
+          <tr><td><b>Short</b></td><td>Under expected hours after OT is used. Counts as undertime in payroll.</td></tr>
+          <tr><td><b>Late</b></td><td>After start + grace (5 min). With <b>Judge by hours</b> on, a day with full hours isn't late.</td></tr>
+          <tr><td><b>No lunch logged</b></td><td>A day with a planned lunch but no taps. Worth a quick check.</td></tr>
+          <tr><td><b>Billable</b></td><td>Regular hours (capped at expected) + OT earned.</td></tr>
         </tbody></table></div>
+      <p style="margin-top:12px">Settings also has: <b>Count minutes before scheduled start</b> (on), <b>Judge by hours</b> (on) and <b>Working days per cut-off</b> (10).</p>
     </div>
-    <figure style="max-width:460px"><div class="crop" style="max-width:460px"><img src="img/a-settings.jpg" alt="Settings form"></div><figcaption>Settings</figcaption></figure>
+    <figure style="max-width:420px"><div class="crop" style="max-width:420px"><img src="img/a-settings.jpg" alt="Settings"></div><figcaption>Settings</figcaption></figure>
   </div>
 </article>
 
-<article class="article" data-g="admin" id="schedule-admin" data-title="Weekly schedule">
-  <h2><span class="n">09</span>Set the weekly schedule</h2>
-  <p class="lede">Set each person's usual week once, then change single days for swaps, rest days and leave. Everyone sees the week on the homepage.</p>
+<article class="article" data-g="admin" id="holidays" data-title="Public holidays">
+  <h2><span class="n">09</span>Public holidays (Philippines)</h2>
+  <p class="lede">The official 2026 and 2027 lists are already loaded under <b>Settings → Public holidays</b>.</p>
   <div class="split">
     <div class="prose">
-      <ol class="steps">
-        <li><div><b>Usual week:</b> go to <b>Staff → Edit</b>. Tick the days they work and set start and end times (UK). Untick a day for a rest day. Click <b>Save</b>.</div></li>
-        <li><div><b>This week:</b> open the <b>Schedule</b> tab. Each cell starts from the usual week. Change any day to a different shift, <b>Rest Day</b>, <b>Vacation Leave</b>, <b>Sick Leave</b>, <b>Emergency Leave</b>, <b>Holiday</b> or <b>Unpaid Leave</b>.</div></li>
-        <li><div>Changed days are outlined in orange. Click <b>Save week</b>.</div></li>
-        <li><div>Handy buttons: <b>Copy last week</b> repeats last week's plan, and <b>Reset to usual week</b> clears the changes.</div></li>
-        <li><div><b>Staff requests:</b> staff can ask to change their own week (up to 2 weeks ahead). The <b>Schedule</b> tab shows an orange number when requests are waiting. Each request lists the days, what's planned now and what they want. Add an optional message, then click <b>Approve</b> (the schedule updates straight away) or <b>Reject</b>.</div></li>
-      </ol>
-      <div class="tip"><b>How it's used</b><span>When someone clocks in, their shift for the day comes from here, so late and undertime are judged against the right times. Rest days don't count as absences.</span></div>
+      <ul>
+        <li>A holiday on someone's working day becomes a <b>paid day off</b>. It shows by name on the schedule and counts in payroll. On a rest day it changes nothing.</li>
+        <li><b>Add</b> new dates (e.g. Eid'l Fitr / Eid'l Adha for 2027 when announced) or <b>Remove</b> one.</li>
+        <li>Untick <b>Paid</b> for a no-work-no-pay special day.</li>
+        <li>To have someone work a holiday, change their day in the Schedule tab.</li>
+      </ul>
     </div>
-    <figure><div class="crop" style="max-width:300px"><img src="img/a-pattern.jpg" alt="Usual week editor"></div><figcaption>Usual week (Staff → Edit)</figcaption></figure>
+    <figure style="max-width:420px"><div class="crop" style="max-width:420px"><img src="img/a-holidays.jpg" alt="Public holidays list"></div><figcaption>Settings → Public holidays</figcaption></figure>
   </div>
-  <figure style="margin-top:18px"><div class="desk"><img src="img/a-schedule.jpg" alt="Schedule editor grid"></div><figcaption>The Schedule tab</figcaption></figure>
 </article>
 
 <article class="article" data-g="admin" id="payroll" data-title="Payroll & payslips">
   <h2><span class="n">10</span>Payroll and payslips</h2>
-  <p class="lede">Pay is worked out from attendance and the schedule. It uses the same layout as the payroll sheet, and payslips are one click away.</p>
+  <p class="lede">Pay is bi-monthly: <b>1st–15th</b> and <b>16th–end</b>. Everything is worked out from attendance, the schedule and holidays.</p>
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div><b>Once per person:</b> in <b>Staff → Edit</b>, set their <b>Start date</b>, <b>Pay type</b> and <b>rate</b> (see the table below). Most of the team is <b>Bi-monthly</b>: the rate is what they earn per cut-off (e.g. £300).</div></li>
-        <li><div>Go to <b>Payroll → + New period</b>. Pay is <b>bi-monthly</b>: pick the <b>Cut-off</b> (1st–15th or 16th–end of the month) and the dates fill in. Check the payment date, then add the <b>exchange rate</b> (₱ per £1) and the <b>total transfer fee</b> (₱).</div></li>
-        <li><div>Check the sheet. <b>Days worked, lates, undertime and absences fill in automatically</b> from attendance and the schedule. To change a number, type over it: it turns orange, and <b>↺</b> puts the automatic value back. Add <b>Other deductions</b> (CA, loans, taxes) with a short note.</div></li>
-        <li><div>Click <b>Save draft</b> any time. When it's right, click <b>Finalise &amp; publish</b> (twice). Staff can then see their payslips in the app.</div></li>
-        <li><div>Pick an <b>Employee name</b> to see their payslip, then click <b>Download this payslip (PDF)</b>. Or use <b>All payslips PDF</b> for everyone at once. Use <b>CSV</b> for Excel.</div></li>
+        <li><div><b>Once per person</b> (Staff → Edit): Start date, <b>Pay type</b> and <b>rate</b>.</div></li>
+        <li><div><b>Payroll → + New period</b>: pick the <b>Cut-off</b> (dates fill in), check the payment date, add the <b>exchange rate</b> (₱ per £1) and <b>total transfer fee</b> (₱).</div></li>
+        <li><div>Check the sheet. Days, hours, lates, undertime and absences fill in automatically. Type over any number to change it (it turns orange; <b>↺</b> undoes). Add <b>Other deductions</b> (CA, loans, taxes) with a note.</div></li>
+        <li><div><b>Save draft</b> any time. When it's right, <b>Finalise &amp; publish</b> (twice). Staff then see their payslips.</div></li>
+        <li><div>Pick an <b>Employee name</b> and <b>Download this payslip (PDF)</b>, or <b>All payslips PDF</b> (one A4 page each), or <b>CSV</b>.</div></li>
       </ol>
     </div>
-    <figure><div class="crop" style="max-width:360px"><img src="img/a-period.jpg" alt="New pay period form"></div><figcaption>Create a pay period</figcaption></figure>
+    <figure><div class="crop" style="max-width:360px"><img src="img/a-period.jpg" alt="New pay period"></div><figcaption>New pay period (cut-off)</figcaption></figure>
   </div>
-  <figure style="margin-top:18px"><div class="desk"><img src="img/a-payroll.jpg" alt="Payroll sheet with payslip"></div><figcaption>The payroll sheet and payslip</figcaption></figure>
-  <h3 style="margin-top:24px;font-size:19px">How pay is worked out</h3>
+  <figure style="margin-top:18px"><div class="desk"><img src="img/a-payroll.jpg" alt="Payroll sheet and payslip"></div><figcaption>Payroll sheet (mixed pay types) and payslip</figcaption></figure>
+  <h3 style="margin-top:24px;font-size:19px">Pay types</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Pay type</th><th>Pay per cut-off</th></tr></thead>
+    <tbody>
+      <tr><td><b>Hourly</b></td><td>(Regular hours worked + OT used + paid leave/holiday hours) × hourly rate. Lates aren't deducted again (they're already missing from the hours).</td></tr>
+      <tr><td><b>Daily</b></td><td>(Days worked + paid leave/holiday days) × daily rate. Days not worked aren't paid.</td></tr>
+      <tr><td><b>Weekly</b></td><td>Daily rate = weekly ÷ 5; pay = daily × 10. £150/week → £300.</td></tr>
+      <tr><td><b>Bi-monthly</b></td><td>The rate is the pay per cut-off. Daily rate = rate ÷ 10.</td></tr>
+      <tr><td><b>Monthly</b></td><td>Half the monthly rate each cut-off. £600/month → £300.</td></tr>
+    </tbody></table></div>
+  <h3 style="margin-top:24px;font-size:19px">Deductions and totals</h3>
   <div class="tablewrap"><table>
     <thead><tr><th>Item</th><th>Rule</th></tr></thead>
     <tbody>
-      <tr><td><b>Cut-offs</b></td><td>Two pay periods a month: <b>1st–15th</b> and <b>16th–end</b> (30th or 31st). A cut-off is usually <b>10 working days</b> (Settings → Working days per cut-off).</td></tr>
-      <tr><td><b>Hourly</b></td><td>Pay = (regular hours worked + paid leave/holiday days × their paid hours per day) × hourly rate. Being late or leaving early already means fewer hours, so it isn't deducted again.</td></tr>
-      <tr><td><b>Daily</b></td><td>Pay = (days worked + paid leave and holiday days) × daily rate. Example: 9 days worked + 1 holiday × £30 = £300. Days not worked simply aren't paid.</td></tr>
-      <tr><td><b>Weekly</b></td><td>Daily rate = weekly rate ÷ 5. Pay per cut-off = daily rate × 10 (two weeks). Example: £150 a week → £30 a day → £300 per cut-off.</td></tr>
-      <tr><td><b>Bi-monthly</b></td><td>The rate is the pay for one cut-off. Daily rate = rate ÷ 10. Example: £300 per cut-off → £30 a day.</td></tr>
-      <tr><td><b>Monthly</b></td><td>Half the monthly rate each cut-off. Example: £600 a month → £300 per cut-off → £30 a day.</td></tr>
-      <tr><td><b>Weekly, Bi-monthly, Monthly: absences</b></td><td>The cut-off pay stays the same whether it has 10 or 11 working days. Absent days are taken off at the daily rate.</td></tr>
-      <tr><td><b>Mixed pay types</b></td><td>Everyone can be on a different pay type in the same cut-off. Each person's line uses their own type and rate. The totals, peso amounts and transfer-fee split then work on everyone's net pay together.</td></tr>
-      <tr><td><b>Payslip PDF</b></td><td>A full A4 page with The Biohack Group logo, the employee and pay details, earnings, deductions, net pay and the peso amount received. The footer says it's computer-generated (no signature needed) and names the Employer.</td></tr>
-      <tr><td><b>Public holidays (Philippines)</b></td><td>A holiday on someone's working day is a <b>paid day off</b>, like leave. It's already in the schedule, so there's nothing to do. The list for 2026 and 2027 is under <b>Settings → Public holidays</b>. Add new dates (such as Eid'l Fitr and Eid'l Adha for 2027, when they're announced) there, or untick <b>Paid</b> for a no-work-no-pay day. Extra holiday pay for working on a holiday isn't added automatically: use the Days worked box or add it separately.</td></tr>
-      <tr><td><b>Per-minute rate</b></td><td>Daily rate ÷ paid minutes in their day. Example: £30 ÷ 480 = £0.0625 a minute. Used for lates and undertime (not for Hourly).</td></tr>
-      <tr><td><b>Lates</b></td><td>Minutes after the day's start time (beyond the grace minutes) × per-minute rate.</td></tr>
-      <tr><td><b>Undertime</b></td><td>Minutes before the day's end time × per-minute rate.</td></tr>
-      <tr><td><b>Absences</b></td><td>Planned shifts with no clock-in (counted up to yesterday, so today never shows as absent), plus unpaid leave days. <b>Weekly, Bi-monthly, Monthly:</b> deducted at the daily rate. <b>Hourly, Daily:</b> shown for information, since those days aren't paid anyway. Vacation, sick leave, emergency leave and holidays are paid.</td></tr>
-      <tr><td><b>New starter</b></td><td>Weekly, Bi-monthly, Monthly: paid the daily rate for each working day from their start date (never more than the full cut-off). Hourly and Daily: paid for what they worked, as normal.</td></tr>
-      <tr><td><b>Net pay</b></td><td>Gross − lates − undertime − absences − other deductions.</td></tr>
-      <tr><td><b>Pesos</b></td><td>Net pay × exchange rate.</td></tr>
-      <tr><td><b>Transfer fee share</b></td><td>The total fee is split by each person's share of everyone's net pay. Amount received = net in pesos − their share of the fee.</td></tr>
+      <tr><td><b>Undertime</b></td><td>Short time not covered by the last work day's OT × per-minute rate (daily rate ÷ paid minutes per day).</td></tr>
+      <tr><td><b>Absences</b></td><td>Planned shifts with no clock-in (up to yesterday) and unpaid leave. Weekly / Bi-monthly / Monthly: deducted at the daily rate. Hourly / Daily: simply not paid.</td></tr>
+      <tr><td><b>Paid days off</b></td><td>Vacation, sick, emergency leave and public holidays.</td></tr>
+      <tr><td><b>New starter</b></td><td>Fixed pay types are paid per working day from their start date, up to the full cut-off.</td></tr>
+      <tr><td><b>Mixed pay types</b></td><td>Everyone uses their own type and rate. Totals and the fee split work on everyone together.</td></tr>
+      <tr><td><b>Pesos</b></td><td>Net pay × exchange rate. The transfer fee is split by each person's share of total net pay.</td></tr>
     </tbody></table></div>
-  <div class="tip warn"><b>Good to know</b><span>Only admins can create, edit or finalise payroll. Finance can view it and download PDFs and CSVs. To change a finalised period, click <b>Reopen to edit</b>. It's hidden from staff until you finalise again.</span></div>
+  <div class="split" style="margin-top:22px">
+    <div class="prose">
+      <p><b>The payslip PDF</b> is a full A4 page: The Biohack Group logo, employee and pay details, earnings, deductions, net pay and the amount received in pesos. The footer says it's computer-generated (no signature needed), asks staff to report discrepancies to the Company Human Resources, and names the Employer.</p>
+      <div class="tip warn"><b>Good to know</b><span>Only admins create, edit or finalise payroll. Finance can view and download. To change a finalised period, click <b>Reopen to edit</b>; it's hidden from staff until you finalise again.</span></div>
+    </div>
+    <figure><div class="crop" style="max-width:300px"><img src="img/a-payslip-pdf.jpg" alt="Payslip PDF"></div><figcaption>Payslip PDF (A4)</figcaption></figure>
+  </div>
+</article>
+
+<article class="article" data-g="admin" id="access" data-title="Logins & access">
+  <h2><span class="n">11</span>Create logins for admins and finance</h2>
+  <p class="lede">Only admins can do this.</p>
+  <div class="split">
+    <div class="prose">
+      <ol class="steps">
+        <li><div><b>Access → Create a login</b>: enter the email and pick <b>Finance</b> or <b>Admin</b>.</div></li>
+        <li><div>Click <b>Generate</b>, then <b>Create login</b>, then <b>Copy details</b> and send them privately.</div></li>
+        <li><div>Change a role with the dropdown, or <b>Remove</b> (twice) to take access away.</div></li>
+      </ol>
+      <div class="tip"><b>Safety net</b><span>You can't remove or demote yourself, so there's always at least one admin.</span></div>
+    </div>
+    <figure style="max-width:520px"><div class="desk"><img src="img/a-access.jpg" alt="Access tab"></div><figcaption>Access tab</figcaption></figure>
+  </div>
+  <figure style="margin-top:18px"><div class="desk"><img src="img/a-finance.jpg" alt="Finance view"></div><figcaption>What finance sees: no Staff or Settings tabs, nothing editable</figcaption></figure>
 </article>
 
 <article class="article" data-g="admin" id="admin-faq" data-title="Problems & answers">
-  <h2><span class="n">11</span>Problems and answers</h2>
-  <details class="faq" id="q-a-reset"><summary>Someone forgot their PIN or is locked out</summary><div>Go to <b>Staff</b>, click <b>Edit</b> next to their name, then click <b>Reset PIN</b>. Tell them to open the app and make a new PIN. (If they typed a wrong PIN 5 times, they can also just wait 15 minutes.)</div></details>
-  <details class="faq" id="q-a-signin"><summary>I can't sign in</summary><div><b>"Invalid login credentials"</b> means the email or password is wrong. Check for typos, or ask another admin to reset your login (Access → Remove, then Create login again with a new password).<br><b>"This login doesn't have access"</b> means your email isn't on the Access list. Ask an admin to add you.</div></details>
-  <details class="faq"><summary>Someone clocked in twice or forgot lunch</summary><div>Each person has one entry per day. Open it with <b>Edit</b>, correct the times, and click <b>Save</b>. If lunch wasn't logged, the app automatically takes off their standard lunch time.</div></details>
-  <details class="faq"><summary>A person has left the team</summary><div>Go to <b>Staff → Edit</b>, set <b>Status</b> to <b>Inactive</b> and save. They disappear from the clock-in screen, but their past hours stay in reports.</div></details>
-  <details class="faq"><summary>The numbers in a report look wrong</summary><div>Check that person's <b>usual schedule</b> and <b>lunch minutes</b> under Staff, and look for missing clock-outs (shown in red). A day without a clock-out isn't counted until it's fixed.</div></details>
-  <details class="faq"><summary>A payroll number is orange</summary><div>Orange means someone typed over the automatic value. Click <b>↺</b> next to it to go back to the figure worked out from attendance.</div></details>
-  <details class="faq"><summary>Someone's absences or days worked look wrong in payroll</summary><div>Check the <b>Schedule</b> tab for those dates: a missing rest day or leave shows up as an absence. Fix the schedule, then reopen the pay period and the numbers update. Also check <b>Timesheets</b> for missing clock-ins.</div></details>
-  <details class="faq"><summary>How do I send a report to finance?</summary><div>Go to <b>Reports</b>, choose the period and click <b>Export PDF</b>. Attach the downloaded file to an email. Or give finance their own login so they can download it themselves.</div></details>
+  <h2><span class="n">12</span>Problems and answers</h2>
+  <details class="faq" id="q-a-reset"><summary>Someone forgot their PIN or is locked out</summary><div><b>Staff → Edit → Reset PIN</b>. They make a new PIN next time. (Locked after 5 wrong tries? They can also wait 15 minutes.)</div></details>
+  <details class="faq" id="q-a-signin"><summary>I can't sign in</summary><div><b>"Invalid login credentials"</b>: wrong email or password; another admin can remove and re-create your login. <b>"This login doesn't have access"</b>: ask an admin to add you under Access.</div></details>
+  <details class="faq"><summary>Someone's OT expired but they couldn't use it</summary><div>Open the day they want to use it (<b>Edit</b>) and set <b>Extra OT credit</b>, e.g. 60 minutes.</div></details>
+  <details class="faq"><summary>"No lunch logged" on a day</summary><div>They had a planned lunch but didn't tap it, so the time counts as worked. If they did take a break, edit the day and add the lunch times. If that day never has lunch, set its Lunch to 0 in Staff → Usual week.</div></details>
+  <details class="faq"><summary>A part-timer shows Short every day</summary><div>Check their Usual week: each day's times and <b>Lunch (min)</b> should match what they really work (e.g. 7:00–11:00 with lunch 0 = 4:00).</div></details>
+  <details class="faq"><summary>Payroll absences or days look wrong</summary><div>Check the <b>Schedule</b> for those dates (a missing rest day or leave shows as an absence) and Timesheets for missing clock-ins. Then reopen the period.</div></details>
+  <details class="faq"><summary>A payroll number is orange</summary><div>Someone typed over the automatic value. Click <b>↺</b> to go back.</div></details>
+  <details class="faq"><summary>A person has left the team</summary><div>Staff → Edit → Status <b>Inactive</b>. Their past hours stay in reports.</div></details>
 
   <details class="tech"><summary>For the webmaster (technical)</summary>
-    <details class="faq"><summary>The app says "This app isn't set up yet"</summary><div>The connection settings are missing. In GitHub (bhlwebmaster/staff_time), check that <code>config.js</code> has the right Supabase Project URL and publishable key, and wasn't replaced by a blank copy.</div></details>
-    <details class="faq"><summary>Creating a login fails</summary><div>In Supabase → Edge Functions, check that <code>admin-users</code> is deployed and "Verify JWT" is turned off.</div></details>
-    <details class="faq"><summary>The app stopped loading after a quiet week</summary><div>Supabase's free plan pauses projects after about a week with no use. Sign in to Supabase (biohack.webmaster@gmail.com) and click <b>Restore</b>.</div></details>
-    <details class="faq"><summary>"Could not find the … column … in the schema cache"</summary><div>The database is missing a recent update. In Supabase → <b>SQL Editor</b>, paste and run all of <code>supabase/database-update.sql</code> from the repo. It's safe to run again and refreshes the cache at the end.</div></details>
-    <details class="faq"><summary>How do I update the app?</summary><div>In the GitHub repo, click <b>Add file → Upload files</b>, drag in the changed files and click <b>Commit changes</b>. The site updates within a couple of minutes.</div></details>
+    <details class="faq"><summary>How do I update the app?</summary><div>GitHub (bhlwebmaster/staff_time) → <b>Add file → Upload files</b>, drag in the changed files, <b>Commit changes</b>. Never upload over <code>config.js</code>. If a change needs the database, run <code>supabase/database-update.sql</code> in Supabase → SQL Editor first (safe to re-run).</div></details>
+    <details class="faq"><summary>"This app isn't set up yet"</summary><div><code>config.js</code> on GitHub is missing the Supabase Project URL / publishable key, or was replaced by a blank copy.</div></details>
+    <details class="faq"><summary>"Could not find the … column … in the schema cache" or "violates check constraint"</summary><div>The database is behind the site. Run all of <code>supabase/database-update.sql</code> in Supabase → SQL Editor.</div></details>
+    <details class="faq"><summary>Supabase Security Advisor warnings</summary><div><code>supabase/security.sql</code> (included in database-update.sql) moves privileged functions to a private schema. "Leaked Password Protection" is a paid-plan setting and can be left on the free plan.</div></details>
+    <details class="faq"><summary>Creating a login fails</summary><div>Supabase → Edge Functions: <code>admin-users</code> must be deployed with "Verify JWT" off.</div></details>
+    <details class="faq"><summary>The app stopped loading after a quiet week</summary><div>The free plan pauses after about a week with no use. Sign in to Supabase (biohack.webmaster@gmail.com) and click <b>Restore</b>.</div></details>
   </details>
-
   <div class="stuck"><b>Still stuck?</b><span>Contact the webmaster at <b>biohack.webmaster@gmail.com</b> with a screenshot and a short description.</span></div>
 </article>
 
@@ -713,8 +741,8 @@ a.brand:hover .mark { filter: brightness(1.08); }
   const $ = (id) => document.getElementById(id);
   const arts = [...document.querySelectorAll(".article")];
   const heroes = {
-    staff: ["Staff guide", "Clock in, take lunch, clock out. That's it.", "Everything the Philippine team needs to use BHL Attendance instead of posting in the WhatsApp group. It takes about ten seconds a day."],
-    admin: ["Admin & finance guide", "Run the team's attendance from one page.", "Track who's in, plan the weekly schedule, run payroll and payslips, manage staff and logins, and export reports for finance."],
+    staff: ["Staff guide", "Clock in, take lunch, clock out. That's it.", "Everything the Philippine team needs: clocking in, using your OT, your schedule, telling the WhatsApp group and your payslips. It takes about ten seconds a day."],
+    admin: ["Admin & finance guide", "Run the team's attendance from one page.", "Track who's in, plan the schedule and approve requests, set the hours and OT rules and holidays, run bi-monthly payroll and payslips, and export reports."],
   };
   let guide = "staff";
   function setGuide(g, scroll) {

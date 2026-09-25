@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260929b">
+<link rel="stylesheet" href="assets/style.css?v=20260929c">
 <style>
   main { padding-block: 22px 70px; }
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -315,7 +315,7 @@
         <label class="f">Count OT in blocks of (minutes)<input type="number" id="stBlock" min="1" max="60"></label>
       </div>
       <label class="check"><input type="checkbox" id="stEarly"> Count minutes before scheduled start as worked time</label>
-      <label class="check"><input type="checkbox" id="stFlex"> Judge by hours: no Late or undertime when the day's hours are complete. Short days use OT earned in the same cut-off first.</label>
+      <label class="check"><input type="checkbox" id="stFlex"> Judge by hours: no Late or undertime when the day's hours are complete. Short time is covered first by OT from their last work day.</label>
       <label class="f" style="max-width:300px">Working days per cut-off<input type="number" id="stDpc" min="1" max="16" step="1"></label>
       <p class="muted" style="margin:0;font-size:13px">Pay is bi-monthly (1st–15th, 16th–end). For Weekly, Bi-monthly and Monthly pay, the daily rate = pay per cut-off ÷ this number. Absences, lates and undertime are deducted from that.</p>
       <p class="muted" style="margin:0;font-size:13px"><b>Worked</b> = time out − time in − the lunch they tapped (no lunch tapped = nothing taken off).
@@ -454,13 +454,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20260929b"></script>
-<script src="assets/core.js?v=20260929b"></script>
-<script src="assets/game.js?v=20260929b"></script>
-<script src="assets/schedule.js?v=20260929b"></script>
-<script src="assets/logo.js?v=20260929b"></script>
-<script src="assets/payroll.js?v=20260929b"></script>
-<script src="assets/api.js?v=20260929b"></script>
-<script src="assets/admin.js?v=20260929b"></script>
+<script src="config.js?v=20260929c"></script>
+<script src="assets/core.js?v=20260929c"></script>
+<script src="assets/game.js?v=20260929c"></script>
+<script src="assets/schedule.js?v=20260929c"></script>
+<script src="assets/logo.js?v=20260929c"></script>
+<script src="assets/payroll.js?v=20260929c"></script>
+<script src="assets/api.js?v=20260929c"></script>
+<script src="assets/admin.js?v=20260929c"></script>
 </body>
 </html>
