@@ -149,6 +149,8 @@ details.faq:target, details.faq.flash { border-color: var(--accent); box-shadow:
 
 a.brand { text-decoration: none; color: inherit; border-radius: 10px; }
 a.brand:hover .mark { filter: brightness(1.08); }
+.brand .logo { width: 34px; height: 34px; display: block; flex: none; }
+@media (prefers-color-scheme: dark) { .brand .logo { filter: drop-shadow(0 0 1px rgba(255,255,255,.45)); } }
 .sitenav { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
 .sitenav a { padding: 5px 13px; border-radius: 999px; font-weight: 700; font-size: 13.5px; text-decoration: none; color: var(--muted); }
 .sitenav a:hover { color: var(--ink); }
@@ -159,7 +161,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
 <body>
 <header class="bar">
   <div class="wrap">
-    <a class="brand" href="../" aria-label="BHL Attendance home"><div class="mark">BHL</div>Attendance Help</a>
+    <a class="brand" href="../" aria-label="BHL Attendance home"><img class="logo" src="../assets/icon-192.png" alt="" width="34" height="34">Attendance Help</a>
     <div class="switch" role="group" aria-label="Choose a guide">
       <button id="tabStaff" aria-pressed="true" data-g="staff">Staff</button>
       <button id="tabAdmin" aria-pressed="false" data-g="admin">Admin &amp; Finance</button>

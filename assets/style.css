@@ -56,6 +56,9 @@ h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0; text-wra
   display: grid; place-items: center; font-size: 13px; letter-spacing: .02em; }
 a.brand { text-decoration: none; color: inherit; border-radius: 10px; }
 a.brand:hover .mark { filter: brightness(1.08); }
+.brand .logo { width: 34px; height: 34px; display: block; flex: none; }
+a.brand:hover .logo { transform: rotate(-6deg); transition: transform .2s; }
+@media (prefers-color-scheme: dark) { .brand .logo { filter: drop-shadow(0 0 1px rgba(255,255,255,.45)); } }
 .sitenav { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
 .sitenav a { padding: 5px 13px; border-radius: 999px; font-weight: 700; font-size: 13.5px; text-decoration: none; color: var(--muted); }
 .sitenav a:hover { color: var(--ink); }
