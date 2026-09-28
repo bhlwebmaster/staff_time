@@ -16,6 +16,7 @@ revoke execute on function public._pattern_day(uuid, date)        from public, a
 revoke execute on function public._base_day(uuid, date)           from public, anon, authenticated;
 revoke execute on function public._team_today()                   from public, anon, authenticated;
 revoke execute on function public.attendance_audit()              from public, anon, authenticated;
+revoke execute on function public._fx_proof_stamp()               from public, anon, authenticated;
 
 -- Admin / finance only: signed-in users (each one also checks the admin role inside)
 revoke execute on function public.admin_staff()                               from public, anon;

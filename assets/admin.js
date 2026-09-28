@@ -657,8 +657,71 @@
     payOver = {}; for (const r of saved) payOver[r.staff_id] = { ...(r.overrides || {}) };
     if (curP.status === "final") payLines = saved.map((r) => ({ ...r, auto: null }));
     $("payFx").value = curP.exchange_rate ?? ""; $("payFee").value = curP.transfer_fee ?? 0;
+    renderProof();
     recalc();
   }
+
+  // ---------- exchange-rate proof (screenshot per pay period; admin + finance only) ----------
+  const PROOF_TYPES = ["image/png", "image/jpeg", "image/webp", "image/heic", "application/pdf"];
+  const isPdf = (name) => /\.pdf$/i.test(name || "");
+  function renderProof() {
+    const has = !!curP.fx_proof_path, edit = isAdminRole() && curP.status !== "final";
+    const when = curP.fx_proof_uploaded_at ? new Date(curP.fx_proof_uploaded_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+    $("payProof").className = "fxproof " + (has ? "has" : curP.status === "final" ? "" : "missing");
+    $("payProofInfo").innerHTML = has
+      ? `${B.esc(curP.fx_proof_name || "screenshot")}${when ? ` · uploaded ${B.esc(when)}` : ""}${curP.fx_proof_uploaded_by ? ` by ${B.esc(curP.fx_proof_uploaded_by)}` : ""}`
+      : `<span class="miss">No screenshot yet.</span> ${isAdminRole() ? "Upload the rate the transfer was sent at; it's needed before finalising." : "An admin needs to upload it."}`;
+    $("payProofView").hidden = !has;
+    $("payProofPick").hidden = !edit;
+    $("payProofPickTxt").textContent = has ? "Replace" : "Upload screenshot";
+    $("payProofDel").hidden = !has || !edit;
+  }
+  function setPeriod(saved) {
+    const i = periods.findIndex((p) => p.id === saved.id);
+    if (i >= 0) periods[i] = { ...periods[i], ...saved };
+    if (curP?.id === saved.id) curP = periods[i] || { ...curP, ...saved };
+  }
+  $("payProofFile").onchange = async (e) => {
+    const file = e.target.files[0]; e.target.value = "";
+    if (!file || !curP) return;
+    if (file.type && !PROOF_TYPES.includes(file.type)) return B.toast("Use a PNG, JPG, WEBP or HEIC screenshot, or a PDF.", "err");
+    if (file.size > 5 * 1024 * 1024) return B.toast("That file is over 5 MB. Crop or compress the screenshot and try again.", "err");
+    const old = curP.fx_proof_path, periodId = curP.id;
+    $("payProofPickTxt").textContent = "Uploading…";
+    let path = null;
+    try {
+      path = await A.fxProofUpload(periodId, file);
+      setPeriod(await A.savePeriod({ id: periodId, fx_proof_path: path, fx_proof_name: file.name.slice(0, 120) }));
+      if (old) A.fxProofRemove(old).catch(() => {});
+      B.toast(old ? "Screenshot replaced" : "Screenshot uploaded");
+    } catch (err) {
+      if (path) A.fxProofRemove(path).catch(() => {});
+      B.toast(err.message, "err");
+    }
+    if (curP?.id === periodId) renderProof();
+  };
+  let delProof = false;
+  $("payProofDel").onclick = async () => {
+    if (!delProof) { delProof = true; $("payProofDel").textContent = "Click again to remove"; setTimeout(() => { delProof = false; $("payProofDel").textContent = "Remove"; }, 4000); return; }
+    delProof = false; $("payProofDel").textContent = "Remove";
+    const old = curP.fx_proof_path;
+    try { setPeriod(await A.savePeriod({ id: curP.id, fx_proof_path: null })); await A.fxProofRemove(old).catch(() => {}); B.toast("Screenshot removed"); }
+    catch (err) { B.toast(err.message, "err"); }
+    renderProof();
+  };
+  $("payProofView").onclick = async () => {
+    const p = curP; if (!p?.fx_proof_path) return;
+    $("fxTitle").textContent = `Exchange-rate proof · ${P.period(p)}`;
+    $("fxMeta").textContent = `${p.exchange_rate ? `Rate entered: ₱${Number(p.exchange_rate).toFixed(4)} per £1 · ` : "No rate entered yet · "}${p.fx_proof_name || ""}`;
+    $("fxView").innerHTML = `<p class="muted">Loading…</p>`; $("fxOpen").removeAttribute("href");
+    $("fxDlg").showModal();
+    try {
+      const url = await A.fxProofUrl(p.fx_proof_path);
+      $("fxOpen").href = url;
+      $("fxView").innerHTML = isPdf(p.fx_proof_path) ? `<iframe title="Exchange-rate proof" src="${B.esc(url)}"></iframe>` : `<img alt="Exchange-rate screenshot for ${B.esc(P.period(p))}" src="${B.esc(url)}">`;
+    } catch (err) { $("fxView").innerHTML = `<p class="muted">${B.esc(err.message)}</p>`; }
+  };
+  $("fxDlg").addEventListener("close", () => { $("fxView").innerHTML = ""; });
   function people() {
     return staff.filter((s) => (s.active && (!s.start_date || s.start_date <= curP.end_date)) || payRows.some((r) => r.staff_id === s.id) || payOver[s.id]);
   }
@@ -758,6 +821,7 @@
     const p = { id: curP.id, exchange_rate: $("payFx").value === "" ? null : +$("payFx").value, transfer_fee: +$("payFee").value || 0 };
     if (status === "final") {
       if (!p.exchange_rate) return B.toast("Enter the exchange rate before finalising.", "err");
+      if (!curP.fx_proof_path) return B.toast("Upload the exchange-rate screenshot before finalising.", "err");
       if (payLines.some((l) => !l.rate)) return B.toast("Some people have no pay rate. Set it under Staff first.", "err");
     }
     const rows = payLines.map((l) => { const r = { period_id: curP.id, staff_id: l.staff_id, overrides: payOver[l.staff_id] || {}, updated_at: new Date().toISOString() };
@@ -813,7 +877,8 @@
   let delP = false;
   $("ppDel").onclick = async () => {
     if (!delP) { delP = true; $("ppDel").textContent = "Click again to delete, payslips included"; setTimeout(() => { delP = false; $("ppDel").textContent = "Delete period"; }, 4000); return; }
-    delP = false; try { await A.deletePeriod(editingPeriod.id); $("periodDlg").close(); B.toast("Pay period deleted"); loadPayroll(); } catch (err) { B.toast(err.message, "err"); }
+    delP = false; try { const files = await A.fxProofList(editingPeriod.id).catch(() => []);
+      await A.deletePeriod(editingPeriod.id); A.fxProofRemove(files).catch(() => {}); $("periodDlg").close(); B.toast("Pay period deleted"); loadPayroll(); } catch (err) { B.toast(err.message, "err"); }
   };
 
   // ---------- access (logins) ----------

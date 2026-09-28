@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260930a">
+<link rel="stylesheet" href="assets/style.css?v=20260930b">
 <style>
   main { padding-block: 22px 70px; }
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -59,6 +59,17 @@
   .av img, .av .av-svg { width: 100%; height: 100%; object-fit: cover; display: block; }
   .av-init { width: 100%; height: 100%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: calc(var(--av) * .38); }
   body.ro .adminonly { display: none !important; }
+  .fxproof { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; font-size: 13px; }
+  .fxproof.has { border-style: solid; background: var(--surface-2); }
+  .fxproof.missing { border-color: var(--late); }
+  .fxproof .lbl { font-weight: 700; }
+  .fxproof .meta { color: var(--muted); }
+  .fxproof .miss { color: var(--late); font-weight: 600; }
+  .fxproof label.btn { cursor: pointer; }
+  .fxview { display: grid; place-items: center; min-height: 160px; background: var(--surface-2); border-radius: 12px; overflow: hidden; }
+  .fxview img { max-width: 100%; max-height: 70vh; display: block; }
+  .fxview iframe { width: 100%; height: 70vh; border: 0; }
+  #fxDlg { width: min(900px, calc(100% - 32px)); }
   .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
   .role { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
   .role:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
@@ -282,6 +293,15 @@
           <button class="btn primary adminonly" id="payFinal">Finalise &amp; publish</button>
           <button class="btn adminonly" id="payReopen" hidden>Reopen to edit</button>
         </div>
+        <div class="fxproof" id="payProof">
+          <span class="lbl">Exchange-rate proof</span>
+          <span id="payProofInfo" class="meta"></span>
+          <span class="spacer"></span>
+          <button class="btn sm" type="button" id="payProofView" hidden>View screenshot</button>
+          <label class="btn sm adminonly" id="payProofPick"><span id="payProofPickTxt">Upload screenshot</span>
+            <input type="file" id="payProofFile" accept="image/png,image/jpeg,image/webp,image/heic,application/pdf" hidden></label>
+          <button class="btn sm ghost adminonly" type="button" id="payProofDel" hidden>Remove</button>
+        </div>
         <p class="muted" style="margin:10px 0 0;font-size:12.5px" id="payHint"></p>
       </div>
       <div class="card tablewrap" style="margin-bottom:22px"><table class="paysheet" id="paySheet"></table></div>
@@ -422,6 +442,17 @@
   </form>
 </dialog>
 
+<dialog id="fxDlg">
+  <form method="dialog">
+    <div class="row"><h2 style="font-size:20px" id="fxTitle">Exchange-rate proof</h2><span class="spacer"></span>
+      <a class="btn sm" id="fxOpen" target="_blank" rel="noopener">Open full size</a>
+      <button class="btn ghost sm" value="cancel" formnovalidate>Close</button></div>
+    <p class="muted" style="margin:0;font-size:12.5px" id="fxMeta"></p>
+    <div class="fxview" id="fxView"></div>
+    <p class="muted" style="margin:0;font-size:12px">Only admin and finance logins can open this file. The link expires after 5 minutes.</p>
+  </form>
+</dialog>
+
 <dialog id="staffDlg">
   <form method="dialog" id="staffForm">
     <div class="row"><h2 style="font-size:20px" id="staffTitle">Person</h2><span class="spacer"></span>
@@ -458,13 +489,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20260930a"></script>
-<script src="assets/core.js?v=20260930a"></script>
-<script src="assets/game.js?v=20260930a"></script>
-<script src="assets/schedule.js?v=20260930a"></script>
-<script src="assets/logo.js?v=20260930a"></script>
-<script src="assets/payroll.js?v=20260930a"></script>
-<script src="assets/api.js?v=20260930a"></script>
-<script src="assets/admin.js?v=20260930a"></script>
+<script src="config.js?v=20260930b"></script>
+<script src="assets/core.js?v=20260930b"></script>
+<script src="assets/game.js?v=20260930b"></script>
+<script src="assets/schedule.js?v=20260930b"></script>
+<script src="assets/logo.js?v=20260930b"></script>
+<script src="assets/payroll.js?v=20260930b"></script>
+<script src="assets/api.js?v=20260930b"></script>
+<script src="assets/admin.js?v=20260930b"></script>
 </body>
 </html>

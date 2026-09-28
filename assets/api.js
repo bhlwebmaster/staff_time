@@ -60,6 +60,16 @@
       savePeriod: async (p) => p.id ? unwrap(await sb.from("pay_periods").update(p).eq("id", p.id).select().single())
         : unwrap(await sb.from("pay_periods").insert(p).select().single()),
       deletePeriod: async (id) => unwrap(await sb.from("pay_periods").delete().eq("id", id)),
+      // Exchange-rate proof: private "fx-proofs" bucket (admin + finance can view; admins upload/remove)
+      fxProofUpload: async (periodId, file) => {
+        const ext = (file.name.match(/\.[a-z0-9]+$/i)?.[0] || "").toLowerCase();
+        const path = `${periodId}/${Date.now()}${ext}`;
+        unwrap(await sb.storage.from("fx-proofs").upload(path, file, { contentType: file.type || undefined, upsert: false }));
+        return path;
+      },
+      fxProofUrl: async (path) => unwrap(await sb.storage.from("fx-proofs").createSignedUrl(path, 300)).signedUrl,
+      fxProofRemove: async (paths) => { const list = [].concat(paths).filter(Boolean); return list.length ? unwrap(await sb.storage.from("fx-proofs").remove(list)) : null; },
+      fxProofList: async (periodId) => unwrap(await sb.storage.from("fx-proofs").list(periodId)).map((f) => `${periodId}/${f.name}`),
       payslips: async (periodId) => unwrap(await sb.from("payslips").select("*").eq("period_id", periodId)),
       savePayslips: async (rows) => unwrap(await sb.from("payslips").upsert(rows, { onConflict: "period_id,staff_id" })),
       deletePayslips: async (periodId, keepIds) => unwrap(await sb.from("payslips").delete().eq("period_id", periodId)

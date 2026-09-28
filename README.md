@@ -105,6 +105,7 @@ After clocking in or out, staff tap **Copy & Send to WhatsApp Group**: the messa
 - Staff → Edit: set **Start date**, **Pay type** (Hourly, Daily, Weekly, Bi-monthly, Monthly) and rate. Fixed types: daily rate = pay per cut-off ÷ 10 (weekly: ÷ 5; monthly: half per cut-off); absences deducted at that rate.
 - **Philippine public holidays** (Settings → Public holidays; 2026 and 2027 preloaded) make a working day a paid day off.
 - Payroll → **+ New period**: pick the cut-off, check the payment date, add the exchange rate ₱/£ and total transfer fee ₱.
+- **Exchange-rate proof:** once the GBP transfer is sent, an admin uploads a screenshot (PNG/JPG/WEBP/HEIC or PDF, max 5 MB) of the rate it went at, under **Exchange-rate proof** on the period. It records who uploaded it and when. A period can't be finalised without it. Admin and finance can view it; staff never see it (private storage, 5-minute links). Needs `supabase/exchange-rate-proof.sql` (included in `database-update.sql`).
 - Days worked, lates, undertime and absences come from attendance + schedule; type over any value to change it; add other deductions (CA, loans, taxes).
 - Rules (per period): daily rate = rate ÷ working days; minute rate = daily ÷ paid minutes; lates/undertime × minute rate; absences (missed shifts + unpaid leave) × daily rate; paid leave is paid; transfer fee split by share of net pay.
 - **Save draft**, then **Finalise & publish** → staff see their payslips under **My payslips**. Payslip PDF per person or all at once; CSV export.
@@ -169,6 +170,7 @@ supabase/schema.sql   core tables, security, functions (safe to re-run)
 supabase/payroll.sql  payroll tables
 supabase/schedule.sql weekly schedule tables
 supabase/requests.sql staff schedule requests + approval
+supabase/exchange-rate-proof.sql  exchange-rate screenshot per pay period (private storage)
 supabase/security.sql locks internal/admin functions (Security Advisor)
 supabase/production-cleanup.sql   optional: clear test entries before go-live
 supabase/functions/admin-users/index.ts   Edge Function: create / change / remove logins
