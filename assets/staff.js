@@ -446,6 +446,9 @@
     const label = (e) => S.KINDS[e.kind]?.label || e.kind;
     const fmt = (e) => e.kind === "shift" ? `${S.ampm(e.start)} – ${S.ampm(e.end)}` : `<span class="k ${S.KINDS[e.kind]?.cls || ""}">${label(e)}</span>`;
     const plain = (e) => e.kind === "shift" ? `${S.ampm(e.start)}–${S.ampm(e.end)}` : label(e);
+    // Same shift in Philippine time (handles UK summer/winter time; "+1" when it lands on the next day in Manila)
+    const ph = (d, t) => { const at = B.zonedToDate(d, t, tz()), pd = B.dateIn(at, LOCAL_TZ); return `<span class="nw">${S.ampm(B.hhmmIn(at, LOCAL_TZ))}${pd > d ? "<sup>+1</sup>" : ""}</span>`; };
+    const fmtPh = (d, e) => e.kind === "shift" ? `${ph(d, e.start)} – ${ph(d, e.end)}` : "";
     const dayLbl = (d) => `<span class="d">${S.DAY[S.dow(d)].slice(0, 3)[0] + S.DAY[S.dow(d)].slice(1, 3).toLowerCase()} ${+d.slice(8)}${d === today ? "<small>Today</small>" : ""}</span>`;
     const canEdit = days.some((d) => d >= today);
     let html = "";
@@ -453,10 +456,11 @@
       if (pending) html += `<div class="ms-state pending"><b>Waiting for admin approval.</b> Sent ${B.prettyDate(B.dateIn(new Date(pending.created_at), tz()))}. Your changes are shown in orange.${pending.note ? `<br>Your note: <i>${B.esc(pending.note)}</i>` : ""}</div>`;
       else if (latest?.status === "rejected") html += `<div class="ms-state rejected"><b>Your change wasn't approved.</b>${latest.admin_note ? " " + B.esc(latest.admin_note) : ""} The schedule below is what's planned.</div>`;
       else if (latest?.status === "approved") html += `<div class="ms-state approved"><b>Approved.</b> Your requested changes are now in the schedule.</div>`;
-      html += `<div class="ms-list">${days.map((d) => {
-        const cur = S.effective(p, d, ov), req = reqDay(d), chg = req && !sameDay(req, cur);
+      html += `<div class="ms-list two"><div class="ms-row ms-head"><span></span><span>UK time</span><span>PH time</span></div>${days.map((d) => {
+        const cur = S.effective(p, d, ov), req = reqDay(d), chg = req && !sameDay(req, cur), show = chg ? req : cur;
+        const phCell = fmtPh(d, show);
         return `<div class="ms-row ${d === today ? "today" : ""} ${d < today ? "past" : ""} ${chg ? "chg" : ""}">${dayLbl(d)}
-          <span class="v">${chg ? `<span class="old">${plain(cur)}</span><span class="arrow">→</span>${fmt(req)}` : fmt(cur)}</span></div>`;
+          <span class="v ${phCell ? "" : "span2"}">${chg ? `<span class="old">${plain(cur)}</span><span class="arrow">→</span>${fmt(req)}` : fmt(cur)}</span>${phCell ? `<span class="v ph">${phCell}</span>` : ""}</div>`;
       }).join("")}</div>`;
       html += `<div class="row" style="gap:8px">${canEdit ? `<button type="button" class="btn" data-ms="edit">${pending ? "Edit my request" : "Request a change"}</button>` : ""}
         ${pending ? `<button type="button" class="btn ghost" data-ms="withdraw">Withdraw request</button>` : ""}</div>
