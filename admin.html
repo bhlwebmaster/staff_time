@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260930c">
+<link rel="stylesheet" href="assets/style.css?v=20260930d">
 <style>
   main { padding-block: 22px 70px; }
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -181,7 +181,7 @@
     <div class="card tablewrap"><table>
       <thead><tr><th>Name</th><th>Status</th><th>Schedule</th><th>In</th><th>Lunch</th><th>Out</th><th class="num">Worked</th><th>Flags</th><th></th></tr></thead>
       <tbody id="dayRows"></tbody>
-    </table></div>
+    </table><div class="pager" id="dayPager" hidden></div></div>
   </section>
 
   <!-- TIMESHEETS -->
@@ -210,7 +210,7 @@
       <thead><tr><th>Name</th><th class="num">Days</th><th class="num">Worked</th><th class="num">Regular</th><th class="num">OT earned</th>
         <th class="num">OT used</th><th class="num">Short</th><th class="num">Late</th><th class="num">No clock-out</th><th class="num">Billable hrs</th></tr></thead>
       <tbody id="sumRows"></tbody><tfoot id="sumFoot"></tfoot>
-    </table></div>
+    </table><div class="pager" id="sumPager" hidden></div></div>
     <div class="row" style="margin-bottom:10px">
       <h2 style="font-size:19px">Daily entries</h2><span class="spacer"></span>
       <button class="btn sm noprint adminonly" id="addEntry">+ Add entry</button>
@@ -245,9 +245,9 @@
     </div>
     <div class="kpis" id="repKpis"></div>
     <div class="rephead"><h2 style="font-size:19px" id="matrixTitle">Hours by day</h2><span class="muted" style="font-size:13px">Worked hours (h:mm), after unpaid lunch</span></div>
-    <div class="card tablewrap"><table class="matrix" id="matrix"></table></div>
+    <div class="card tablewrap"><table class="matrix" id="matrix"></table><div class="pager" id="matrixPager" hidden></div></div>
     <div class="rephead"><h2 style="font-size:19px">Daily detail</h2></div>
-    <div class="card tablewrap"><table id="repDetail"></table></div>
+    <div class="card tablewrap"><table id="repDetail"></table><div class="pager" id="repPager" hidden></div></div>
   </section>
 
   <!-- SCHEDULE -->
@@ -270,7 +270,7 @@
         <button class="btn primary adminonly" id="schSave">Save week</button>
       </div>
     </div>
-    <div class="card tablewrap" style="margin-bottom:18px"><table class="sch-edit" id="schGrid"></table></div>
+    <div class="card tablewrap" style="margin-bottom:18px"><table class="sch-edit" id="schGrid"></table><div class="pager" id="schPager" hidden></div></div>
     <h2 style="font-size:19px;margin-bottom:10px">Timeline preview</h2>
     <div class="wk-wrap" id="schTimeline"></div>
   </section>
@@ -311,7 +311,7 @@
         </div>
         <p class="muted" style="margin:10px 0 0;font-size:12.5px" id="payHint"></p>
       </div>
-      <div class="card tablewrap" style="margin-bottom:22px"><table class="paysheet" id="paySheet"></table></div>
+      <div class="card tablewrap" style="margin-bottom:22px"><table class="paysheet" id="paySheet"></table><div class="pager" id="payPager" hidden></div></div>
       <div class="payslip-area">
         <div class="stack" style="min-width:240px;max-width:320px">
           <h2 style="font-size:19px">Payslip</h2>
@@ -341,7 +341,7 @@
     <div class="card tablewrap"><table>
       <thead><tr><th>Name</th><th>Timesheet name</th><th>Default schedule (UK)</th><th class="num">Lunch</th><th class="num">Paid day</th><th>PIN</th><th>Status</th><th></th></tr></thead>
       <tbody id="staffRows"></tbody>
-    </table></div>
+    </table><div class="pager" id="staffPager" hidden></div></div>
   </section>
 
   <!-- SETTINGS -->
@@ -369,7 +369,7 @@
         <select id="holYear" aria-label="Year" style="width:auto;min-width:110px"></select></div>
       <p class="muted" style="margin:0;font-size:13px">On a holiday, anyone scheduled to work gets a paid day off. It shows on the schedule and in payroll automatically.
         Untick <b>Paid</b> for a no-work-no-pay day. To have someone work on a holiday, change their day in the Schedule tab.</p>
-      <div class="tablewrap"><table class="tbl" id="holTable"></table></div>
+      <div class="tablewrap"><table class="tbl" id="holTable"></table><div class="pager" id="holPager" hidden></div></div>
       <form id="holForm" class="row adminonly" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
         <label class="f">Date<input type="date" id="holDate" required></label>
         <label class="f" style="flex:1 1 200px">Name<input type="text" id="holName" required maxlength="60" placeholder="e.g. Eid'l Fitr"></label>
@@ -404,7 +404,7 @@
       <div class="card tablewrap adminonly"><table>
         <thead><tr><th>Email</th><th>Role</th><th>Added</th><th></th></tr></thead>
         <tbody id="userRows"></tbody>
-      </table></div>
+      </table><div class="pager" id="userPager" hidden></div></div>
 
       <form id="myPwForm" class="card pad stack" style="max-width:520px">
         <h2 style="font-size:19px">My password</h2>
@@ -506,13 +506,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20260930c"></script>
-<script src="assets/core.js?v=20260930c"></script>
-<script src="assets/game.js?v=20260930c"></script>
-<script src="assets/schedule.js?v=20260930c"></script>
-<script src="assets/logo.js?v=20260930c"></script>
-<script src="assets/payroll.js?v=20260930c"></script>
-<script src="assets/api.js?v=20260930c"></script>
-<script src="assets/admin.js?v=20260930c"></script>
+<script src="config.js?v=20260930d"></script>
+<script src="assets/core.js?v=20260930d"></script>
+<script src="assets/game.js?v=20260930d"></script>
+<script src="assets/schedule.js?v=20260930d"></script>
+<script src="assets/logo.js?v=20260930d"></script>
+<script src="assets/payroll.js?v=20260930d"></script>
+<script src="assets/api.js?v=20260930d"></script>
+<script src="assets/admin.js?v=20260930d"></script>
 </body>
 </html>

@@ -10,11 +10,13 @@
   const addDays = (ds, n) => { const d = new Date(ds + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
   // Simple pager: state = { page, size }; calls go() after a change. Hidden when everything fits on one page.
   const PAGE_SIZES = [10, 20, 50, 100];
+  let printAll = false;   // while printing, every table shows all its rows
+  const pg = (size = 20) => ({ page: 1, size, def: size });
   function pager(box, total, st, go) {
     const pages = Math.max(1, Math.ceil(total / st.size));
     st.page = Math.min(Math.max(1, st.page), pages);
-    box.hidden = total <= PAGE_SIZES[0];
-    if (box.hidden) return [0, total];
+    box.hidden = printAll || total <= Math.min(st.size, st.def || st.size);
+    if (box.hidden) return printAll ? [0, total] : [(st.page - 1) * st.size, Math.min(total, st.page * st.size)];
     const a = (st.page - 1) * st.size, b = Math.min(total, a + st.size);
     box.innerHTML = `<span class="muted">Showing ${a + 1}–${b} of ${total}</span><span class="spacer"></span>
       <label class="muted">Rows <select aria-label="Rows per page">${PAGE_SIZES.map((n) => `<option ${n === st.size ? "selected" : ""}>${n}</option>`).join("")}</select></label>
@@ -25,6 +27,19 @@
     box.querySelectorAll("[data-pg]").forEach((btn) => { btn.onclick = () => { st.page += +btn.dataset.pg; go(); }; });
     return [a, b];
   }
+  function renderVisible() {
+    const on = (n) => !$("tab-" + n).hidden;
+    if (on("today")) renderDay();
+    if (on("sheets")) renderSheets();
+    if (on("reports")) renderReport();
+    if (on("schedule") && schFrom) renderSchedule();
+    if (on("payroll") && curP) { renderPayroll(); renderFxHist(); }
+    if (on("staff")) renderStaff();
+    if (on("settings")) renderHolidays();
+    if (on("access") && role === "admin") renderUsers();
+  }
+  window.addEventListener("beforeprint", () => { printAll = true; try { renderVisible(); } catch {} });
+  window.addEventListener("afterprint", () => { printAll = false; try { renderVisible(); } catch {} });
   const friendly = (e) => /duplicate|unique/i.test(e.message) ? "There is already an entry for that person on that date." : e.message;
 
   // ---------- auth ----------
@@ -90,20 +105,30 @@
   const pillFor = (c) => ({ in: ["in", "Working"], lunch: ["lunch", "On lunch"], out: ["out", "Clocked out"], absent: ["absent", "Not in"] }[c.status]);
 
   // ---------- today ----------
+  const dayPg = pg(20); let dayData = null;
   async function loadDay() {
     const day = $("dayPick").value || today();
-    $("dayTitle").textContent = day === today() ? "Today · " + B.prettyDate(day) : B.prettyDate(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     // a few days before, so today knows the OT from each person's last work day
     const [pre, sdays] = await Promise.all([A.attendance(addDays(day, -5), day), A.scheduleDays(day, day)]);
+    if (dayData?.day !== day) dayPg.page = 1;
+    dayData = { day, pre, sdays };
+    renderDay();
+  }
+  function renderDay() {
+    if (!dayData) return;
+    const { day, pre, sdays } = dayData;
+    $("dayTitle").textContent = day === today() ? "Today · " + B.prettyDate(day) : B.prettyDate(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const rows = pre.filter((r) => r.work_date === day);
     const planOv = B.sched.indexDays(sdays);
     const act = staff.filter((s) => s.active || rows.some((r) => r.staff_id === s.id));
     let n = { in: 0, lunch: 0, out: 0, absent: 0, late: 0 };
-    $("dayRows").innerHTML = act.map((s) => {
+    const [da, db] = pager($("dayPager"), act.length, dayPg, renderDay);
+    $("dayRows").innerHTML = act.map((s, i) => {
       const r = rows.find((x) => x.staff_id === s.id);
       const plan = B.sched.effective(s, day, planOv);
       const c = r ? B.calcDays(pre.filter((x) => x.staff_id === s.id), s, settings).get(day) : { status: plan.kind === "shift" ? "absent" : "off" };
-      if (c.status !== "off") n[c.status]++; if (c.late) n.late++;
+      if (c.status !== "off") n[c.status]++; if (c.late) n.late++;   // KPIs count everyone
+      if (i < da || i >= db) return "";
       const [k, label] = c.status === "off" ? ["out", B.sched.KINDS[plan.kind].label] : pillFor(c);
       let worked = "—";
       if (c.worked != null) worked = B.fmtMins(c.worked);
@@ -146,13 +171,10 @@
 
   async function loadSheets() {
     sheetRows = await A.attendance(addDays($("from").value, -5), $("to").value);   // earlier days only feed OT
-    dailyPg.page = 1;
+    dailyPg.page = sumPg.page = 1;
     renderSheets();
   }
-  const dailyPg = { page: 1, size: 20 };
-  let printAll = false;   // printing shows every entry, not just the current page
-  window.addEventListener("beforeprint", () => { if ($("tab-sheets") && !$("tab-sheets").hidden) { printAll = true; renderSheets(); } });
-  window.addEventListener("afterprint", () => { if (printAll) { printAll = false; renderSheets(); } });
+  const dailyPg = pg(20), sumPg = pg(20);
   function computeSheets() {
     const who = $("who").value;
     const from = $("from").value;
@@ -173,11 +195,12 @@
       <td class="num">${B.fmtMins(x.ot)}</td><td class="num">${B.fmtMins(x.otUsed)}</td>
       <td class="num" style="${x.short ? "color:var(--late)" : ""}">${B.fmtMins(x.short)}</td>
       <td class="num">${x.late}</td><td class="num" style="${x.missingOut ? "color:var(--late)" : ""}">${x.missingOut}</td><td class="num"><b>${B.hoursDec(x.billable)}</b></td>`;
-    $("sumRows").innerHTML = list.map(({ s, sum }) => `<tr class="click ${$("who").value === s.id ? "sel" : ""}" data-id="${B.esc(s.id)}"><td><b>${B.esc(s.display_name)}</b><span class="sub">${B.esc(s.full_name)}</span></td>${cells(sum)}</tr>`).join("")
+    const [sa, sb] = pager($("sumPager"), list.length, sumPg, renderSheets);
+    $("sumRows").innerHTML = list.slice(sa, sb).map(({ s, sum }) => `<tr class="click ${$("who").value === s.id ? "sel" : ""}" data-id="${B.esc(s.id)}"><td><b>${B.esc(s.display_name)}</b><span class="sub">${B.esc(s.full_name)}</span></td>${cells(sum)}</tr>`).join("")
       || `<tr><td colspan="10" class="muted">No entries in this period.</td></tr>`;
     $("sumFoot").innerHTML = list.length > 1 ? `<tr><td>Total</td>${cells(tot)}</tr>` : "";
     const days = list.flatMap(({ s, sum }) => sum.days_list.map((x) => ({ s, ...x }))).sort((a, b) => b.row.work_date.localeCompare(a.row.work_date) || a.s.display_name.localeCompare(b.s.display_name));
-    const [pa, pb] = printAll ? [0, days.length] : pager($("dailyPager"), days.length, dailyPg, renderSheets);
+    const [pa, pb] = pager($("dailyPager"), days.length, dailyPg, renderSheets);
     $("dailyRows").innerHTML = days.slice(pa, pb).map(({ s, row: r, c }) => `<tr>
       <td class="mono">${B.prettyDate(r.work_date)}</td><td>${B.esc(s.display_name)}</td>
       <td class="mono">${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}</td>
@@ -258,8 +281,10 @@
   function refresh() { if (!$("tab-today").hidden) loadDay(); if (!$("tab-sheets").hidden) loadSheets(); }
 
   // ---------- staff ----------
+  const staffPg = pg(20);
   function renderStaff() {
-    $("staffRows").innerHTML = staff.map((s) => `<tr>
+    const [a, b] = pager($("staffPager"), staff.length, staffPg, renderStaff);
+    $("staffRows").innerHTML = staff.slice(a, b).map((s) => `<tr>
       <td style="white-space:nowrap">${B.avatarHtml(s, 28)}<b>${B.esc(s.display_name)}</b></td><td>${B.esc(s.full_name)}</td>
       <td class="mono">${B.clockStr(s.sched_start)}–${B.clockStr(s.sched_end)}</td><td class="num">${s.lunch_mins}m</td>
       <td class="num">${B.fmtMins(B.standardMins(s))}</td>
@@ -321,19 +346,21 @@
   };
 
   // ---------- public holidays ----------
+  const holPg = pg(10);
   function renderHolidays() {
     const years = [...new Set([today().slice(0, 4), ...holidays.map((h) => String(h.holiday_date).slice(0, 4))])].sort();
     const cur = $("holYear").value || today().slice(0, 4);
     $("holYear").innerHTML = years.map((y) => `<option ${y === cur ? "selected" : ""}>${y}</option>`).join("");
-    const list = holidays.filter((h) => String(h.holiday_date).startsWith($("holYear").value)), edit = role === "admin";
-    $("holTable").innerHTML = `<thead><tr><th>Date</th><th>Holiday</th><th>Type</th><th>Paid</th>${edit ? "<th></th>" : ""}</tr></thead><tbody>${list.map((h) => `<tr data-d="${h.holiday_date}">
+    const list = holidays.filter((h) => String(h.holiday_date).startsWith($("holYear").value)).sort((a, b) => String(b.holiday_date).localeCompare(String(a.holiday_date))), edit = role === "admin";
+    const [ha, hb] = pager($("holPager"), list.length, holPg, renderHolidays);
+    $("holTable").innerHTML = `<thead><tr><th>Date</th><th>Holiday</th><th>Type</th><th>Paid</th>${edit ? "<th></th>" : ""}</tr></thead><tbody>${list.slice(ha, hb).map((h) => `<tr data-d="${h.holiday_date}">
       <td class="num">${B.prettyDate(h.holiday_date, { weekday: "short", day: "numeric", month: "short" })}</td><td>${B.esc(h.name)}</td>
       <td>${h.kind === "special" ? "Special non-working" : "Regular"}</td>
       <td><input type="checkbox" data-paid ${h.paid !== false ? "checked" : ""} ${edit ? "" : "disabled"} aria-label="Paid"></td>
       ${edit ? `<td><button class="btn ghost sm" type="button" data-rm>Remove</button></td>` : ""}</tr>`).join("") || `<tr><td colspan="5" class="muted">No holidays for this year yet.</td></tr>`}</tbody>`;
   }
   async function reloadHolidays() { holidays = await A.holidays(); B.sched.setHolidays(holidays); renderHolidays(); }
-  $("holYear").onchange = renderHolidays;
+  $("holYear").onchange = () => { holPg.page = 1; renderHolidays(); };
   $("holTable").addEventListener("change", async (e) => {
     const cb = e.target.closest("input[data-paid]"); if (!cb) return;
     const h = holidays.find((x) => x.holiday_date === cb.closest("tr").dataset.d);
@@ -395,7 +422,7 @@
   }
   $("repType").onclick = (e) => { const b = e.target.closest("button[data-t]"); if (b) setType(b.dataset.t); };
   for (const id of ["rDay", "rMonth", "rFrom", "rTo"]) $(id).onchange = loadReport;
-  $("rWho").onchange = () => renderReport();
+  $("rWho").onchange = () => { matrixPg.page = repPg.page = 1; renderReport(); };
   function step(n) {
     if (rType === "day") $("rDay").value = addDays($("rDay").value || today(), n);
     if (rType === "week") $("rDay").value = addDays($("rDay").value || today(), 7 * n);
@@ -405,10 +432,12 @@
   $("rPrev").onclick = () => step(-1); $("rNext").onclick = () => step(1);
   $("rNow").onclick = () => { $("rDay").value = today(); $("rMonth").value = today().slice(0, 7); loadReport(); };
 
+  const matrixPg = pg(20), repPg = pg(20);
   async function loadReport() {
     const R = reportRange();
     const all = await A.attendance(addDays(R.from, -5), R.to);   // earlier days only feed OT
     report = { R, rows: all.filter((r) => r.work_date >= R.from), all };
+    matrixPg.page = repPg.page = 1;
     renderReport();
   }
   function buildReport() {
@@ -423,7 +452,7 @@
     });
     const tot = lines.reduce((a, l) => { for (const k of ["days", "worked", "regular", "ot", "short", "bank", "late", "missingOut", "billable"]) a[k] = (a[k] || 0) + l.sum[k]; return a; }, {});
     const colTot = cols.map((_, i) => lines.reduce((a, l) => a + l.cells[i], 0));
-    const detail = lines.flatMap((l) => l.sum.days_list.map((x) => ({ s: l.s, ...x }))).sort((a, b) => a.row.work_date.localeCompare(b.row.work_date) || a.s.display_name.localeCompare(b.s.display_name));
+    const detail = lines.flatMap((l) => l.sum.days_list.map((x) => ({ s: l.s, ...x }))).sort((a, b) => b.row.work_date.localeCompare(a.row.work_date) || a.s.display_name.localeCompare(b.s.display_name));   // newest first
     return { R, cols, lines, tot, colTot, detail };
   }
   function renderReport() {
@@ -437,9 +466,11 @@
     $("matrixTitle").textContent = rType === "day" ? "Hours today" : cols[0]?.label.startsWith("Week") ? "Hours by week" : cols.length && /^\d{4}$/.test(cols[0].sub) ? "Hours by month" : "Hours by day";
     const cell = (m, has) => has ? `<td class="num">${B.fmtMins(m)}</td>` : `<td class="num zero">–</td>`;
     const showCols = rType !== "day";
+    const [ma, mb] = pager($("matrixPager"), lines.length, matrixPg, renderReport);
+    const [ra, rb] = pager($("repPager"), X.detail.length, repPg, renderReport);
     $("matrix").innerHTML = `<thead><tr><th>Name</th>${showCols ? cols.map((c) => `<th class="num">${c.label}<span class="d">${c.sub}</span></th>`).join("") : ""}
         <th class="num tot">Worked</th><th class="num">Regular</th><th class="num">OT</th><th class="num">Short</th><th class="num">Late</th><th class="num tot">Billable hrs</th></tr></thead>
-      <tbody>${lines.map((l) => `<tr><td><b>${B.esc(l.s.display_name)}</b><span class="sub">${B.esc(l.s.full_name)}</span></td>
+      <tbody>${lines.slice(ma, mb).map((l) => `<tr><td><b>${B.esc(l.s.display_name)}</b><span class="sub">${B.esc(l.s.full_name)}</span></td>
         ${showCols ? l.cells.map((m, i) => cell(m, l.has[i])).join("") : ""}
         <td class="num tot"><b>${B.fmtMins(l.sum.worked)}</b></td><td class="num">${B.fmtMins(l.sum.regular)}</td><td class="num">${B.fmtMins(l.sum.ot)}</td>
         <td class="num">${B.fmtMins(l.sum.short)}</td><td class="num">${l.sum.late}</td><td class="num tot"><b>${B.hoursDec(l.sum.billable)}</b></td></tr>`).join("")
@@ -448,7 +479,7 @@
         <td class="num tot">${B.fmtMins(tot.worked)}</td><td class="num">${B.fmtMins(tot.regular)}</td><td class="num">${B.fmtMins(tot.ot)}</td>
         <td class="num">${B.fmtMins(tot.short)}</td><td class="num">${tot.late}</td><td class="num tot">${B.hoursDec(tot.billable)}</td></tr></tfoot>` : ""}`;
     $("repDetail").innerHTML = `<thead><tr><th>Date</th><th>Name</th><th>Schedule</th><th>In</th><th>Lunch</th><th>Out</th><th class="num">Worked</th><th>Flags</th><th>Note</th></tr></thead>
-      <tbody>${X.detail.map(({ s, row: r, c }) => `<tr><td class="mono">${B.prettyDate(r.work_date)}</td><td>${B.esc(s.display_name)}</td>
+      <tbody>${X.detail.slice(ra, rb).map(({ s, row: r, c }) => `<tr><td class="mono">${B.prettyDate(r.work_date)}</td><td>${B.esc(s.display_name)}</td>
         <td class="mono">${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}</td><td class="mono">${t(r.time_in)}</td><td class="mono">${lunchCell(r)}</td>
         <td class="mono">${t(r.time_out)}</td><td class="num">${c.worked != null ? B.fmtMins(c.worked) : "—"}</td><td>${flagsHtml(c, r.work_date === today())}</td>
         <td class="note">${B.esc(r.note || "")}</td></tr>`).join("") || `<tr><td colspan="9" class="muted">No entries in this period.</td></tr>`}</tbody>`;
@@ -609,11 +640,13 @@
     const u = S.effective(s, d, null);   // usual week, with public holidays
     return e.kind !== u.kind || (e.kind === "shift" && (e.start !== u.start || e.end !== u.end));
   }
+  const schPg = pg(20);
   function renderSchedule() {
     const edit = role === "admin", days = Array.from({ length: 7 }, (_, i) => S.addDays(schFrom, i)), t = today();
     const people = staff.filter((x) => x.active);
+    const [sa, sb] = pager($("schPager"), people.length, schPg, renderSchedule);
     $("schGrid").innerHTML = `<thead><tr><th>Name</th>${days.map((d) => `<th class="${d === t ? "is-today" : ""}">${S.DAY[S.dow(d)]}<br>${+d.slice(8)}</th>`).join("")}</tr></thead>
-      <tbody>${people.map((s) => `<tr><th>${B.avatarHtml(s, 24)}${B.esc(s.display_name)}</th>${days.map((d) => {
+      <tbody>${people.slice(sa, sb).map((s) => `<tr><th>${B.avatarHtml(s, 24)}${B.esc(s.display_name)}</th>${days.map((d) => {
         const e = schDraft[s.id + "|" + d], ch = isChanged(s, d, e);
         if (!edit) return `<td><div class="sch-cell k-${e.kind} ${ch ? "changed" : ""}"><span class="sch-ro">${S.cellText(e)}</span></div></td>`;
         return `<td><div class="sch-cell k-${e.kind} ${ch ? "changed" : ""}" data-k="${s.id}|${d}">
@@ -662,6 +695,7 @@
   (function () { const st = document.createElement("style"); st.textContent = P.SLIP_CSS; document.head.appendChild(st); })();
   let periods = [], curP = null, payLines = [], payOver = {}, payRows = [], payPlanOv = {};
   const isAdminRole = () => role === "admin";
+  const payPg = pg(20);
   async function loadPayroll(keepId) {
     periods = await A.periods();
     $("payEmpty").hidden = periods.length > 0; $("payBody").hidden = !periods.length;
@@ -675,6 +709,7 @@
   }
   $("paySel").onchange = () => openPeriod($("paySel").value);
   async function openPeriod(id) {
+    if (curP?.id !== id) payPg.page = 1;
     curP = periods.find((p) => p.id === id);
     const [saved, rows, sdays] = await Promise.all([A.payslips(id), A.attendance(addDays(curP.start_date, -5), curP.end_date), A.scheduleDays(curP.start_date, curP.end_date)]);
     payRows = rows; payPlanOv = B.sched.indexDays(sdays);
@@ -809,10 +844,11 @@
         ${num ? 'type="number" step="any" min="0"' : 'maxlength="40" placeholder="e.g. Cash advance"'} aria-label="${k.replace(/_/g, " ")} for ${B.esc(l.employee_name)}"
         title="${has ? `Changed by admin. From attendance: ${autoV}` : "From attendance. Type to change."}">${has ? `<button type="button" class="undo" data-s="${l.staff_id}" data-k="${k}" title="Back to the attendance value (${B.esc(autoV)})" aria-label="Reset to ${B.esc(autoV)}">↺</button>` : ""}</span>`;
     };
+    const [pa, pb] = pager($("payPager"), payLines.length, payPg, renderPayroll);   // TOTAL row still covers everyone
     $("paySheet").innerHTML = `<thead><tr><th style="text-align:left">Employee name</th><th>Start date</th><th>Payroll period</th><th>Rate</th>
       <th>Days worked</th><th>Hours<br>worked</th><th>Lates<br>(mins)</th><th>Undertime<br>(mins)</th><th>Absences</th><th>Other deductions<br>(CA, loans, taxes)</th><th>Note</th>
       <th>Total deductions</th><th>Gross pay</th><th>Net pay</th><th>Exchange rate</th><th>Gross pay<br>(PHP)</th><th>Net pay<br>(PHP)</th><th>Fee share</th><th>Received<br>(PHP)</th></tr></thead>
-      <tbody>${payLines.map((l) => `<tr>
+      <tbody>${payLines.slice(pa, pb).map((l) => `<tr>
         <td><b>${B.esc(l.employee_name)}</b></td><td class="num">${P.usDate(l.start_date)}</td><td>${P.period(curP)}</td>
         <td class="num">${P.GBP(l.rate)}<span class="sub">${P.TYPES[l.pay_type].short}${l.pay_type === "hourly" ? ` · ${l.paid_hours} h paid` : l.pay_type === "daily" ? ` · ${l.paid_days} paid` : ""}</span></td><td class="num">${inp(l, "days_worked")}</td><td class="num">${inp(l, "hours_worked")}</td><td class="num">${inp(l, "late_mins")}</td>
         <td class="num">${inp(l, "undertime_mins")}</td><td class="num">${inp(l, "absences")}</td><td class="num">${inp(l, "other_ded")}</td><td>${inp(l, "other_note", "note")}</td>
@@ -942,8 +978,11 @@
     try { const r = await A.users(); users = r.users; meId = r.me || meId; renderUsers(); }
     catch (err) { $("userRows").innerHTML = `<tr><td colspan="4" class="muted">${B.esc(err.message)}</td></tr>`; }
   }
+  const userPg = pg(20);
   function renderUsers() {
-    $("userRows").innerHTML = users.map((u) => {
+    const list = users.slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));   // newest first
+    const [a, b] = pager($("userPager"), list.length, userPg, renderUsers);
+    $("userRows").innerHTML = list.slice(a, b).map((u) => {
       const self = u.user_id === meId;
       return `<tr><td><b>${B.esc(u.email)}</b>${self ? ` <span class="muted">(you)</span>` : ""}</td>
         <td>${self ? `<span class="pill role-${u.role}">${ROLE_LABEL[u.role]}</span>` :

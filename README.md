@@ -95,7 +95,7 @@ The anon key is designed to be public. **Never** put the service_role key in thi
 - The homepage shows the week as a **Table** or an hour-by-hour **Timeline**. Clock-ins use that day's planned shift; rest days don't count as absences.
 
 - **Staff requests:** staff can request changes to their own week (this week + next 2) from **My schedule**. Admins approve or reject under **Schedule** (orange number on the tab). Needs `supabase/requests.sql` (included in `database-update.sql`).
-- **Timesheets → Daily entries** shows 20 rows per page (10/20/50/100); printing includes every entry.
+- **Pagination:** every admin table pages its rows (20 per page; Exchange rates and Holidays 10), with a 10/20/50/100 choice. Tables with dates show the newest first. Totals always cover every row, and printing shows every row.
 - **Status column:** on the homepage's Today view, each person shows Working / On lunch / Clocked out / Not in yet / Late / Absent / Rest day / leave.
 
 ## WhatsApp
