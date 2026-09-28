@@ -95,6 +95,7 @@ The anon key is designed to be public. **Never** put the service_role key in thi
 - The homepage shows the week as a **Table** or an hour-by-hour **Timeline**. Clock-ins use that day's planned shift; rest days don't count as absences.
 
 - **Staff requests:** staff can request changes to their own week (this week + next 2) from **My schedule**. Admins approve or reject under **Schedule** (orange number on the tab). Needs `supabase/requests.sql` (included in `database-update.sql`).
+- **Timesheets → Daily entries** shows 20 rows per page (10/20/50/100); printing includes every entry.
 - **Status column:** on the homepage's Today view, each person shows Working / On lunch / Clocked out / Not in yet / Late / Absent / Rest day / leave.
 
 ## WhatsApp
@@ -105,7 +106,7 @@ After clocking in or out, staff tap **Copy & Send to WhatsApp Group**: the messa
 - Staff → Edit: set **Start date**, **Pay type** (Hourly, Daily, Weekly, Bi-monthly, Monthly) and rate. Fixed types: daily rate = pay per cut-off ÷ 10 (weekly: ÷ 5; monthly: half per cut-off); absences deducted at that rate.
 - **Philippine public holidays** (Settings → Public holidays; 2026 and 2027 preloaded) make a working day a paid day off.
 - Payroll → **+ New period**: pick the cut-off, check the payment date, add the exchange rate ₱/£ and total transfer fee ₱.
-- **Exchange-rate proof:** once the GBP transfer is sent, an admin uploads a screenshot (PNG/JPG/WEBP/HEIC or PDF, max 5 MB) of the rate it went at, under **Exchange-rate proof** on the period. It records who uploaded it and when. A period can't be finalised without it. Admin and finance can view it; staff never see it (private storage, 5-minute links). Needs `supabase/exchange-rate-proof.sql` (included in `database-update.sql`).
+- **Exchange-rate proof:** once the GBP transfer is sent, an admin uploads a screenshot (PNG/JPG/WEBP/HEIC or PDF, max 5 MB) of the rate it went at, under **Exchange-rate proof** on the period. It records who uploaded it and when. A period can't be finalised without it. Admin and finance can view it; staff never see it (private storage, 5-minute links). **Exchange rates by period** (bottom of Payroll) lists every period's rate, fee, status and proof, 10 per page, with CSV export. Needs `supabase/exchange-rate-proof.sql` (included in `database-update.sql`).
 - Days worked, lates, undertime and absences come from attendance + schedule; type over any value to change it; add other deductions (CA, loans, taxes).
 - Rules (per period): daily rate = rate ÷ working days; minute rate = daily ÷ paid minutes; lates/undertime × minute rate; absences (missed shifts + unpaid leave) × daily rate; paid leave is paid; transfer fee split by share of net pay.
 - **Save draft**, then **Finalise & publish** → staff see their payslips under **My payslips**. Payslip PDF per person or all at once; CSV export.

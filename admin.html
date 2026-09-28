@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260930b">
+<link rel="stylesheet" href="assets/style.css?v=20260930c">
 <style>
   main { padding-block: 22px 70px; }
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -124,7 +124,15 @@
   .paysheet .undo { border: 0; background: none; color: var(--lunch); cursor: pointer; font-size: 15px; padding: 0 2px; line-height: 1; }
   .paysheet .warn { color: var(--late); font-weight: 600; font-size: 12px; }
   .payslip-area { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
-  #slipView { flex: 1 1 360px; }
+  #slipView { flex: 1 1 360px; min-width: 0; }
+  #slipView .slip { max-width: none; }
+  .pager { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 13px; }
+  .pager select { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+  .pager label { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+  .pager .pg { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .fxhist td .miss { color: var(--late); font-weight: 600; font-size: 12.5px; }
+  .fxhist tr.sel td { background: var(--accent-soft); }
+  @media print { .pager { display: none !important; } }
   .rephead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 20px 0 10px; }
   @media print { .printhead { display: block; margin-bottom: 12px; } main { padding: 0; } table { font-size: 11px; } td, th { padding: 5px 6px; } }
 </style>
@@ -210,7 +218,7 @@
     <div class="card tablewrap"><table>
       <thead><tr><th>Date</th><th>Name</th><th>Schedule</th><th>In</th><th>Lunch</th><th>Out</th><th class="num">Worked</th><th>Flags</th><th>Note</th><th class="noprint"></th></tr></thead>
       <tbody id="dailyRows"></tbody>
-    </table></div>
+    </table><div class="pager" id="dailyPager" hidden></div></div>
   </section>
 
   <!-- REPORTS -->
@@ -288,7 +296,6 @@
           <label class="f">Total transfer fee (₱)<input type="number" id="payFee" step="0.01" min="0" placeholder="0.00"></label>
           <span class="spacer"></span>
           <button class="btn" id="payCsv">CSV</button>
-          <button class="btn" id="payPdfAll">All payslips PDF</button>
           <button class="btn adminonly" id="paySave">Save draft</button>
           <button class="btn primary adminonly" id="payFinal">Finalise &amp; publish</button>
           <button class="btn adminonly" id="payReopen" hidden>Reopen to edit</button>
@@ -310,10 +317,20 @@
           <h2 style="font-size:19px">Payslip</h2>
           <label class="f">Employee name<select id="slipWho"></select></label>
           <button class="btn primary" id="slipPdf">Download this payslip (PDF)</button>
+          <button class="btn" id="payPdfAll">All payslips PDF</button>
           <p class="muted" style="margin:0;font-size:12.5px">Pick a name to see their payslip, like the dropdown in the payroll sheet. Staff see their own payslips in the app once the period is finalised.</p>
         </div>
         <div id="slipView"></div>
       </div>
+      <div class="row" style="margin:28px 0 10px">
+        <div><h2 style="font-size:19px">Exchange rates by period</h2>
+          <p class="muted" style="margin:2px 0 0;font-size:12.5px">Every pay period's ₱/£ rate and its proof. Click a row to open that period.</p></div>
+        <span class="spacer"></span><button class="btn sm" id="fxCsv">CSV</button>
+      </div>
+      <div class="card tablewrap fxhist"><table>
+        <thead><tr><th>Pay period</th><th>Paid</th><th class="num">Rate (₱ per £1)</th><th class="num">Transfer fee (₱)</th><th>Status</th><th>Proof</th><th>Uploaded</th></tr></thead>
+        <tbody id="fxRows"></tbody>
+      </table><div class="pager" id="fxPager" hidden></div></div>
     </div>
   </section>
 
@@ -489,13 +506,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20260930b"></script>
-<script src="assets/core.js?v=20260930b"></script>
-<script src="assets/game.js?v=20260930b"></script>
-<script src="assets/schedule.js?v=20260930b"></script>
-<script src="assets/logo.js?v=20260930b"></script>
-<script src="assets/payroll.js?v=20260930b"></script>
-<script src="assets/api.js?v=20260930b"></script>
-<script src="assets/admin.js?v=20260930b"></script>
+<script src="config.js?v=20260930c"></script>
+<script src="assets/core.js?v=20260930c"></script>
+<script src="assets/game.js?v=20260930c"></script>
+<script src="assets/schedule.js?v=20260930c"></script>
+<script src="assets/logo.js?v=20260930c"></script>
+<script src="assets/payroll.js?v=20260930c"></script>
+<script src="assets/api.js?v=20260930c"></script>
+<script src="assets/admin.js?v=20260930c"></script>
 </body>
 </html>

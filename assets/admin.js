@@ -8,6 +8,23 @@
   const today = () => B.dateIn(new Date(), tz());
   const t = (iso) => (iso ? B.clockIn(new Date(iso), tz()) : "—");
   const addDays = (ds, n) => { const d = new Date(ds + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  // Simple pager: state = { page, size }; calls go() after a change. Hidden when everything fits on one page.
+  const PAGE_SIZES = [10, 20, 50, 100];
+  function pager(box, total, st, go) {
+    const pages = Math.max(1, Math.ceil(total / st.size));
+    st.page = Math.min(Math.max(1, st.page), pages);
+    box.hidden = total <= PAGE_SIZES[0];
+    if (box.hidden) return [0, total];
+    const a = (st.page - 1) * st.size, b = Math.min(total, a + st.size);
+    box.innerHTML = `<span class="muted">Showing ${a + 1}–${b} of ${total}</span><span class="spacer"></span>
+      <label class="muted">Rows <select aria-label="Rows per page">${PAGE_SIZES.map((n) => `<option ${n === st.size ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <button class="btn sm" type="button" data-pg="-1" ${st.page <= 1 ? "disabled" : ""}>‹ Prev</button>
+      <span class="pg">Page ${st.page} of ${pages}</span>
+      <button class="btn sm" type="button" data-pg="1" ${st.page >= pages ? "disabled" : ""}>Next ›</button>`;
+    box.querySelector("select").onchange = (e) => { st.size = +e.target.value; st.page = 1; go(); };
+    box.querySelectorAll("[data-pg]").forEach((btn) => { btn.onclick = () => { st.page += +btn.dataset.pg; go(); }; });
+    return [a, b];
+  }
   const friendly = (e) => /duplicate|unique/i.test(e.message) ? "There is already an entry for that person on that date." : e.message;
 
   // ---------- auth ----------
@@ -125,12 +142,17 @@
   }
   $("quick").onclick = (e) => { const b = e.target.closest("button[data-q]"); if (b) { setRange(b.dataset.q); loadSheets(); } };
   for (const id of ["from", "to"]) $(id).onchange = () => { for (const b of $("quick").children) b.classList.remove("on"); loadSheets(); };
-  $("who").onchange = () => renderSheets();
+  $("who").onchange = () => { dailyPg.page = 1; renderSheets(); };
 
   async function loadSheets() {
     sheetRows = await A.attendance(addDays($("from").value, -5), $("to").value);   // earlier days only feed OT
+    dailyPg.page = 1;
     renderSheets();
   }
+  const dailyPg = { page: 1, size: 20 };
+  let printAll = false;   // printing shows every entry, not just the current page
+  window.addEventListener("beforeprint", () => { if ($("tab-sheets") && !$("tab-sheets").hidden) { printAll = true; renderSheets(); } });
+  window.addEventListener("afterprint", () => { if (printAll) { printAll = false; renderSheets(); } });
   function computeSheets() {
     const who = $("who").value;
     const from = $("from").value;
@@ -155,7 +177,8 @@
       || `<tr><td colspan="10" class="muted">No entries in this period.</td></tr>`;
     $("sumFoot").innerHTML = list.length > 1 ? `<tr><td>Total</td>${cells(tot)}</tr>` : "";
     const days = list.flatMap(({ s, sum }) => sum.days_list.map((x) => ({ s, ...x }))).sort((a, b) => b.row.work_date.localeCompare(a.row.work_date) || a.s.display_name.localeCompare(b.s.display_name));
-    $("dailyRows").innerHTML = days.map(({ s, row: r, c }) => `<tr>
+    const [pa, pb] = printAll ? [0, days.length] : pager($("dailyPager"), days.length, dailyPg, renderSheets);
+    $("dailyRows").innerHTML = days.slice(pa, pb).map(({ s, row: r, c }) => `<tr>
       <td class="mono">${B.prettyDate(r.work_date)}</td><td>${B.esc(s.display_name)}</td>
       <td class="mono">${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}</td>
       <td class="mono">${t(r.time_in)}</td><td class="mono">${lunchCell(r)}</td><td class="mono">${t(r.time_out)}</td>
@@ -163,7 +186,7 @@
       <td class="note">${B.esc(r.note || "")}</td><td class="noprint"><button class="btn sm adminonly" data-edit="${B.esc(r.id)}">Edit</button></td></tr>`).join("")
       || `<tr><td colspan="10" class="muted">No entries.</td></tr>`;
   }
-  $("sumRows").onclick = (e) => { const tr = e.target.closest("tr[data-id]"); if (!tr) return; $("who").value = $("who").value === tr.dataset.id ? "" : tr.dataset.id; renderSheets(); };
+  $("sumRows").onclick = (e) => { const tr = e.target.closest("tr[data-id]"); if (!tr) return; $("who").value = $("who").value === tr.dataset.id ? "" : tr.dataset.id; dailyPg.page = 1; renderSheets(); };
   $("dailyRows").onclick = (e) => { const b = e.target.closest("button[data-edit]"); if (b) openEntry(sheetRows.find((r) => r.id === b.dataset.edit)); };
   $("addEntry").onclick = () => openEntry(null, { staff_id: $("who").value || staff[0]?.id, work_date: today() });
   $("printBtn").onclick = () => window.print();
@@ -643,6 +666,7 @@
     periods = await A.periods();
     $("payEmpty").hidden = periods.length > 0; $("payBody").hidden = !periods.length;
     $("payEditPeriod").hidden = !periods.length;
+    renderFxHist();
     $("paySel").innerHTML = periods.map((p) => `<option value="${p.id}">${P.period(p)}${p.status === "final" ? " · final" : " · draft"}</option>`).join("");
     if (!periods.length) { $("payStatusLine").textContent = ""; return; }
     const id = keepId || $("paySel").value || periods[0].id;
@@ -657,7 +681,7 @@
     payOver = {}; for (const r of saved) payOver[r.staff_id] = { ...(r.overrides || {}) };
     if (curP.status === "final") payLines = saved.map((r) => ({ ...r, auto: null }));
     $("payFx").value = curP.exchange_rate ?? ""; $("payFee").value = curP.transfer_fee ?? 0;
-    renderProof();
+    renderProof(); renderFxHist();
     recalc();
   }
 
@@ -699,6 +723,7 @@
       B.toast(err.message, "err");
     }
     if (curP?.id === periodId) renderProof();
+    renderFxHist();
   };
   let delProof = false;
   $("payProofDel").onclick = async () => {
@@ -707,10 +732,11 @@
     const old = curP.fx_proof_path;
     try { setPeriod(await A.savePeriod({ id: curP.id, fx_proof_path: null })); await A.fxProofRemove(old).catch(() => {}); B.toast("Screenshot removed"); }
     catch (err) { B.toast(err.message, "err"); }
-    renderProof();
+    renderProof(); renderFxHist();
   };
-  $("payProofView").onclick = async () => {
-    const p = curP; if (!p?.fx_proof_path) return;
+  $("payProofView").onclick = () => viewProof(curP);
+  async function viewProof(p) {
+    if (!p?.fx_proof_path) return;
     $("fxTitle").textContent = `Exchange-rate proof · ${P.period(p)}`;
     $("fxMeta").textContent = `${p.exchange_rate ? `Rate entered: ₱${Number(p.exchange_rate).toFixed(4)} per £1 · ` : "No rate entered yet · "}${p.fx_proof_name || ""}`;
     $("fxView").innerHTML = `<p class="muted">Loading…</p>`; $("fxOpen").removeAttribute("href");
@@ -720,7 +746,33 @@
       $("fxOpen").href = url;
       $("fxView").innerHTML = isPdf(p.fx_proof_path) ? `<iframe title="Exchange-rate proof" src="${B.esc(url)}"></iframe>` : `<img alt="Exchange-rate screenshot for ${B.esc(P.period(p))}" src="${B.esc(url)}">`;
     } catch (err) { $("fxView").innerHTML = `<p class="muted">${B.esc(err.message)}</p>`; }
+  }
+
+  // Exchange rates by period (all periods, newest first, paginated)
+  const fxPg = { page: 1, size: 10 };
+  const fmtWhen = (iso) => iso ? new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  function renderFxHist() {
+    const [a, b] = pager($("fxPager"), periods.length, fxPg, renderFxHist);
+    $("fxRows").innerHTML = periods.slice(a, b).map((p) => `<tr class="click ${curP?.id === p.id ? "sel" : ""}" data-id="${B.esc(p.id)}">
+      <td><b>${B.esc(P.period(p))}</b></td>
+      <td class="mono">${B.prettyDate(p.pay_date, { day: "numeric", month: "short", year: "numeric" })}</td>
+      <td class="num">${p.exchange_rate != null ? Number(p.exchange_rate).toFixed(4) : "—"}</td>
+      <td class="num">${P.PHP(p.transfer_fee || 0)}</td>
+      <td>${p.status === "final" ? `<span class="pill out">Final</span>` : `<span class="pill lunch">Draft</span>`}</td>
+      <td>${p.fx_proof_path ? `<button class="btn sm" type="button" data-view="${B.esc(p.id)}">View</button>` : `<span class="miss">Missing</span>`}</td>
+      <td class="note">${p.fx_proof_path ? `${B.esc(fmtWhen(p.fx_proof_uploaded_at))}${p.fx_proof_uploaded_by ? `<span class="sub">${B.esc(p.fx_proof_uploaded_by)}</span>` : ""}` : ""}</td></tr>`).join("")
+      || `<tr><td colspan="7" class="muted">No pay periods yet.</td></tr>`;
+  }
+  $("fxRows").onclick = (e) => {
+    const v = e.target.closest("button[data-view]");
+    if (v) return viewProof(periods.find((p) => p.id === v.dataset.view));
+    const tr = e.target.closest("tr[data-id]"); if (!tr) return;
+    $("paySel").value = tr.dataset.id; openPeriod(tr.dataset.id);
+    $("tab-payroll").scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  $("fxCsv").onclick = () => download(`BHL-exchange-rates_${today()}.csv`, [
+    ["Period start", "Period end", "Pay date", "Exchange rate (PHP per GBP)", "Transfer fee (PHP)", "Status", "Proof uploaded", "Uploaded at", "Uploaded by"],
+    ...periods.map((p) => [p.start_date, p.end_date, p.pay_date, p.exchange_rate ?? "", p.transfer_fee ?? 0, p.status, p.fx_proof_path ? "Yes" : "No", p.fx_proof_uploaded_at || "", p.fx_proof_uploaded_by || ""])]);
   $("fxDlg").addEventListener("close", () => { $("fxView").innerHTML = ""; });
   function people() {
     return staff.filter((s) => (s.active && (!s.start_date || s.start_date <= curP.end_date)) || payRows.some((r) => r.staff_id === s.id) || payOver[s.id]);
