@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260930e">
+<link rel="stylesheet" href="assets/style.css?v=20260930f">
 <style>
   main { padding-block: 20px 60px; }
   .hello { display: grid; gap: 4px; margin-bottom: 18px; }
@@ -122,6 +122,11 @@
   main.wrap.narrow.two { max-width: 1120px; }
   .tcols { display: flex; flex-direction: column; gap: 16px; }
   .tcol { display: contents; }
+  .switch-row { display: flex; justify-content: center; padding-top: 4px; }
+  .switch-row .btn { min-width: 220px; justify-content: center; }
+  @media (min-width: 900px) {
+    #season .badges { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  }
   .o1 { order: 1; } .o2 { order: 2; } .o3 { order: 3; } .o4 { order: 4; } .o5 { order: 5; } .o6 { order: 6; } .o7 { order: 7; } .o8 { order: 8; } .o9 { order: 9; }
   @media (min-width: 900px) {
     .tcols { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -238,7 +243,8 @@
 
     <div class="tcols">
     <div class="tcol">
-    <div class="card pad stack o1">
+    <div class="timeline o1" id="timeline"></div>
+    <div class="card pad stack o2">
       <div class="row" style="justify-content:space-between">
         <div><div class="eyebrow">Today's schedule</div><div class="mono" id="tSched" style="font-size:17px;font-weight:600"></div></div>
         <div id="tFlags" class="row"></div>
@@ -263,20 +269,19 @@
       <div class="row" id="actAlt"></div>
     </div>
 
-    <div class="timeline o2" id="timeline"></div>
 
     <div class="quick o3">
       <button type="button" class="btn wa" id="waNotify">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z"/></svg>
-        <span id="waLabel">Copy &amp; Send to WhatsApp Group</span></button>
+        <span id="waLabel">Copy &amp; Send to WhatsApp</span></button>
       <button class="btn" id="mySlips">My payslips</button>
     </div>
     <div class="wa-hint o4" id="waHint" hidden>
       <b id="waHintTitle">Tell the group you're in</b>
-      <span>Tap <b>Copy &amp; Send to WhatsApp Group</b> to copy your message, then open the <b>BHL Attendance</b> group in WhatsApp, paste it and press <b>Send</b>.</span>
+      <span>Tap <b>Copy &amp; Send to WhatsApp</b> to copy your message, then open the <b>BHL Attendance</b> group in WhatsApp, paste it and press <b>Send</b>.</span>
     </div>
 
-    <div class="card pad stack o7">
+    <div class="card pad stack o6">
       <div class="row"><div class="eyebrow">This month</div><span class="spacer"></span><span class="muted" style="font-size:12px" id="mLabel"></span></div>
       <div class="stats">
         <div><b id="mDays">0</b><span>days</span></div>
@@ -286,10 +291,6 @@
       <p class="muted" style="margin:0;font-size:12.5px">OT is counted in <span id="mBlock">30</span>-minute blocks and can only be used on your next work day (start later or leave earlier). Unused OT expires at the end of that day.</p>
     </div>
 
-    <div class="row o8">
-      <span class="spacer"></span>
-      <button class="btn ghost" id="switchUser">Switch person</button>
-    </div>
     </div>
 
     <div class="tcol">
@@ -299,11 +300,14 @@
       <div id="msBody"><p class="muted" style="margin:0">Loading…</p></div>
     </div>
 
-    <div class="card pad o9">
+    <div class="card pad o7">
       <div class="eyebrow" style="margin-bottom:6px">Team today</div>
       <div class="team" id="team"></div>
     </div>
-    <div class="card pad stack season o6" id="season">
+    </div>
+    </div>
+
+    <div class="card pad stack season" id="season">
       <div class="row"><div class="eyebrow">Your season</div><span class="spacer"></span><button class="btn ghost sm" id="editProfile">Edit profile</button></div>
       <div class="season-top">
         <div class="lvl-ring" id="lvlRing"></div>
@@ -319,8 +323,8 @@
       <div class="badges" id="badges"></div>
       <p class="muted" style="margin:0;font-size:12.5px">XP resets each month. +10 on-time clock-in · +10 full day · +5 lunch logged · +5 early bird (5+ min early).</p>
     </div>
-    </div>
-    </div>
+
+    <div class="switch-row"><button class="btn" id="switchUser">Switch person</button></div>
   </section>
 </main>
 
@@ -360,13 +364,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=20260930e"></script>
-<script src="assets/core.js?v=20260930e"></script>
-<script src="assets/game.js?v=20260930e"></script>
-<script src="assets/schedule.js?v=20260930e"></script>
-<script src="assets/logo.js?v=20260930e"></script>
-<script src="assets/payroll.js?v=20260930e"></script>
-<script src="assets/api.js?v=20260930e"></script>
-<script src="assets/staff.js?v=20260930e"></script>
+<script src="config.js?v=20260930f"></script>
+<script src="assets/core.js?v=20260930f"></script>
+<script src="assets/game.js?v=20260930f"></script>
+<script src="assets/schedule.js?v=20260930f"></script>
+<script src="assets/logo.js?v=20260930f"></script>
+<script src="assets/payroll.js?v=20260930f"></script>
+<script src="assets/api.js?v=20260930f"></script>
+<script src="assets/staff.js?v=20260930f"></script>
 </body>
 </html>

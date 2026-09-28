@@ -412,7 +412,7 @@
     if (!ok) return B.toast("Couldn't copy on this device. Try again.", "err");
     B.toast("Copied! Now paste it in the BHL Attendance WhatsApp group.");
     $("waHint").hidden = true; $("waNotify").classList.remove("nudge");
-    $("waLabel").textContent = "Copied ✓"; setTimeout(() => { $("waLabel").textContent = "Copy & Send to WhatsApp Group"; }, 2500);
+    $("waLabel").textContent = "Copied ✓"; setTimeout(() => { $("waLabel").textContent = "Copy & Send to WhatsApp"; }, 2500);
   });
 
   // ---------- my schedule (this week + next 2) and change requests ----------

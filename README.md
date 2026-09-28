@@ -99,7 +99,7 @@ The anon key is designed to be public. **Never** put the service_role key in thi
 - **Status column:** on the homepage's Today view, each person shows Working / On lunch / Clocked out / Not in yet / Late / Absent / Rest day / leave.
 
 ## WhatsApp
-After clocking in or out, staff tap **Copy & Send to WhatsApp Group**: the message is copied in the group's format, and they paste it into the WhatsApp group.
+After clocking in or out, staff tap **Copy & Send to WhatsApp**: the message is copied in the group's format, and they paste it into the WhatsApp group.
 
 ## Payroll
 - Pay is **bi-monthly**: cut-offs 1st–15th and 16th–end, usually 10 working days (Settings → Working days per cut-off).
