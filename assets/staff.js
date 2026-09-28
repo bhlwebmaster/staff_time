@@ -5,7 +5,7 @@
   let roster = null, me = null, pin = "", entry = "", pinMode = "enter", firstPin = "", data = null, armedOut = false, idleT;
 
   const tz = () => roster?.settings?.timezone || "Europe/London";
-  const show = (v) => { for (const id of ["vPick", "vPin", "vToday"]) $(id).hidden = id !== v; document.querySelector("main").classList.toggle("wide", v === "vPick"); window.scrollTo(0, 0); };
+  const show = (v) => { for (const id of ["vPick", "vPin", "vToday"]) $(id).hidden = id !== v; document.querySelector("main").classList.toggle("wide", v === "vPick"); document.querySelector("main").classList.toggle("two", v === "vToday"); window.scrollTo(0, 0); };
 
   // ---------- clocks ----------
   function tick() {
