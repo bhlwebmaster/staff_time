@@ -103,13 +103,14 @@
     const ps = row.plan_start || row.sched_start, pe = row.plan_end || row.sched_end;
     let span = ps && pe ? minsOf(pe) - minsOf(ps) : standardMins(staff) + (staff.lunch_mins ?? 60);
     if (span <= 0) span += 1440;                              // overnight shift
-    const planLunch = plannedLunch(staff, row.work_date);
-    const std = Math.max(0, span - planLunch);
+    const isRest = row.day_kind === "rest";                   // rest day: nothing is expected, every worked minute is OT
+    const planLunch = isRest ? 0 : plannedLunch(staff, row.work_date);
+    const std = isRest ? 0 : Math.max(0, span - planLunch);
     const flex = settings.flex_hours !== false;
     const avail = Math.max(0, Number(opts.avail) || 0);
     const out = { date: row.work_date, std, planLunch, otAvail: avail, otFrom: opts.availFrom || null, otUsed: 0, late: 0, lateRaw: 0, worked: null, variance: null, ot: 0, short: 0, lunch: null, noLunch: false,
                   complete: !!(tin && tout), open: !!(tin && !tout), status: "absent", tin, tout, lo, li };
-    if (tin && sStart) {
+    if (tin && sStart && !isRest) {
       const lateMs = tin - sStart;
       if (lateMs > (settings.grace_mins ?? 5) * 60000) out.late = out.lateRaw = Math.round(lateMs / 60000);
     }
@@ -144,14 +145,22 @@
    */
   function calcDays(rows, staff, settings) {
     const list = rows.slice().sort((a, b) => (a.work_date < b.work_date ? -1 : a.work_date > b.work_date ? 1 : 0));
-    const out = new Map(); let prev = null, prevC = null;
+    const out = new Map(); let bank = 0, bankFrom = null, bankDate = null;
     for (const r of list) {
       let avail = Number(r.ot_adjust) || 0, from = null;
-      if (prevC && prevC.complete && prevC.ot > 0 && daysApart(prev.work_date, r.work_date) <= OT_WINDOW_DAYS) { avail += prevC.ot; from = prev.work_date; }
+      const live = bank > 0 && bankDate && daysApart(bankDate, r.work_date) <= OT_WINDOW_DAYS;
+      if (live) { avail += bank; from = bankFrom; }
       const c = calcDay(r, staff, settings, { avail, availFrom: from });
       out.set(r.work_date, c);
-      if (r.time_in) { prev = r; prevC = c; }
+      if (!r.time_in) continue;
+      if (r.day_kind === "rest") {
+        // A rest day never uses OT: it adds its own OT to the bank, and the bank waits for the next working day.
+        bank = (live ? bank : 0) + (c.complete ? c.ot : 0);
+        if (!live) bankFrom = r.work_date;
+      } else { bank = c.complete ? c.ot : 0; bankFrom = r.work_date; }   // a working day uses the bank; only its own OT moves on
+      bankDate = r.work_date;
     }
+    out.bank = bank; out.bankFrom = bankFrom; out.bankDate = bankDate;
     return out;
   }
   /** OT this person can still use today: from their last work day (if today is their next one), minus what's used. */
@@ -159,9 +168,7 @@
     const all = calcDays(rows.filter((r) => r.work_date <= today), staff, settings);
     const t = all.get(today);
     if (t) return { mins: Math.max(0, t.otAvail - (t.complete ? t.otUsed : 0)), from: t.otFrom, used: t.otUsed, today: true };
-    const last = rows.filter((r) => r.work_date < today && r.time_in).sort((a, b) => (a.work_date < b.work_date ? 1 : -1))[0];
-    const c = last && all.get(last.work_date);
-    if (c && c.complete && c.ot > 0 && daysApart(last.work_date, today) <= OT_WINDOW_DAYS) return { mins: c.ot, from: last.work_date, used: 0, today: false };
+    if (all.bank > 0 && all.bankDate && daysApart(all.bankDate, today) <= OT_WINDOW_DAYS) return { mins: all.bank, from: all.bankFrom, used: 0, today: false };
     return { mins: 0, from: null, used: 0, today: false };
   }
 
