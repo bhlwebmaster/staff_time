@@ -1,0 +1,165 @@
+diff --git a/assets/core.js b/assets/core.js
+index ed50409..06b716d 100644
+--- a/assets/core.js
++++ b/assets/core.js
+@@ -103,13 +103,14 @@
+     const ps = row.plan_start || row.sched_start, pe = row.plan_end || row.sched_end;
+     let span = ps && pe ? minsOf(pe) - minsOf(ps) : standardMins(staff) + (staff.lunch_mins ?? 60);
+     if (span <= 0) span += 1440;                              // overnight shift
+-    const planLunch = plannedLunch(staff, row.work_date);
+-    const std = Math.max(0, span - planLunch);
++    const isRest = row.day_kind === "rest";                   // rest day: nothing is expected, every worked minute is OT
++    const planLunch = isRest ? 0 : plannedLunch(staff, row.work_date);
++    const std = isRest ? 0 : Math.max(0, span - planLunch);
+     const flex = settings.flex_hours !== false;
+     const avail = Math.max(0, Number(opts.avail) || 0);
+     const out = { date: row.work_date, std, planLunch, otAvail: avail, otFrom: opts.availFrom || null, otUsed: 0, late: 0, lateRaw: 0, worked: null, variance: null, ot: 0, short: 0, lunch: null, noLunch: false,
+                   complete: !!(tin && tout), open: !!(tin && !tout), status: "absent", tin, tout, lo, li };
+-    if (tin && sStart) {
++    if (tin && sStart && !isRest) {
+       const lateMs = tin - sStart;
+       if (lateMs > (settings.grace_mins ?? 5) * 60000) out.late = out.lateRaw = Math.round(lateMs / 60000);
+     }
+@@ -144,14 +145,22 @@
+    */
+   function calcDays(rows, staff, settings) {
+     const list = rows.slice().sort((a, b) => (a.work_date < b.work_date ? -1 : a.work_date > b.work_date ? 1 : 0));
+-    const out = new Map(); let prev = null, prevC = null;
++    const out = new Map(); let bank = 0, bankFrom = null, bankDate = null;
+     for (const r of list) {
+       let avail = Number(r.ot_adjust) || 0, from = null;
+-      if (prevC && prevC.complete && prevC.ot > 0 && daysApart(prev.work_date, r.work_date) <= OT_WINDOW_DAYS) { avail += prevC.ot; from = prev.work_date; }
++      const live = bank > 0 && bankDate && daysApart(bankDate, r.work_date) <= OT_WINDOW_DAYS;
++      if (live) { avail += bank; from = bankFrom; }
+       const c = calcDay(r, staff, settings, { avail, availFrom: from });
+       out.set(r.work_date, c);
+-      if (r.time_in) { prev = r; prevC = c; }
++      if (!r.time_in) continue;
++      if (r.day_kind === "rest") {
++        // A rest day never uses OT: it adds its own OT to the bank, and the bank waits for the next working day.
++        bank = (live ? bank : 0) + (c.complete ? c.ot : 0);
++        if (!live) bankFrom = r.work_date;
++      } else { bank = c.complete ? c.ot : 0; bankFrom = r.work_date; }   // a working day uses the bank; only its own OT moves on
++      bankDate = r.work_date;
+     }
++    out.bank = bank; out.bankFrom = bankFrom; out.bankDate = bankDate;
+     return out;
+   }
+   /** OT this person can still use today: from their last work day (if today is their next one), minus what's used. */
+@@ -159,9 +168,7 @@
+     const all = calcDays(rows.filter((r) => r.work_date <= today), staff, settings);
+     const t = all.get(today);
+     if (t) return { mins: Math.max(0, t.otAvail - (t.complete ? t.otUsed : 0)), from: t.otFrom, used: t.otUsed, today: true };
+-    const last = rows.filter((r) => r.work_date < today && r.time_in).sort((a, b) => (a.work_date < b.work_date ? 1 : -1))[0];
+-    const c = last && all.get(last.work_date);
+-    if (c && c.complete && c.ot > 0 && daysApart(last.work_date, today) <= OT_WINDOW_DAYS) return { mins: c.ot, from: last.work_date, used: 0, today: false };
++    if (all.bank > 0 && all.bankDate && daysApart(all.bankDate, today) <= OT_WINDOW_DAYS) return { mins: all.bank, from: all.bankFrom, used: 0, today: false };
+     return { mins: 0, from: null, used: 0, today: false };
+   }
+ 
+diff --git a/supabase/database-update.sql b/supabase/database-update.sql
+index ce8c372..1e69000 100644
+--- a/supabase/database-update.sql
++++ b/supabase/database-update.sql
+@@ -59,6 +59,7 @@ create table if not exists public.attendance (
+ );
+ -- The day's PLANNED schedule (from the weekly schedule) when they clocked in. sched_start/end can differ if they
+ -- started later or left earlier using yesterday's OT; expected hours come from the plan.
++alter table public.attendance add column if not exists day_kind text;   -- 'shift' | 'rest' | ... as planned when clocking in
+ alter table public.attendance add column if not exists plan_start time;
+ alter table public.attendance add column if not exists plan_end   time;
+ -- Extra OT credit (minutes) an admin granted for this day, e.g. to use OT that already expired
+@@ -189,7 +190,7 @@ language sql stable security definer set search_path = public as $$
+         'sched_start', st.sched_start, 'sched_end', st.sched_end, 'lunch_mins', st.lunch_mins, 'week_pattern', st.week_pattern,
+         'avatar', st.avatar, 'photo', st.photo, 'tagline', st.tagline, 'color', st.color,
+         'recent', coalesce((select json_agg(json_build_object('work_date', r.work_date, 'sched_start', r.sched_start,
+-            'sched_end', r.sched_end, 'plan_start', r.plan_start, 'plan_end', r.plan_end, 'ot_adjust', r.ot_adjust, 'time_in', r.time_in, 'lunch_out', r.lunch_out, 'lunch_in', r.lunch_in,
++            'sched_end', r.sched_end, 'plan_start', r.plan_start, 'plan_end', r.plan_end, 'day_kind', r.day_kind, 'ot_adjust', r.ot_adjust, 'time_in', r.time_in, 'lunch_out', r.lunch_out, 'lunch_in', r.lunch_in,
+             'time_out', r.time_out) order by r.work_date)
+           from attendance r where r.staff_id = st.id and r.work_date >= (select today from d) - 45), '[]'::json),
+         'today', case when a.id is null then null else json_build_object(
+@@ -256,6 +257,7 @@ declare
+   v_note text := nullif(btrim(coalesce(p_note, '')), '');
+   v_ss   time;
+   v_se   time;
++  v_kind text;
+ begin
+   v_err := _check_pin(p_staff, p_pin);
+   if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
+@@ -273,11 +275,11 @@ begin
+     end if;
+     -- The day's planned schedule (weekly schedule add-on), else the usual hours
+     if to_regprocedure('public.day_schedule(uuid,date)') is not null then
+-      execute 'select start_time, end_time from public.day_schedule($1, $2)' into v_ss, v_se using p_staff, v_day;
++      execute 'select kind, start_time, end_time from public.day_schedule($1, $2)' into v_kind, v_ss, v_se using p_staff, v_day;
+     end if;
+-    insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end, time_in, note)
++    insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end, day_kind, time_in, note)
+       values (p_staff, v_day, coalesce(p_sched_start, v_ss, s.sched_start), coalesce(p_sched_end, v_se, s.sched_end),
+-              coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), now(), v_note);
++              coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), v_kind, now(), v_note);
+   elsif p_action = 'lunch_start' then
+     if a.time_in is null then return json_build_object('ok', false, 'error', 'Clock in first.'); end if;
+     if a.time_out is not null then return json_build_object('ok', false, 'error', 'You already clocked out.'); end if;
+@@ -311,7 +313,7 @@ begin
+                'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours) from settings where id = 1),
+     -- this month + last month, for the personal OT bank
+     'rows', coalesce((select json_agg(x order by x.work_date) from (
+-               select work_date, sched_start, sched_end, plan_start, plan_end, ot_adjust, time_in, lunch_out, lunch_in, time_out, note
++               select work_date, sched_start, sched_end, plan_start, plan_end, day_kind, ot_adjust, time_in, lunch_out, lunch_in, time_out, note
+                from attendance where staff_id = p_staff
+                  and work_date >= date_trunc('month', v_day - interval '1 month')::date) x), '[]'::json)
+   );
+diff --git a/supabase/schema.sql b/supabase/schema.sql
+index 01a1407..738941f 100644
+--- a/supabase/schema.sql
++++ b/supabase/schema.sql
+@@ -55,6 +55,7 @@ create table if not exists public.attendance (
+ );
+ -- The day's PLANNED schedule (from the weekly schedule) when they clocked in. sched_start/end can differ if they
+ -- started later or left earlier using yesterday's OT; expected hours come from the plan.
++alter table public.attendance add column if not exists day_kind text;   -- 'shift' | 'rest' | ... as planned when clocking in
+ alter table public.attendance add column if not exists plan_start time;
+ alter table public.attendance add column if not exists plan_end   time;
+ -- Extra OT credit (minutes) an admin granted for this day, e.g. to use OT that already expired
+@@ -185,7 +186,7 @@ language sql stable security definer set search_path = public as $$
+         'sched_start', st.sched_start, 'sched_end', st.sched_end, 'lunch_mins', st.lunch_mins, 'week_pattern', st.week_pattern,
+         'avatar', st.avatar, 'photo', st.photo, 'tagline', st.tagline, 'color', st.color,
+         'recent', coalesce((select json_agg(json_build_object('work_date', r.work_date, 'sched_start', r.sched_start,
+-            'sched_end', r.sched_end, 'plan_start', r.plan_start, 'plan_end', r.plan_end, 'ot_adjust', r.ot_adjust, 'time_in', r.time_in, 'lunch_out', r.lunch_out, 'lunch_in', r.lunch_in,
++            'sched_end', r.sched_end, 'plan_start', r.plan_start, 'plan_end', r.plan_end, 'day_kind', r.day_kind, 'ot_adjust', r.ot_adjust, 'time_in', r.time_in, 'lunch_out', r.lunch_out, 'lunch_in', r.lunch_in,
+             'time_out', r.time_out) order by r.work_date)
+           from attendance r where r.staff_id = st.id and r.work_date >= (select today from d) - 45), '[]'::json),
+         'today', case when a.id is null then null else json_build_object(
+@@ -252,6 +253,7 @@ declare
+   v_note text := nullif(btrim(coalesce(p_note, '')), '');
+   v_ss   time;
+   v_se   time;
++  v_kind text;
+ begin
+   v_err := _check_pin(p_staff, p_pin);
+   if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
+@@ -269,11 +271,11 @@ begin
+     end if;
+     -- The day's planned schedule (weekly schedule add-on), else the usual hours
+     if to_regprocedure('public.day_schedule(uuid,date)') is not null then
+-      execute 'select start_time, end_time from public.day_schedule($1, $2)' into v_ss, v_se using p_staff, v_day;
++      execute 'select kind, start_time, end_time from public.day_schedule($1, $2)' into v_kind, v_ss, v_se using p_staff, v_day;
+     end if;
+-    insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end, time_in, note)
++    insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end, day_kind, time_in, note)
+       values (p_staff, v_day, coalesce(p_sched_start, v_ss, s.sched_start), coalesce(p_sched_end, v_se, s.sched_end),
+-              coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), now(), v_note);
++              coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), v_kind, now(), v_note);
+   elsif p_action = 'lunch_start' then
+     if a.time_in is null then return json_build_object('ok', false, 'error', 'Clock in first.'); end if;
+     if a.time_out is not null then return json_build_object('ok', false, 'error', 'You already clocked out.'); end if;
+@@ -307,7 +309,7 @@ begin
+                'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours) from settings where id = 1),
+     -- this month + last month, for the personal OT bank
+     'rows', coalesce((select json_agg(x order by x.work_date) from (
+-               select work_date, sched_start, sched_end, plan_start, plan_end, ot_adjust, time_in, lunch_out, lunch_in, time_out, note
++               select work_date, sched_start, sched_end, plan_start, plan_end, day_kind, ot_adjust, time_in, lunch_out, lunch_in, time_out, note
+                from attendance where staff_id = p_staff
+                  and work_date >= date_trunc('month', v_day - interval '1 month')::date) x), '[]'::json)
+   );
