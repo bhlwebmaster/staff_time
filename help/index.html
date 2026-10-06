@@ -341,6 +341,19 @@ a.brand:hover .mark { filter: brightness(1.08); }
         <li><b>Late</b> only shows if your day ends up short. Worked your full hours? No late mark.</li>
       </ul>
       <div class="tip"><b>OT to use today</b><span>The <b>This month</b> card shows how much OT you can still use today.</span></div>
+      <h3 id="after-hours" style="margin-top:18px">After-hours OT (call-outs)</h3>
+      <p>Only for people an admin turns it on for (e.g. when the team may need you after your shift).</p>
+      <ol class="steps">
+        <li><div>Clock out of your shift as usual.</div></li>
+        <li><div>If the team needs you later (e.g. 7 PM or 10 PM), open the app, type <b>who asked and what for</b>, and tap <b>Start after-hours OT</b>.</div></li>
+        <li><div>Tap <b>End OT</b> when you're done. Do this every time you're called in; you can have several sessions in one evening.</div></li>
+      </ol>
+      <ul>
+        <li>All of the day's time (shift + after-hours) is added up, then counted in 30-minute blocks. Two 20-minute calls = 0:30 OT.</li>
+        <li><b>Your OT carries over</b> until you use it: it doesn't expire the next day. The <b>This month</b> card shows <b>OT in your bank</b>.</li>
+        <li>At clock-in, choose how much of your bank to use (start later or leave earlier). The rest stays banked.</li>
+        <li>Forgot to tap End OT? It stops by itself after 4 hours and an admin checks the time.</li>
+      </ul>
     </div>
     <figure><div class="crop" style="max-width:330px"><img src="img/s-month.jpg" alt="This month card with OT to use today"></div><figcaption>This month</figcaption></figure>
   </div>
@@ -473,6 +486,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
     <div><b>Expected hours</b>Your scheduled day minus its planned lunch.</div>
     <div><b>OT</b>Extra time beyond your expected hours, in 30-minute blocks.</div>
     <div><b>OT to use today</b>OT from your last work day. Use it today or it expires tonight.</div>
+    <div><b>OT in your bank</b>For after-hours OT people: OT that carries over until you use it.</div>
     <div><b>Offset</b>Starting later or leaving earlier using your OT. The app adds the note for you.</div>
     <div><b>Short</b>Time under your expected hours that OT didn't cover (undertime on the payslip).</div>
     <div><b>Cut-off</b>A pay period: 1st–15th or 16th–end of the month.</div>
@@ -524,6 +538,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
         <li><div>Change the times (UK) or note and click <b>Save</b>. Times must run in order: in → lunch out → lunch in → out.</div></li>
         <li><div>Changing the <b>Sched start/end</b> here makes it that day's planned schedule (an admin decision).</div></li>
         <li><div><b>Extra OT credit (minutes)</b>: lets someone use OT that already expired, e.g. 60 if they were too busy to use it.</div></li>
+        <li><div><b>After-hours OT</b> (people with it turned on): add, fix or delete the day's call-out sessions. Each session saves on its own. An <b>OT auto-stopped</b> flag means nobody tapped End OT, so check the end time.</div></li>
       </ol>
       <div class="tip warn"><b>History</b><span>Every create, edit and delete is logged with who did it and when. It's shown at the bottom of the dialog.</span></div>
     </div>
@@ -623,6 +638,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
           <tr><td><b>Expected</b></td><td>That day's planned schedule minus its planned lunch (Staff → Usual week).</td></tr>
           <tr><td><b>OT</b></td><td>Worked − expected, in whole blocks (default <b>30 min</b>: 45 → 0:30, 1:20 → 1:00).</td></tr>
           <tr><td><b>OT use</b></td><td>Only on the next work day (the next clock-in within 4 days, so Friday → Monday). Unused OT expires. Staff choose Start later / Leave earlier at clock-in.</td></tr>
+          <tr><td><b>After-hours OT</b></td><td>Only for people with <b>After-hours OT</b> ticked (Staff → Edit). They can clock OT sessions after their shift (call-outs); the minutes are added to that day's worked time before rounding. Their OT <b>carries over</b> until used (no expiry, not paid). Above the <b>OT bank cap</b> (Settings, default 8 h) it's still banked but flagged in Timesheets.</td></tr>
           <tr><td><b>Short</b></td><td>Under expected hours after OT is used. Counts as undertime in payroll.</td></tr>
           <tr><td><b>Late</b></td><td>After start + grace (5 min). With <b>Judge by hours</b> on, a day with full hours isn't late.</td></tr>
           <tr><td><b>No lunch logged</b></td><td>A day with a planned lunch but no taps. Worth a quick check.</td></tr>

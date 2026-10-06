@@ -139,6 +139,8 @@ All times are **UK time** (Europe/London). That's the "GMT" the team already use
 | **OT earned** | Worked − expected, in whole blocks (default 30 min: 45 extra → 30, 1:20 → 1:00). |
 | **Short** | Worked below expected. Covered by OT from the last work day first ("OT used"); the rest is undertime in payroll. |
 | **OT expiry** | OT can only be used on the next work day (next clock-in within 4 days), then it expires. Admins can add "Extra OT credit" to a day. |
+| **After-hours OT** | Only for people with **After-hours OT** ticked (Staff → Edit, e.g. Verge and Cess). After clocking out they can tap **Start after-hours OT** (note required) and **End OT**, as many times as needed. Minutes are added to that day's worked time, then rounded once into OT blocks. A session nobody ends stops after 4 hours and is flagged. |
+| **Carry-over bank** | For those same people, from the "OT bank starts on" date: OT doesn't expire and isn't paid; it waits until used (they pick how much at clock-in). Above **OT bank cap** (Settings, default 8 h) it's still banked but flagged in Timesheets. |
 | **Late** | After start + grace. With "Judge by hours" (default), a day with its full hours isn't late. |
 | **No lunch logged** | Planned lunch but no lunch taps: shown as a flag to check. |
 | **Billable hrs** | Regular (capped at expected) + OT earned. |
@@ -173,6 +175,7 @@ supabase/schedule.sql weekly schedule tables
 supabase/requests.sql staff schedule requests + approval
 supabase/exchange-rate-proof.sql  exchange-rate screenshot per pay period (private storage)
 supabase/security.sql locks internal/admin functions (Security Advisor)
+                      (after-hours OT: ot_sessions table, ot_start/ot_end in punch(), in schema.sql)
 supabase/production-cleanup.sql   optional: clear test entries before go-live
 supabase/functions/admin-users/index.ts   Edge Function: create / change / remove logins
 .nojekyll         tells GitHub Pages to serve files as-is

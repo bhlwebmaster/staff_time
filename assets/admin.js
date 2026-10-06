@@ -1,7 +1,7 @@
 (function () {
   const B = window.BHL, api = B.api, A = api.admin;
   const $ = (id) => document.getElementById(id);
-  let settings = null, staff = [], sheetRows = [], editing = null, editingStaff = null, role = null, meId = null;
+  let settings = null, staff = [], sheetRows = [], sheetOts = [], editing = null, editingStaff = null, role = null, meId = null;
   const TABS = () => role === "admin" ? ["today", "sheets", "reports", "schedule", "payroll", "staff", "settings", "access"] : ["today", "sheets", "reports", "schedule", "payroll", "access"];
   const tz = () => settings?.timezone || "Europe/London";
   const byId = (id) => staff.find((s) => s.id === id);
@@ -97,9 +97,18 @@
     if (c.ot) f.push(`<span class="flag ot">OT +${B.fmtMins(c.ot)}</span>`);
     if (c.otUsed) f.push(`<span class="flag ot" title="OT from ${c.otFrom ? B.prettyDate(c.otFrom) : "the last work day"} used today">OT used ${B.fmtMins(c.otUsed)}</span>`);
     if (c.short) f.push(`<span class="flag short">Short ${B.fmtMins(c.short)}</span>`);
+    if (c.after) f.push(`<span class="flag ot" title="After-hours OT clocked after the shift (included in Worked)">After-hours ${B.fmtMins(c.after)}</span>`);
+    if (c.otRunning) f.push(`<span class="flag ot">On after-hours OT now</span>`);
+    if (c.autoStopped) f.push(`<span class="flag miss" title="Nobody tapped End OT, so it stopped after 4 hours. Check the time in Edit.">OT auto-stopped</span>`);
+    if (c.overCap) f.push(`<span class="flag miss" title="OT bank is over the cap in Settings">OT bank ${B.fmtMins(c.bankAfter)} · over cap</span>`);
     if (c.open && !isToday) f.push(`<span class="flag miss">No clock-out</span>`);
     if (c.noLunch) f.push(`<span class="flag short" title="Planned lunch ${c.planLunch} min, but no lunch was tapped. Worked time includes it.">No lunch logged</span>`);
     return f.join(" ");
+  }
+  /** Mark a day that has an auto-stopped after-hours OT session (needs an admin to check the time). */
+  function otMarks(c, ots, staffId, date) {
+    if (c && ots?.some((o) => o.staff_id === staffId && o.work_date === date && o.auto_stopped)) c.autoStopped = true;
+    return c;
   }
   const lunchCell = (r) => r.lunch_out ? `${t(r.lunch_out)}–${r.lunch_in ? t(r.lunch_in) : "…"}` : "—";
   const pillFor = (c) => ({ in: ["in", "Working"], lunch: ["lunch", "On lunch"], out: ["out", "Clocked out"], absent: ["absent", "Not in"] }[c.status]);
@@ -109,14 +118,14 @@
   async function loadDay() {
     const day = $("dayPick").value || today();
     // a few days before, so today knows the OT from each person's last work day
-    const [pre, sdays] = await Promise.all([A.attendance(addDays(day, -5), day), A.scheduleDays(day, day)]);
+    const [pre, sdays, ots] = await Promise.all([A.attendance(addDays(day, -5), day), A.scheduleDays(day, day), A.otSessions(addDays(day, -1), day).catch(() => [])]);
     if (dayData?.day !== day) dayPg.page = 1;
-    dayData = { day, pre, sdays };
+    dayData = { day, pre, sdays, ots };
     renderDay();
   }
   function renderDay() {
     if (!dayData) return;
-    const { day, pre, sdays } = dayData;
+    const { day, pre, sdays, ots } = dayData;
     $("dayTitle").textContent = day === today() ? "Today · " + B.prettyDate(day) : B.prettyDate(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const rows = pre.filter((r) => r.work_date === day);
     const planOv = B.sched.indexDays(sdays);
@@ -126,10 +135,11 @@
     $("dayRows").innerHTML = act.map((s, i) => {
       const r = rows.find((x) => x.staff_id === s.id);
       const plan = B.sched.effective(s, day, planOv);
-      const c = r ? B.calcDays(pre.filter((x) => x.staff_id === s.id), s, settings).get(day) : { status: plan.kind === "shift" ? "absent" : "off" };
+      const c = r ? otMarks(B.calcDays(pre.filter((x) => x.staff_id === s.id), s, settings).get(day), ots, s.id, day) : { status: plan.kind === "shift" ? "absent" : "off" };
+      if (ots.some((o) => o.staff_id === s.id && !o.ended_at)) c.otRunning = true;
       if (c.status !== "off") n[c.status]++; if (c.late) n.late++;   // KPIs count everyone
       if (i < da || i >= db) return "";
-      const [k, label] = c.status === "off" ? ["out", B.sched.KINDS[plan.kind].label] : pillFor(c);
+      const [k, label] = c.otRunning ? ["in", "After-hours OT"] : c.status === "off" ? ["out", B.sched.KINDS[plan.kind].label] : pillFor(c);
       let worked = "—";
       if (c.worked != null) worked = B.fmtMins(c.worked);
       else if (r?.time_in && day === today()) {
@@ -170,7 +180,8 @@
   $("who").onchange = () => { dailyPg.page = 1; renderSheets(); };
 
   async function loadSheets() {
-    sheetRows = await A.attendance(addDays($("from").value, -5), $("to").value);   // earlier days only feed OT
+    [sheetRows, sheetOts] = await Promise.all([A.attendance(addDays($("from").value, -5), $("to").value),   // earlier days only feed OT
+      A.otSessions($("from").value, $("to").value).catch(() => [])]);
     dailyPg.page = sumPg.page = 1;
     renderSheets();
   }
@@ -179,7 +190,11 @@
     const who = $("who").value;
     const from = $("from").value;
     const people = staff.filter((s) => (!who || s.id === who) && (s.active || sheetRows.some((r) => r.staff_id === s.id && r.work_date >= from)));
-    return people.map((s) => ({ s, sum: B.summarise(sheetRows.filter((r) => r.staff_id === s.id), s, settings, today(), { from }) }));
+    return people.map((s) => {
+      const sum = B.summarise(sheetRows.filter((r) => r.staff_id === s.id), s, settings, today(), { from });
+      for (const x of sum.days_list) otMarks(x.c, sheetOts, s.id, x.row.work_date);
+      return { s, sum };
+    });
   }
   function renderSheets() {
     const list = computeSheets();
@@ -187,17 +202,20 @@
     $("sheetTitle").textContent = period;
     $("printTitle").textContent = `${settings.company_name} · Timesheet · ${period}`;
     const tot = list.reduce((a, { sum }) => { for (const k of ["days", "worked", "regular", "ot", "otUsed", "short", "bank", "late", "missingOut", "billable"]) a[k] = (a[k] || 0) + sum[k]; return a; }, {});
+    const overCap = list.filter(({ sum }) => sum.overCap);
     $("sheetKpis").innerHTML = [
       [B.hoursDec(tot.billable || 0), "billable hours"], [tot.days || 0, "days worked"],
       [B.fmtMins(tot.ot || 0), "OT earned (h:mm)"], [tot.late || 0, "late arrivals", tot.late], [tot.missingOut || 0, "missing clock-outs", tot.missingOut],
+      ...(overCap.length ? [[overCap.map(({ s }) => s.display_name).join(", "), `OT bank over the ${B.fmtMins(settings.ot_bank_cap_mins ?? 480)} cap`, true]] : []),
     ].map(([v, l, w]) => `<div class="card kpi ${w ? "warn" : ""}"><b>${v}</b><span>${l}</span></div>`).join("");
     const cells = (x) => `<td class="num">${x.days}</td><td class="num">${B.fmtMins(x.worked)}</td><td class="num">${B.fmtMins(x.regular)}</td>
       <td class="num">${B.fmtMins(x.ot)}</td><td class="num">${B.fmtMins(x.otUsed)}</td>
       <td class="num" style="${x.short ? "color:var(--late)" : ""}">${B.fmtMins(x.short)}</td>
-      <td class="num">${x.late}</td><td class="num" style="${x.missingOut ? "color:var(--late)" : ""}">${x.missingOut}</td><td class="num"><b>${B.hoursDec(x.billable)}</b></td>`;
+      <td class="num">${x.late}</td><td class="num" style="${x.missingOut ? "color:var(--late)" : ""}">${x.missingOut}</td><td class="num"><b>${B.hoursDec(x.billable)}</b></td>
+      <td class="num" style="${x.overCap ? "color:var(--late)" : ""}" title="${x.overCap ? "Over the OT bank cap in Settings" : ""}">${x.carryBank != null ? B.fmtMins(x.carryBank) + (x.overCap ? " ⚠" : "") : "—"}</td>`;
     const [sa, sb] = pager($("sumPager"), list.length, sumPg, renderSheets);
     $("sumRows").innerHTML = list.slice(sa, sb).map(({ s, sum }) => `<tr class="click ${$("who").value === s.id ? "sel" : ""}" data-id="${B.esc(s.id)}"><td><b>${B.esc(s.display_name)}</b><span class="sub">${B.esc(s.full_name)}</span></td>${cells(sum)}</tr>`).join("")
-      || `<tr><td colspan="10" class="muted">No entries in this period.</td></tr>`;
+      || `<tr><td colspan="11" class="muted">No entries in this period.</td></tr>`;
     $("sumFoot").innerHTML = list.length > 1 ? `<tr><td>Total</td>${cells(tot)}</tr>` : "";
     const days = list.flatMap(({ s, sum }) => sum.days_list.map((x) => ({ s, ...x }))).sort((a, b) => b.row.work_date.localeCompare(a.row.work_date) || a.s.display_name.localeCompare(b.s.display_name));
     const [pa, pb] = pager($("dailyPager"), days.length, dailyPg, renderSheets);
@@ -222,14 +240,14 @@
   }
   const period = () => `${$("from").value}_to_${$("to").value}`;
   $("csvSum").onclick = () => download(`BHL-timesheet-summary_${period()}.csv`, [
-    ["Name", "Timesheet name", "Period from", "Period to", "Days worked", "Worked hours", "Regular hours", "OT earned hours", "OT used hours", "Short hours (not covered)", "Late arrivals", "Late minutes", "Missing clock-outs", "Billable hours"],
+    ["Name", "Timesheet name", "Period from", "Period to", "Days worked", "Worked hours", "Regular hours", "OT earned hours", "OT used hours", "Short hours (not covered)", "Late arrivals", "Late minutes", "Missing clock-outs", "Billable hours", "After-hours OT hours", "OT bank hours (carry-over)"],
     ...computeSheets().map(({ s, sum }) => [s.display_name, s.full_name, $("from").value, $("to").value, sum.days, B.hoursDec(sum.worked), B.hoursDec(sum.regular),
-      B.hoursDec(sum.ot), B.hoursDec(sum.otUsed), B.hoursDec(sum.short), sum.late, sum.lateMins, sum.missingOut, B.hoursDec(sum.billable)]),
+      B.hoursDec(sum.ot), B.hoursDec(sum.otUsed), B.hoursDec(sum.short), sum.late, sum.lateMins, sum.missingOut, B.hoursDec(sum.billable), B.hoursDec(sum.after), sum.carryBank != null ? B.hoursDec(sum.carryBank) : ""]),
   ]);
   $("csvDay").onclick = () => download(`BHL-timesheet-daily_${period()}.csv`, [
-    ["Date", "Name", "Timesheet name", "Sched start (UK)", "Sched end (UK)", "Time in (UK)", "Lunch out", "Lunch in", "Time out (UK)", "Worked hours", "Late minutes", "OT earned minutes", "OT used minutes", "Short minutes", "Note"],
+    ["Date", "Name", "Timesheet name", "Sched start (UK)", "Sched end (UK)", "Time in (UK)", "Lunch out", "Lunch in", "Time out (UK)", "Worked hours", "Late minutes", "OT earned minutes", "OT used minutes", "Short minutes", "Note", "After-hours OT minutes"],
     ...computeSheets().flatMap(({ s, sum }) => sum.days_list.map(({ row: r, c }) => [r.work_date, s.display_name, s.full_name, r.sched_start.slice(0, 5), r.sched_end.slice(0, 5),
-      B.hhmmIn(c.tin, tz()), B.hhmmIn(c.lo, tz()), B.hhmmIn(c.li, tz()), B.hhmmIn(c.tout, tz()), c.worked != null ? B.hoursDec(c.worked) : "", c.late, c.ot, c.otUsed, c.short, r.note || ""])),
+      B.hhmmIn(c.tin, tz()), B.hhmmIn(c.lo, tz()), B.hhmmIn(c.li, tz()), B.hhmmIn(c.tout, tz()), c.worked != null ? B.hoursDec(c.worked) : "", c.late, c.ot, c.otUsed, c.short, r.note || "", c.after || 0])),
   ]);
 
   // ---------- entry dialog ----------
@@ -247,7 +265,10 @@
     $("eOtAdj").value = r?.ot_adjust || "";
     $("eDel").hidden = !r;
     $("eHist").innerHTML = "";
+    $("eOtBox").hidden = !r || (!s.ot_carry_from && !r.after_mins);
+    $("eOtList").innerHTML = "";
     $("entryDlg").showModal();
+    if (r && !$("eOtBox").hidden) loadEntryOt();
     if (r) {
       const log = await A.audit(r.staff_id, r.work_date).catch(() => []);
       $("eHist").innerHTML = log.length ? `<b>History</b>` + log.map((l) => `<span>${new Date(l.at).toLocaleString("en-GB", { timeZone: tz(), dateStyle: "medium", timeStyle: "short" })} · ${B.esc(l.action)} by ${B.esc(l.actor)}</span>`).join("") : "";
@@ -271,6 +292,40 @@
       await A.saveAttendance(editing ? { ...rec, id: editing.id } : rec);
       $("entryDlg").close(); B.toast("Saved"); refresh();
     } catch (err) { B.toast(friendly(err), "err"); }
+  };
+  // After-hours OT sessions for the day being edited (saved straight away, separately from the day's Save)
+  let entryOts = [];
+  async function loadEntryOt() {
+    entryOts = (await A.otSessions(editing.work_date, editing.work_date).catch(() => [])).filter((o) => o.staff_id === editing.staff_id);
+    renderEntryOt();
+  }
+  function renderEntryOt() {
+    const h = (iso) => (iso ? B.hhmmIn(new Date(iso), tz()) : "");
+    $("eOtList").innerHTML = entryOts.map((o, i) => `<div class="row otrow" data-i="${i}" style="gap:6px;flex-wrap:wrap">
+      <input type="time" aria-label="Start" value="${h(o.started_at)}" style="width:auto"><span>–</span>
+      <input type="time" aria-label="End" value="${h(o.ended_at)}" style="width:auto">
+      <input type="text" aria-label="Note" value="${B.esc(o.note || "")}" placeholder="Who asked and what for" style="flex:1;min-width:140px">
+      ${o.auto_stopped ? `<span class="flag miss" title="Nobody tapped End OT">auto-stopped</span>` : ""}
+      <button class="btn sm" type="button" data-ot="save">Save</button><button class="btn ghost sm" type="button" data-ot="del">Delete</button></div>`).join("")
+      || `<span class="muted" style="font-size:13px">None on this day.</span>`;
+  }
+  $("eOtAdd").onclick = () => { entryOts.push({ staff_id: editing.staff_id, work_date: editing.work_date, note: "" }); renderEntryOt(); };
+  $("eOtList").onclick = async (e) => {
+    const b = e.target.closest("button[data-ot]"); if (!b) return;
+    const row = b.closest(".otrow"), o = entryOts[+row.dataset.i];
+    if (b.dataset.ot === "del") {
+      if (o.id) try { await A.deleteOtSession(o.id); } catch (err) { return B.toast(err.message, "err"); }
+      entryOts.splice(+row.dataset.i, 1); renderEntryOt(); B.toast("Session deleted"); return refresh();
+    }
+    const [st, en, note] = row.querySelectorAll("input");
+    if (!st.value || !en.value) return B.toast("Add a start and end time.", "err");
+    if (!note.value.trim()) return B.toast("Add a note: who asked and what for.", "err");
+    // An end time earlier than the start means it went past midnight (UK)
+    const start = B.zonedToDate(o.work_date, st.value, tz());
+    let end = B.zonedToDate(o.work_date, en.value, tz()); if (end <= start) end = B.zonedToDate(addDays(o.work_date, 1), en.value, tz());
+    const rec = { staff_id: o.staff_id, work_date: o.work_date, started_at: start.toISOString(), ended_at: end.toISOString(), note: note.value.trim(), auto_stopped: false };
+    try { await A.saveOtSession(o.id ? { ...rec, id: o.id } : rec); } catch (err) { return B.toast(friendly(err), "err"); }
+    B.toast("Session saved"); await loadEntryOt(); refresh();
   };
   let delArmed = false;
   $("eDel").onclick = async () => {
@@ -304,6 +359,7 @@
     $("pStartDate").value = s?.start_date || ""; $("pRate").value = s?.pay_rate ?? "";
     $("pPayType").value = s ? B.payroll.payType(s.pay_type) : "bimonthly"; payTypeLabel();
     renderPattern(s);
+    $("pOt").checked = !!s?.ot_carry_from; $("pOtFrom").value = s?.ot_carry_from || today(); $("pOtFromRow").hidden = !s?.ot_carry_from;
     $("pReset").hidden = !s?.has_pin;
     $("pPhotoRow").hidden = !s?.photo; $("pAv").innerHTML = s ? B.avatarHtml(s, 36) : "";
     $("staffDlg").showModal();
@@ -313,7 +369,8 @@
     e.preventDefault();
     const rec = { display_name: $("pDisp").value.trim(), full_name: $("pFull").value.trim().toUpperCase(), sched_start: $("pSS").value, sched_end: $("pSE").value,
       lunch_mins: +$("pLunch").value, active: $("pActive").value === "true",
-      start_date: $("pStartDate").value || null, pay_rate: $("pRate").value === "" ? null : +$("pRate").value, pay_type: $("pPayType").value, week_pattern: readPattern() };
+      start_date: $("pStartDate").value || null, pay_rate: $("pRate").value === "" ? null : +$("pRate").value, pay_type: $("pPayType").value, week_pattern: readPattern(),
+      ot_carry_from: $("pOt").checked ? $("pOtFrom").value || today() : null };
     if (rec.week_pattern && Object.values(rec.week_pattern).some((d) => d && d.e <= d.s)) return B.toast("In the usual week, each end time must be after its start time.", "err");
     if (rec.sched_end <= rec.sched_start) return B.toast("End must be after start.", "err");
     try {
@@ -321,6 +378,7 @@
       staff = await A.staff(); fillPeople(); renderStaff(); $("staffDlg").close(); B.toast("Saved");
     } catch (err) { B.toast(err.message, "err"); }
   };
+  $("pOt").onchange = () => { $("pOtFromRow").hidden = !$("pOt").checked; if (!$("pOtFrom").value) $("pOtFrom").value = today(); };
   $("pPhotoRm").onclick = async () => {
     try { await A.saveStaff({ id: editingStaff.id, photo: null }); staff = await A.staff(); renderStaff(); $("pPhotoRow").hidden = true; B.toast(`Photo removed for ${editingStaff.display_name}`); }
     catch (err) { B.toast(err.message, "err"); }
@@ -335,13 +393,15 @@
     $("stCompany").value = settings.company_name; $("stTz").value = settings.timezone;
     $("stGrace").value = settings.grace_mins; $("stBlock").value = settings.ot_block_mins; $("stEarly").checked = settings.count_early;
     $("stDpc").value = settings.days_per_cutoff ?? 10;
+    $("stCap").value = (settings.ot_bank_cap_mins ?? 480) / 60;
     $("stFlex").checked = settings.flex_hours !== false;
     renderHolidays();
   }
   $("setForm").onsubmit = async (e) => {
     e.preventDefault();
     const s = { company_name: $("stCompany").value.trim(), timezone: $("stTz").value, grace_mins: +$("stGrace").value,
-      ot_block_mins: Math.max(1, +$("stBlock").value), count_early: $("stEarly").checked, flex_hours: $("stFlex").checked, days_per_cutoff: Math.max(1, Math.round(+$("stDpc").value || 10)) };
+      ot_block_mins: Math.max(1, +$("stBlock").value), count_early: $("stEarly").checked, flex_hours: $("stFlex").checked, days_per_cutoff: Math.max(1, Math.round(+$("stDpc").value || 10)),
+      ot_bank_cap_mins: Math.max(0, Math.round((+$("stCap").value || 0) * 60)) };
     try { await A.saveSettings(s); settings = { ...settings, ...s }; B.toast("Settings saved"); } catch (err) { B.toast(err.message, "err"); }
   };
 

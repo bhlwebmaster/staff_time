@@ -113,7 +113,7 @@ language sql stable security definer set search_path = public as $$
       'sched_start', sched_start, 'sched_end', sched_end, 'lunch_mins', lunch_mins, 'active', active,
       'has_pin', pin_hash is not null, 'created_at', created_at,
       'avatar', avatar, 'photo', photo, 'tagline', tagline, 'color', color,
-      'start_date', start_date, 'pay_rate', pay_rate, 'pay_type', pay_type, 'week_pattern', week_pattern) order by display_name)
+      'start_date', start_date, 'pay_rate', pay_rate, 'pay_type', pay_type, 'week_pattern', week_pattern, 'ot_carry_from', ot_carry_from) order by display_name)
     from staff), '[]'::json) end;
 $$;
 

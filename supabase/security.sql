@@ -17,6 +17,8 @@ revoke execute on function public._base_day(uuid, date)           from public, a
 revoke execute on function public._team_today()                   from public, anon, authenticated;
 revoke execute on function public.attendance_audit()              from public, anon, authenticated;
 revoke execute on function public._fx_proof_stamp()               from public, anon, authenticated;
+revoke execute on function public._ot_day_sync(uuid, date)        from public, anon, authenticated;
+revoke execute on function public._ot_sessions_sync()             from public, anon, authenticated;
 
 -- Admin / finance only: signed-in users (each one also checks the admin role inside)
 revoke execute on function public.admin_staff()                               from public, anon;
@@ -24,11 +26,13 @@ revoke execute on function public.decide_schedule_request(uuid, boolean, text) f
 revoke execute on function public.is_admin()                                  from public, anon;
 revoke execute on function public.is_full_admin()                             from public, anon;
 revoke execute on function public.my_role()                                   from public, anon;
+revoke execute on function public.ot_autostop()                               from public, anon;
 grant  execute on function public.admin_staff()                               to authenticated;
 grant  execute on function public.decide_schedule_request(uuid, boolean, text) to authenticated;
 grant  execute on function public.is_admin()                                  to authenticated;
 grant  execute on function public.is_full_admin()                             to authenticated;
 grant  execute on function public.my_role()                                   to authenticated;
+grant  execute on function public.ot_autostop()                               to authenticated;
 
 -- Staff app (no login, PIN-checked)
 grant execute on function public.roster()                                                   to anon, authenticated;

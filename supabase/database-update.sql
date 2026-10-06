@@ -63,6 +63,30 @@ alter table public.attendance add column if not exists plan_start time;
 alter table public.attendance add column if not exists plan_end   time;
 -- Extra OT credit (minutes) an admin granted for this day, e.g. to use OT that already expired
 alter table public.attendance add column if not exists ot_adjust  int not null default 0;
+
+-- After-hours OT ("call-outs"), only for people an admin turns it on for (Staff → After-hours OT).
+-- From ot_carry_from on, that person's OT also carries over until used (no next-day expiry).
+alter table public.staff add column if not exists ot_carry_from date;
+-- Soft cap on a carry-over OT bank: OT above it is still banked, admins are warned
+alter table public.settings add column if not exists ot_bank_cap_mins int not null default 480;
+-- Minutes of finished after-hours OT sessions on this day (kept up to date from ot_sessions)
+alter table public.attendance add column if not exists after_mins int not null default 0;
+
+create table if not exists public.ot_sessions (
+  id            uuid primary key default gen_random_uuid(),
+  staff_id      uuid not null,
+  work_date     date not null,                     -- the day it counts towards (the shift they had clocked out of)
+  started_at    timestamptz not null,
+  ended_at      timestamptz,                       -- null while it's running
+  note          text not null,                     -- who asked and what for
+  auto_stopped  boolean not null default false,    -- no End OT tapped: stopped after 4 hours, worth a check
+  source        text not null default 'app',       -- app | admin
+  created_at    timestamptz not null default now(),
+  check (ended_at is null or ended_at > started_at),
+  foreign key (staff_id, work_date) references public.attendance (staff_id, work_date) on delete cascade on update cascade
+);
+create unique index if not exists ot_sessions_one_open on public.ot_sessions (staff_id) where ended_at is null;
+create index if not exists ot_sessions_day_idx on public.ot_sessions (work_date);
 -- Profile touches (chosen by the staff member)
 alter table public.staff add column if not exists avatar  text;   -- preset avatar key, e.g. 'mango'
 alter table public.staff add column if not exists photo   text;   -- own photo as small JPEG data URL (≤ 60 KB)
@@ -102,6 +126,7 @@ alter table public.staff      enable row level security;
 alter table public.attendance enable row level security;
 alter table public.audit_log  enable row level security;
 alter table public.admins     enable row level security;
+alter table public.ot_sessions enable row level security;
 
 create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
@@ -124,7 +149,7 @@ $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['settings', 'staff', 'attendance'] loop
+  foreach t in array array['settings', 'staff', 'attendance', 'ot_sessions'] loop
     execute format('drop policy if exists admin_all on public.%I', t);
     execute format('drop policy if exists team_read on public.%I', t);
     execute format('drop policy if exists admin_write on public.%I', t);
@@ -167,6 +192,52 @@ create trigger attendance_audit_trg
   before insert or update or delete on public.attendance
   for each row execute function public.attendance_audit();
 
+-- After-hours OT: keep a day's after_mins in step with its finished sessions
+create or replace function public._ot_day_sync(p_staff uuid, p_date date) returns void
+language sql security definer set search_path = public as $$
+  update attendance a set after_mins = x.mins
+  from (select coalesce(sum(round(extract(epoch from o.ended_at - o.started_at) / 60)), 0)::int as mins
+        from ot_sessions o where o.staff_id = p_staff and o.work_date = p_date and o.ended_at is not null) x
+  where a.staff_id = p_staff and a.work_date = p_date and a.after_mins is distinct from x.mins;
+$$;
+
+-- ...and log every session change in the day's history
+create or replace function public._ot_sessions_sync() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  v_actor text := coalesce(auth.jwt() ->> 'email', nullif(current_setting('bhl.actor', true), ''), 'system');
+  v_action text;
+begin
+  if tg_op <> 'INSERT' then perform _ot_day_sync(old.staff_id, old.work_date); end if;
+  if tg_op <> 'DELETE' then perform _ot_day_sync(new.staff_id, new.work_date); end if;
+  if tg_op = 'INSERT' then
+    v_action := case when new.ended_at is null then 'after-hours OT started' else 'after-hours OT added' end;
+    insert into audit_log(actor, action, staff_id, work_date, after) values (v_actor, v_action, new.staff_id, new.work_date, to_jsonb(new));
+    return null;
+  elsif tg_op = 'DELETE' then
+    insert into audit_log(actor, action, staff_id, work_date, before) values (v_actor, 'after-hours OT deleted', old.staff_id, old.work_date, to_jsonb(old));
+    return null;
+  end if;
+  v_action := case when old.ended_at is null and new.ended_at is not null
+                   then case when new.auto_stopped then 'after-hours OT auto-stopped after 4h' else 'after-hours OT ended' end
+                   else 'after-hours OT edited' end;
+  insert into audit_log(actor, action, staff_id, work_date, before, after)
+    values (v_actor, v_action, new.staff_id, new.work_date, to_jsonb(old), to_jsonb(new));
+  return null;
+end $$;
+
+drop trigger if exists ot_sessions_sync_trg on public.ot_sessions;
+create trigger ot_sessions_sync_trg
+  after insert or update or delete on public.ot_sessions
+  for each row execute function public._ot_sessions_sync();
+
+-- A session nobody ended stops itself 4 hours after it started (flagged for an admin to check)
+create or replace function public.ot_autostop() returns void
+language sql security definer set search_path = public as $$
+  update ot_sessions set ended_at = started_at + interval '4 hours', auto_stopped = true
+  where ended_at is null and started_at < now() - interval '4 hours';
+$$;
+
 -- ---------- Staff-facing functions (callable with the public anon key) ----------
 
 -- Who's on the team + today's status. No PINs, no history.
@@ -181,20 +252,22 @@ language sql stable security definer set search_path = public as $$
     'now',      now(),
     'today',    (select today from d),
     'settings', (select json_build_object('timezone', timezone, 'grace_mins', grace_mins,
-                   'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours, 'company_name', company_name) from s),
+                   'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours, 'company_name', company_name,
+                   'ot_bank_cap_mins', ot_bank_cap_mins) from s),
     'staff', coalesce((
       select json_agg(json_build_object(
         'id', st.id, 'display_name', st.display_name, 'full_name', st.full_name,
         'has_pin', st.pin_hash is not null,
         'sched_start', st.sched_start, 'sched_end', st.sched_end, 'lunch_mins', st.lunch_mins, 'week_pattern', st.week_pattern,
-        'avatar', st.avatar, 'photo', st.photo, 'tagline', st.tagline, 'color', st.color,
+        'avatar', st.avatar, 'photo', st.photo, 'tagline', st.tagline, 'color', st.color, 'ot_carry_from', st.ot_carry_from,
         'recent', coalesce((select json_agg(json_build_object('work_date', r.work_date, 'sched_start', r.sched_start,
             'sched_end', r.sched_end, 'plan_start', r.plan_start, 'plan_end', r.plan_end, 'ot_adjust', r.ot_adjust, 'time_in', r.time_in, 'lunch_out', r.lunch_out, 'lunch_in', r.lunch_in,
-            'time_out', r.time_out) order by r.work_date)
+            'time_out', r.time_out, 'after_mins', r.after_mins) order by r.work_date)
           from attendance r where r.staff_id = st.id and r.work_date >= (select today from d) - 45), '[]'::json),
         'today', case when a.id is null then null else json_build_object(
             'sched_start', a.sched_start, 'sched_end', a.sched_end,
-            'time_in', a.time_in, 'lunch_out', a.lunch_out, 'lunch_in', a.lunch_in, 'time_out', a.time_out) end
+            'time_in', a.time_in, 'lunch_out', a.lunch_out, 'lunch_in', a.lunch_in, 'time_out', a.time_out,
+            'ot_open', exists (select 1 from ot_sessions o where o.staff_id = st.id and o.ended_at is null)) end
       ) order by st.display_name)
       from staff st
       left join attendance a on a.staff_id = st.id and a.work_date = (select today from d)
@@ -240,8 +313,9 @@ begin
   return json_build_object('ok', true);
 end $$;
 
--- The one staff action: check | in | lunch_start | lunch_end | out | note
+-- The one staff action: check | in | lunch_start | lunch_end | out | note | ot_start | ot_end
 -- Uses the SERVER clock, so phone time can't be faked.
+-- ot_start / ot_end: after-hours OT after clocking out (only for people with After-hours OT turned on).
 create or replace function public.punch(
   p_staff uuid, p_pin text, p_action text,
   p_sched_start time default null, p_sched_end time default null, p_note text default null
@@ -256,9 +330,11 @@ declare
   v_note text := nullif(btrim(coalesce(p_note, '')), '');
   v_ss   time;
   v_se   time;
+  o      ot_sessions;
 begin
   v_err := _check_pin(p_staff, p_pin);
   if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
+  perform ot_autostop();
 
   select timezone into v_tz from settings where id = 1;
   v_day := (now() at time zone v_tz)::date;
@@ -297,6 +373,20 @@ begin
   elsif p_action = 'note' then
     if a.id is null then return json_build_object('ok', false, 'error', 'Clock in first.'); end if;
     update attendance set note = v_note where id = a.id;
+  elsif p_action = 'ot_start' then
+    if s.ot_carry_from is null then return json_build_object('ok', false, 'error', 'After-hours OT isn''t turned on for you. Ask an admin.'); end if;
+    if exists (select 1 from ot_sessions where staff_id = p_staff and ended_at is null) then
+      return json_build_object('ok', false, 'error', 'You''re already on after-hours OT. Tap End OT first.');
+    end if;
+    if a.time_in is null then return json_build_object('ok', false, 'error', 'Use Clock in instead. On a rest day, all your time counts as OT.'); end if;
+    if a.time_out is null then return json_build_object('ok', false, 'error', 'Clock out of your shift first, then start after-hours OT.'); end if;
+    if v_note is null then return json_build_object('ok', false, 'error', 'Add a short note: who asked and what it''s for.'); end if;
+    insert into ot_sessions (staff_id, work_date, started_at, note) values (p_staff, v_day, now(), left(v_note, 300));
+  elsif p_action = 'ot_end' then
+    select * into o from ot_sessions where staff_id = p_staff and ended_at is null for update;
+    if not found then return json_build_object('ok', false, 'error', 'You''re not on after-hours OT.'); end if;
+    update ot_sessions set ended_at = least(now(), o.started_at + interval '4 hours'),
+      auto_stopped = now() > o.started_at + interval '4 hours' where id = o.id;
   elsif p_action <> 'check' then
     return json_build_object('ok', false, 'error', 'Unknown action.');
   end if;
@@ -306,14 +396,18 @@ begin
     'now', now(),
     'staff', json_build_object('id', s.id, 'display_name', s.display_name, 'full_name', s.full_name,
                'sched_start', s.sched_start, 'sched_end', s.sched_end, 'lunch_mins', s.lunch_mins, 'week_pattern', s.week_pattern,
-               'avatar', s.avatar, 'photo', s.photo, 'tagline', s.tagline, 'color', s.color),
+               'avatar', s.avatar, 'photo', s.photo, 'tagline', s.tagline, 'color', s.color, 'ot_carry_from', s.ot_carry_from),
     'settings', (select json_build_object('timezone', timezone, 'grace_mins', grace_mins,
-               'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours) from settings where id = 1),
-    -- this month + last month, for the personal OT bank
+               'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours, 'ot_bank_cap_mins', ot_bank_cap_mins) from settings where id = 1),
+    -- this month + last month, for the personal OT bank (a carry-over bank goes back to when it started)
     'rows', coalesce((select json_agg(x order by x.work_date) from (
-               select work_date, sched_start, sched_end, plan_start, plan_end, ot_adjust, time_in, lunch_out, lunch_in, time_out, note
+               select work_date, sched_start, sched_end, plan_start, plan_end, ot_adjust, after_mins, time_in, lunch_out, lunch_in, time_out, note
                from attendance where staff_id = p_staff
-                 and work_date >= date_trunc('month', v_day - interval '1 month')::date) x), '[]'::json)
+                 and work_date >= least(date_trunc('month', v_day - interval '1 month')::date, coalesce(s.ot_carry_from - 5, v_day))) x), '[]'::json),
+    -- after-hours OT sessions on those days, and the one running now (if any)
+    'ot_sessions', coalesce((select json_agg(json_build_object('id', id, 'work_date', work_date, 'started_at', started_at, 'ended_at', ended_at,
+               'note', note, 'auto_stopped', auto_stopped) order by started_at)
+               from ot_sessions where staff_id = p_staff and work_date >= date_trunc('month', v_day - interval '1 month')::date), '[]'::json)
   );
 end $$;
 
@@ -357,9 +451,14 @@ grant execute on function public.is_admin() to authenticated;
 grant execute on function public.is_full_admin() to authenticated;
 grant execute on function public.my_role() to authenticated;
 grant execute on function public.admin_staff() to authenticated;
+revoke all on function public._ot_day_sync(uuid, date) from public, anon, authenticated;
+revoke all on function public._ot_sessions_sync() from public, anon, authenticated;
+revoke all on function public.ot_autostop() from public, anon;
+grant execute on function public.ot_autostop() to authenticated;
+grant select, insert, update, delete on public.ot_sessions to authenticated;
 -- Signed-in users can't read PIN hashes or lock-out counters directly.
 revoke select on public.staff from anon, authenticated;
-grant select (id, full_name, display_name, sched_start, sched_end, lunch_mins, active, created_at, avatar, photo, tagline, color) on public.staff to authenticated;
+grant select (id, full_name, display_name, sched_start, sched_end, lunch_mins, active, created_at, avatar, photo, tagline, color, ot_carry_from) on public.staff to authenticated;
 
 -- ---------- Make yourself the first admin (one time) ----------
 -- 1. Supabase → Authentication → Users → Add user (your email + a password, tick Auto confirm).
@@ -594,7 +693,7 @@ language sql stable security definer set search_path = public as $$
       'sched_start', sched_start, 'sched_end', sched_end, 'lunch_mins', lunch_mins, 'active', active,
       'has_pin', pin_hash is not null, 'created_at', created_at,
       'avatar', avatar, 'photo', photo, 'tagline', tagline, 'color', color,
-      'start_date', start_date, 'pay_rate', pay_rate, 'pay_type', pay_type, 'week_pattern', week_pattern) order by display_name)
+      'start_date', start_date, 'pay_rate', pay_rate, 'pay_type', pay_type, 'week_pattern', week_pattern, 'ot_carry_from', ot_carry_from) order by display_name)
     from staff), '[]'::json) end;
 $$;
 
@@ -837,6 +936,8 @@ revoke execute on function public._base_day(uuid, date)           from public, a
 revoke execute on function public._team_today()                   from public, anon, authenticated;
 revoke execute on function public.attendance_audit()              from public, anon, authenticated;
 revoke execute on function public._fx_proof_stamp()               from public, anon, authenticated;
+revoke execute on function public._ot_day_sync(uuid, date)        from public, anon, authenticated;
+revoke execute on function public._ot_sessions_sync()             from public, anon, authenticated;
 
 -- Admin / finance only: signed-in users (each one also checks the admin role inside)
 revoke execute on function public.admin_staff()                               from public, anon;
@@ -849,6 +950,7 @@ grant  execute on function public.decide_schedule_request(uuid, boolean, text) t
 grant  execute on function public.is_admin()                                  to authenticated;
 grant  execute on function public.is_full_admin()                             to authenticated;
 grant  execute on function public.my_role()                                   to authenticated;
+grant  execute on function public.ot_autostop()                               to authenticated;
 
 -- Staff app (no login, PIN-checked)
 grant execute on function public.roster()                                                   to anon, authenticated;
@@ -886,7 +988,7 @@ begin
     where n.nspname = 'public' and p.proname in (
       'roster', 'week_schedule', 'punch', 'set_pin', 'set_profile', 'my_payslips', 'request_week',
       'my_schedule_requests', 'cancel_schedule_request',                                   -- staff app (PIN-checked, no login)
-      'admin_staff', 'decide_schedule_request', 'is_admin', 'is_full_admin', 'my_role')    -- signed-in admin / finance
+      'admin_staff', 'decide_schedule_request', 'is_admin', 'is_full_admin', 'my_role', 'ot_autostop')   -- signed-in admin / finance
   loop
     if f.prosecdef then
       -- 1. the privileged version goes to private (create or replace keeps anything that depends on it)
@@ -896,7 +998,7 @@ begin
       execute format('create or replace function public.%I(%s) returns %s language sql volatile security invoker set search_path = %L as %L',
                      f.proname, f.args, f.result, '', format('select private.%I(%s)', f.proname, f.names));
     end if;
-    roles := case when f.proname in ('admin_staff', 'decide_schedule_request', 'is_admin', 'is_full_admin', 'my_role')
+    roles := case when f.proname in ('admin_staff', 'decide_schedule_request', 'is_admin', 'is_full_admin', 'my_role', 'ot_autostop')
                   then 'authenticated' else 'anon, authenticated' end;
     execute format('revoke all on function private.%I(%s) from public, anon, authenticated', f.proname, f.ident);
     execute format('grant execute on function private.%I(%s) to %s', f.proname, f.ident, roles);

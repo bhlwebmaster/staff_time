@@ -18,6 +18,7 @@
 
   // ---------- roster / pick ----------
   function statusOf(t) {
+    if (t?.ot_open) return ["in", "After-hours OT"];
     if (!t || !t.time_in) return ["absent", "Not in yet"];
     if (t.time_out) return ["out", "Clocked out"];
     if (t.lunch_out && !t.lunch_in) return ["lunch", "On lunch"];
@@ -108,6 +109,10 @@
 
   // ---------- today ----------
   const todayRow = () => data.rows.find((r) => r.work_date === B.dateIn(new Date(data.now), tz())) || null;
+  // After-hours OT (call-outs): only for people an admin turned it on for
+  const canOt = () => !!data.staff.ot_carry_from;
+  const openOt = () => (data.ot_sessions || []).find((o) => !o.ended_at) || null;
+  const otOf = (date) => (data.ot_sessions || []).filter((o) => o.work_date === date);
   function renderToday() {
     const row = todayRow(), st = data.staff, set = data.settings;
     const today = B.dateIn(new Date(), set.timezone);
@@ -116,7 +121,7 @@
     $("meAv").innerHTML = B.avatarHtml(st, 58);
     $("tTag").textContent = st.tagline || "";
     renderSeason();
-    const [k, label] = statusOf(row);
+    const [k, label] = statusOf(row ? { ...row, ot_open: !!openOt() } : openOt() ? { ot_open: true } : null);
     $("tStatus").className = "pill " + k; $("tStatus").textContent = label;
     const plan = row ? null : todayPlan(st);
     const ss = row?.sched_start || (plan?.kind === "shift" ? plan.start + ":00" : st.sched_start), se = row?.sched_end || (plan?.kind === "shift" ? plan.end + ":00" : st.sched_end);
@@ -135,10 +140,25 @@
     $("tFlags").innerHTML = flags.join("");
 
     // actions
-    const main = $("actMain"), alt = $("actAlt");
+    const main = $("actMain"), alt = $("actAlt"), ot = openOt();
     main.hidden = false; main.disabled = false; main.className = "btn primary big"; alt.innerHTML = ""; armedOut = false;
-    if (!row?.time_in) { main.textContent = "Clock in"; main.dataset.a = "in"; }
-    else if (row.time_out) { main.hidden = true; alt.innerHTML = `<p style="margin:0">You clocked out at <b class="mono">${B.clockIn(new Date(row.time_out), set.timezone)}</b>. See you tomorrow.</p>`; }
+    const sessions = row ? otOf(row.work_date) : [];
+    const otList = sessions.length ? `<p class="muted" style="margin:0;font-size:13px">After-hours OT today: ${sessions.map((o) =>
+      `<span class="mono">${B.clockIn(new Date(o.started_at), set.timezone)}–${o.ended_at ? B.clockIn(new Date(o.ended_at), set.timezone) : "now"}</span>`).join(", ")}${row.after_mins ? ` (${B.fmtMins(row.after_mins)})` : ""}</p>` : "";
+    if (ot) {
+      main.textContent = "End OT"; main.dataset.a = "ot_end"; main.classList.add("out");
+      alt.innerHTML = `<p style="margin:0">On after-hours OT since <b class="mono">${B.clockIn(new Date(ot.started_at), set.timezone)} UK</b>
+        (${B.clockIn(new Date(ot.started_at), LOCAL_TZ)} ${B.esc(cfg.LOCAL_LABEL || "")}). <span class="muted">${B.esc(ot.note)}</span></p>
+        <p class="muted" style="margin:0;font-size:12.5px">Tap End OT when you're done. If you forget, it stops by itself after 4 hours and an admin checks it.</p>`;
+    }
+    else if (!row?.time_in) { main.textContent = "Clock in"; main.dataset.a = "in"; }
+    else if (row.time_out) {
+      main.hidden = true;
+      alt.innerHTML = `<p style="margin:0">You clocked out at <b class="mono">${B.clockIn(new Date(row.time_out), set.timezone)}</b>. ${canOt() ? "" : "See you tomorrow."}</p>${otList}`
+        + (canOt() ? `<div class="stack" style="gap:8px;width:100%"><label class="f">Team needs you? <span class="muted" style="font-weight:400">Who asked and what for</span>
+          <input type="text" id="otNote" maxlength="300" placeholder="e.g. Myles: fix checkout email"></label>
+          <button class="btn primary" data-a="ot_start">Start after-hours OT</button></div>` : "");
+    }
     else if (row.lunch_out && !row.lunch_in) { main.textContent = "End lunch"; main.dataset.a = "lunch_end"; main.classList.add("lunch"); }
     else if (!row.lunch_out) {
       main.textContent = "Start lunch"; main.dataset.a = "lunch_start"; main.classList.add("lunch");
@@ -163,7 +183,9 @@
     const otNow = B.otToday(data.rows, st, set, today);
     $("mBank").textContent = B.fmtMins(otNow.mins);
     $("mBank").style.color = otNow.mins > 0 ? "var(--accent)" : "";
+    $("mBankLbl").textContent = otNow.carry ? "OT in your bank" : "OT to use today";
     $("mBlock").textContent = set.ot_block_mins;
+    $("mOtRule").hidden = otNow.carry; $("mOtCarry").hidden = !otNow.carry;
     renderWa();
     renderTeam();
   }
@@ -177,12 +199,17 @@
       }
     }
     const extra = { note: $("tNote").value };
+    if (a === "ot_start") {
+      extra.note = $("otNote").value.trim();
+      if (!extra.note) { $("otNote").focus(); return B.toast("Add a short note first: who asked and what it's for.", "err"); }
+    }
+    if (a === "ot_end") extra.note = null;
     if (a === "in" && $("schedEdit").open) { extra.sched_start = $("sStart").value; extra.sched_end = $("sEnd").value; }
     if (a === "in" && otPlan && otPick !== "no") {
       // Use yesterday's OT: shift today's times and note it (expected hours stay the same, the OT covers the gap)
       const adj = otAdjusted();
       extra.sched_start = adj.s; extra.sched_end = adj.e;
-      const tag = `Offset: ${B.fmtMins(otPlan.mins)} OT from ${B.prettyDate(otPlan.from, { weekday: "short", day: "numeric", month: "short" })}`;
+      const tag = otPlan.carry ? `Offset: ${B.fmtMins(otPlan.mins)} OT from my bank` : `Offset: ${B.fmtMins(otPlan.mins)} OT from ${B.prettyDate(otPlan.from, { weekday: "short", day: "numeric", month: "short" })}`;
       extra.note = extra.note ? `${tag}. ${extra.note}` : tag;
     }
     btn.disabled = true;
@@ -192,7 +219,7 @@
     const before = game();
     data = r;
     const after = game();
-    const words = { in: "Clocked in", lunch_start: "Enjoy your lunch", lunch_end: "Welcome back", out: "Clocked out", note: "Note saved" };
+    const words = { in: "Clocked in", lunch_start: "Enjoy your lunch", lunch_end: "Welcome back", out: "Clocked out", note: "Note saved", ot_start: "After-hours OT started", ot_end: "After-hours OT ended" };
     const gained = after.xp - before.xp;
     const newBadges = after.badges.filter((b, i) => b.earned && !before.badges[i].earned);
     let msg = `${words[a]} · ${B.clockIn(new Date(r.now), r.settings.timezone)} UK`;
@@ -202,11 +229,16 @@
     B.toast(msg);
     fresh = new Set(newBadges.map((b) => b.key));
     const onTimeIn = a === "in" && !B.calcDays(data.rows, data.staff, data.settings).get(todayRow().work_date).late;
+    if (a === "ot_end") {
+      const o = r.ot_sessions?.filter((x) => x.ended_at).pop();
+      if (o?.auto_stopped) B.toast("It ran over 4 hours, so it was stopped at 4:00. An admin can fix the time.", "err");
+    }
     if (newBadges.length || onTimeIn || after.level.n > before.level.n) B.confetti();
     renderToday(); loadRoster(); bumpIdle();
     // Only the start and end of the shift go to the group (not lunch)
-    if (a === "in" || a === "out") {
-      $("waHintTitle").textContent = a === "in" ? "Tell the group you're in" : "Tell the group you've clocked out";
+    if (a === "in" || a === "out" || a === "ot_start" || a === "ot_end") {
+      $("waHintTitle").textContent = { in: "Tell the group you're in", out: "Tell the group you've clocked out",
+        ot_start: "Tell the group you're on after-hours OT", ot_end: "Tell the group you've finished OT" }[a];
       $("waHint").hidden = false;
       const w = $("waNotify"); w.classList.remove("nudge"); void w.offsetWidth; w.classList.add("nudge");
       w.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -217,7 +249,7 @@
 
 
   // ---------- use yesterday's OT ----------
-  let otPick = "no", otPlan = null;   // otPlan = { mins, from, ss, se } while not clocked in
+  let otPick = "no", otPlan = null, otAmt = null;   // otPlan = { mins, from, ss, se } while not clocked in; otAmt = chosen amount (carry-over bank)
   const addM = (hhmm, m) => { const [h, mm] = hhmm.slice(0, 5).split(":").map(Number); let t = h * 60 + mm + m; t = Math.max(0, Math.min(1439, t)); return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
   function otAdjusted() {
     const p = otPlan; if (!p) return null;
@@ -229,20 +261,32 @@
     if (!row?.time_in) {
       const o = B.otToday(data.rows, data.staff, data.settings, today);
       if (!o.mins || !ss) { box.hidden = true; otPick = "no"; return; }
-      otPlan = { mins: o.mins, from: o.from, ss, se };
+      // Carry-over bank: choose how much to use (the rest stays banked). Otherwise it's all of it, today only.
+      const block = Math.max(1, data.settings.ot_block_mins || 30), steps = [];
+      if (o.carry) for (let m = block; m < o.mins; m += block) steps.push(m);
+      if (o.carry) steps.push(o.mins);
+      if (!o.carry || !steps.includes(otAmt)) otAmt = o.mins;
+      otPlan = { mins: otAmt, from: o.from, ss, se, carry: o.carry };
       box.hidden = false; box.classList.remove("info");
-      $("otTitle").textContent = `You have ${B.fmtMins(o.mins)} OT from ${when(o.from)}.`;
-      $("otSub").textContent = "Use it today? It expires at the end of today.";
+      $("otTitle").textContent = o.carry ? `You have ${B.fmtMins(o.mins)} OT in your bank.` : `You have ${B.fmtMins(o.mins)} OT from ${when(o.from)}.`;
+      $("otSub").textContent = o.carry ? "Use some today? Whatever you don't use stays in your bank." : "Use it today? It expires at the end of today.";
+      $("otAmtRow").hidden = !o.carry || steps.length < 2;
+      $("otAmt").innerHTML = steps.map((m) => `<option value="${m}" ${m === otAmt ? "selected" : ""}>${B.fmtMins(m)}</option>`).join("");
       for (const b of $("otPick").children) b.setAttribute("aria-pressed", b.dataset.o === otPick);
       const adj = otAdjusted();
       $("otPreview").textContent = otPick === "no" ? `Today: ${B.clockStr(ss)} – ${B.clockStr(se)} UK` : `Today: ${B.clockStr(adj.s)} – ${B.clockStr(adj.e)} UK (was ${B.clockStr(ss)} – ${B.clockStr(se)})`;
       return;
     }
-    otPick = "no";
+    otPick = "no"; $("otAmtRow").hidden = true;
     if (!c || !c.otAvail) { box.hidden = true; return; }
     box.hidden = false; box.classList.add("info");
     const from = c.otFrom ? ` from ${when(c.otFrom)}` : "";
-    if (c.complete) {
+    if (c.carry) {
+      const left = c.complete ? c.otAvail - c.otUsed : c.otAvail;
+      $("otTitle").textContent = c.complete ? (c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT from your bank today.` : "Your OT bank wasn't needed today.")
+        : `${B.fmtMins(c.otAvail)} OT in your bank covers you today.`;
+      $("otSub").textContent = c.complete ? `Your bank is now ${B.fmtMins(c.bankAfter ?? left)}.` : "Start later or leave earlier by up to that much. Whatever you don't use stays in your bank.";
+    } else if (c.complete) {
       $("otTitle").textContent = c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT${from} today.` : `Your ${B.fmtMins(c.otAvail)} OT${from} wasn't needed today.`;
       $("otSub").textContent = c.otUsed && c.otUsed < c.otAvail ? `The other ${B.fmtMins(c.otAvail - c.otUsed)} expired.` : c.otUsed ? "" : "It has now expired.";
     } else {
@@ -251,6 +295,7 @@
     }
   }
   $("otPick").addEventListener("click", (e) => { const b = e.target.closest("button[data-o]"); if (!b) return; otPick = b.dataset.o; renderToday(); });
+  $("otAmt").addEventListener("change", (e) => { otAmt = +e.target.value; renderToday(); });
 
   // ---------- season (XP, level, streak, badges) ----------
   let fresh = new Set();
@@ -346,7 +391,7 @@
   /** Live status for today's table: leave/rest from the schedule, otherwise what they've tapped today. */
   function liveStatus(p, plan) {
     const r = roster.staff.find((x) => x.id === p.id), t = r?.today;
-    if (!t?.time_in && plan.kind !== "shift") {
+    if (!t?.time_in && !t?.ot_open && plan.kind !== "shift") {
       if (plan.kind === "holiday" && plan.holiday) return `<span class="pill leave k-holiday">${B.esc(plan.holiday)}</span>`;
       const k = { rest: "Rest day", vacation: "Vacation", sick: "Sick", emergency: "Emergency leave", holiday: "Holiday", unpaid: "Unpaid leave" }[plan.kind] || plan.kind;
       return `<span class="pill leave k-${plan.kind}">${k}</span>`;
@@ -362,6 +407,7 @@
       return `<span class="pill absent">Not in yet</span>`;
     }
     const at = (v) => B.clockIn(new Date(v), tzn);
+    if (t.ot_open) return `<span class="pill in">After-hours OT</span><small>shift ${at(t.time_in)}–${at(t.time_out)}</small>`;
     if (t.time_out) return `<span class="pill out">Clocked out</span><small>${at(t.time_in)}–${at(t.time_out)}</small>`;
     if (t.lunch_out && !t.lunch_in) return `<span class="pill lunch">On lunch</span><small>since ${at(t.lunch_out)}</small>`;
     return `<span class="pill in">Working</span><small>in ${at(t.time_in)}</small>`;
@@ -403,7 +449,10 @@
 
   // ---------- WhatsApp group ----------
   // Copies the message in the group's format; the person pastes it into the WhatsApp group themselves.
-  const waText = () => { const row = data && todayRow(); return row?.time_in ? B.whatsappText(row, data.staff, data.settings) : ""; };
+  const waText = () => {
+    const ot = data && openOt(), row = data && (ot ? data.rows.find((r) => r.work_date === ot.work_date) : todayRow());
+    return row?.time_in ? B.whatsappText(row, data.staff, data.settings, otOf(row.work_date)) : "";
+  };
   function renderWa() { $("waNotify").setAttribute("aria-disabled", String(!waText())); }
   $("waNotify").addEventListener("click", async () => {
     const t = waText();

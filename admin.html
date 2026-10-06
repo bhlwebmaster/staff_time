@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260930g">
+<link rel="stylesheet" href="assets/style.css?v=20261006a">
 <style>
   main { padding-block: 22px 70px; }
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -208,7 +208,7 @@
     <div class="kpis" id="sheetKpis" style="margin-bottom:14px"></div>
     <div class="card tablewrap" style="margin-bottom:18px"><table>
       <thead><tr><th>Name</th><th class="num">Days</th><th class="num">Worked</th><th class="num">Regular</th><th class="num">OT earned</th>
-        <th class="num">OT used</th><th class="num">Short</th><th class="num">Late</th><th class="num">No clock-out</th><th class="num">Billable hrs</th></tr></thead>
+        <th class="num">OT used</th><th class="num">Short</th><th class="num">Late</th><th class="num">No clock-out</th><th class="num">Billable hrs</th><th class="num" title="After-hours OT people: OT banked now (carries over)">OT bank</th></tr></thead>
       <tbody id="sumRows"></tbody><tfoot id="sumFoot"></tfoot>
     </table><div class="pager" id="sumPager" hidden></div></div>
     <div class="row" style="margin-bottom:10px">
@@ -357,6 +357,8 @@
       </div>
       <label class="check"><input type="checkbox" id="stEarly"> Count minutes before scheduled start as worked time</label>
       <label class="check"><input type="checkbox" id="stFlex"> Judge by hours: no Late or undertime when the day's hours are complete. Short time is covered first by OT from their last work day.</label>
+      <label class="f" style="max-width:300px">OT bank cap (hours)<input type="number" id="stCap" min="0" max="200" step="0.5">
+        <span class="muted" style="font-weight:400;font-size:12px">For people with After-hours OT on (their OT carries over). Above this, OT is still banked but flagged here for you.</span></label>
       <label class="f" style="max-width:300px">Working days per cut-off<input type="number" id="stDpc" min="1" max="16" step="1"></label>
       <p class="muted" style="margin:0;font-size:13px">Pay is bi-monthly (1st–15th, 16th–end). For Weekly, Bi-monthly and Monthly pay, the daily rate = pay per cut-off ÷ this number. Absences, lates and undertime are deducted from that.</p>
       <p class="muted" style="margin:0;font-size:13px"><b>Worked</b> = time out − time in − the lunch they tapped (no lunch tapped = nothing taken off).
@@ -434,6 +436,11 @@
     <label class="f">Note<textarea id="eNote" rows="2"></textarea></label>
     <label class="f" style="max-width:320px">Extra OT credit for this day (minutes)<input type="number" id="eOtAdj" min="0" max="600" step="30" placeholder="0">
       <span class="muted" style="font-weight:400;font-size:12px">Use this to let someone use OT that already expired, e.g. 60.</span></label>
+    <div class="stack" id="eOtBox" style="gap:6px" hidden>
+      <div class="row"><b style="font-size:14px">After-hours OT</b><span class="spacer"></span><button class="btn sm" type="button" id="eOtAdd">Add session</button></div>
+      <div id="eOtList" class="stack" style="gap:6px"></div>
+      <span class="muted" style="font-size:12px">Clocked after the shift (call-outs). Added to the day's worked time, then counted in whole OT blocks. Session changes save straight away.</span>
+    </div>
     <p class="muted" style="margin:0;font-size:12.5px">All times are UK time. Every change is kept in the history below.</p>
     <div class="hist" id="eHist"></div>
     <div class="row"><button class="btn danger" type="button" id="eDel">Delete entry</button><span class="spacer"></span>
@@ -495,6 +502,11 @@
       <div class="pattern" id="pPattern"></div>
       <p class="muted" style="margin:6px 0 0;font-size:12.5px">Untick a day for a rest day. <b>Lunch</b> = planned unpaid lunch that day in minutes (0 if they don't take lunch, e.g. part-time). Expected hours = start to end minus lunch. Specific dates (leave, swaps) are changed in the Schedule tab.</p>
     </div>
+    <div class="stack" style="gap:6px">
+      <label class="check"><input type="checkbox" id="pOt"> After-hours OT: can clock OT after their shift (call-outs), and their OT carries over until used</label>
+      <label class="f" id="pOtFromRow" style="max-width:260px" hidden>OT bank starts on<input type="date" id="pOtFrom"></label>
+      <p class="muted" style="margin:0;font-size:12.5px">Everyone else keeps the usual rule: OT is used on the next work day or it expires.</p>
+    </div>
     <div class="row" id="pPhotoRow"><span id="pAv"></span><button class="btn" type="button" id="pPhotoRm">Remove photo</button>
       <span class="muted" style="font-size:12.5px">Staff choose their own avatar and photo in the app.</span></div>
     <div class="row"><button class="btn" type="button" id="pReset">Reset PIN</button>
@@ -506,13 +518,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20260930g"></script>
-<script src="assets/core.js?v=20260930g"></script>
-<script src="assets/game.js?v=20260930g"></script>
-<script src="assets/schedule.js?v=20260930g"></script>
-<script src="assets/logo.js?v=20260930g"></script>
-<script src="assets/payroll.js?v=20260930g"></script>
-<script src="assets/api.js?v=20260930g"></script>
-<script src="assets/admin.js?v=20260930g"></script>
+<script src="config.js?v=20261006a"></script>
+<script src="assets/core.js?v=20261006a"></script>
+<script src="assets/game.js?v=20261006a"></script>
+<script src="assets/schedule.js?v=20261006a"></script>
+<script src="assets/logo.js?v=20261006a"></script>
+<script src="assets/payroll.js?v=20261006a"></script>
+<script src="assets/api.js?v=20261006a"></script>
+<script src="assets/admin.js?v=20261006a"></script>
 </body>
 </html>

@@ -46,7 +46,18 @@
       staff: async () => unwrap(await sb.rpc("admin_staff")),
       saveStaff: async (s) => s.id ? unwrap(await sb.from("staff").update(s).eq("id", s.id)) : unwrap(await sb.from("staff").insert(s)),
       resetPin: async (id) => unwrap(await sb.from("staff").update({ pin_hash: null, failed_attempts: 0, locked_until: null }).eq("id", id)),
-      attendance: async (from, to) => unwrap(await sb.from("attendance").select("*").gte("work_date", from).lte("work_date", to).order("work_date")),
+      attendance: async (from, to) => {
+        const rows = unwrap(await sb.from("attendance").select("*").gte("work_date", from).lte("work_date", to).order("work_date"));
+        // People on the carry-over OT bank: also load their days back to when the bank started (their OT doesn't expire)
+        const carry = unwrap(await sb.from("staff").select("id, ot_carry_from").not("ot_carry_from", "is", null).lt("ot_carry_from", from));
+        const earlier = await Promise.all(carry.map(async (c) => unwrap(await sb.from("attendance").select("*").eq("staff_id", c.id)
+          .gte("work_date", c.ot_carry_from).lt("work_date", from))));
+        return earlier.flat().concat(rows).sort((a, b) => (a.work_date < b.work_date ? -1 : a.work_date > b.work_date ? 1 : 0));
+      },
+      // After-hours OT sessions (call-outs). Stops any forgotten one (4h) first, so what admins see is up to date.
+      otSessions: async (from, to) => { await sb.rpc("ot_autostop"); return unwrap(await sb.from("ot_sessions").select("*").gte("work_date", from).lte("work_date", to).order("started_at")); },
+      saveOtSession: async (o) => o.id ? unwrap(await sb.from("ot_sessions").update(o).eq("id", o.id)) : unwrap(await sb.from("ot_sessions").insert({ ...o, source: "admin" })),
+      deleteOtSession: async (id) => unwrap(await sb.from("ot_sessions").delete().eq("id", id)),
       saveAttendance: async (r) => r.id
         ? unwrap(await sb.from("attendance").update(r).eq("id", r.id))
         : unwrap(await sb.from("attendance").insert({ ...r, source: "admin" })),

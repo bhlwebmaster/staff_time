@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260930g">
+<link rel="stylesheet" href="assets/style.css?v=20261006a">
 <style>
   main { padding-block: 20px 60px; }
   .hello { display: grid; gap: 4px; margin-bottom: 18px; }
@@ -261,6 +261,7 @@
         <div class="seg" id="otPick" role="radiogroup" aria-label="Use OT today">
           <button type="button" data-o="late" aria-pressed="false">Start later</button><button type="button" data-o="early" aria-pressed="false">Leave earlier</button><button type="button" data-o="no" aria-pressed="true">No</button>
         </div>
+        <label class="f" id="otAmtRow" hidden style="max-width:220px">How much OT to use<select id="otAmt"></select></label>
         <div class="mono" id="otPreview"></div>
       </div>
       <details id="schedEdit">
@@ -293,9 +294,10 @@
       <div class="stats">
         <div><b id="mDays">0</b><span>days</span></div>
         <div><b id="mHours">0:00</b><span>hours worked</span></div>
-        <div><b id="mBank">0:00</b><span>OT to use today</span></div>
+        <div><b id="mBank">0:00</b><span id="mBankLbl">OT to use today</span></div>
       </div>
-      <p class="muted" style="margin:0;font-size:12.5px">OT is counted in <span id="mBlock">30</span>-minute blocks and can only be used on your next work day (start later or leave earlier). Unused OT expires at the end of that day.</p>
+      <p class="muted" style="margin:0;font-size:12.5px" id="mOtRule">OT is counted in <span id="mBlock">30</span>-minute blocks and can only be used on your next work day (start later or leave earlier). Unused OT expires at the end of that day.</p>
+      <p class="muted" style="margin:0;font-size:12.5px" id="mOtCarry" hidden>Your OT, including after-hours OT, carries over until you use it (start later or leave earlier on any work day). A day's time is added up, then counted in whole blocks.</p>
     </div>
 
     </div>
@@ -371,13 +373,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=20260930g"></script>
-<script src="assets/core.js?v=20260930g"></script>
-<script src="assets/game.js?v=20260930g"></script>
-<script src="assets/schedule.js?v=20260930g"></script>
-<script src="assets/logo.js?v=20260930g"></script>
-<script src="assets/payroll.js?v=20260930g"></script>
-<script src="assets/api.js?v=20260930g"></script>
-<script src="assets/staff.js?v=20260930g"></script>
+<script src="config.js?v=20261006a"></script>
+<script src="assets/core.js?v=20261006a"></script>
+<script src="assets/game.js?v=20261006a"></script>
+<script src="assets/schedule.js?v=20261006a"></script>
+<script src="assets/logo.js?v=20261006a"></script>
+<script src="assets/payroll.js?v=20261006a"></script>
+<script src="assets/api.js?v=20261006a"></script>
+<script src="assets/staff.js?v=20261006a"></script>
 </body>
 </html>

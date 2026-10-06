@@ -84,7 +84,8 @@
 
   /**
    * Work out one day.
-   * - Worked = time out − time in − the lunch actually tapped (no lunch tapped = nothing taken off).
+   * - Worked = time out − time in − the lunch actually tapped (no lunch tapped = nothing taken off),
+   *   plus any after-hours OT clocked after the shift (row.after_mins), so all of a day's time is rounded once.
    *   Minutes before the scheduled start count only if Settings → "count early minutes" is on.
    * - Expected = that day's scheduled start→end − that day's planned lunch (Staff → Usual week).
    * - OT = worked beyond expected, in whole blocks (Settings, e.g. 30 min: 45 min extra → 30).
@@ -108,7 +109,8 @@
     const std = isRest ? 0 : Math.max(0, span - planLunch);
     const flex = settings.flex_hours !== false;
     const avail = Math.max(0, Number(opts.avail) || 0);
-    const out = { date: row.work_date, std, planLunch, otAvail: avail, otFrom: opts.availFrom || null, otUsed: 0, late: 0, lateRaw: 0, worked: null, variance: null, ot: 0, short: 0, lunch: null, noLunch: false,
+    const after = Math.max(0, Number(row.after_mins) || 0);
+    const out = { date: row.work_date, std, planLunch, otAvail: avail, otFrom: opts.availFrom || null, otUsed: 0, late: 0, lateRaw: 0, worked: null, variance: null, ot: 0, short: 0, lunch: null, noLunch: false, after,
                   complete: !!(tin && tout), open: !!(tin && !tout), status: "absent", tin, tout, lo, li };
     if (tin && sStart && !isRest) {
       const lateMs = tin - sStart;
@@ -120,7 +122,7 @@
     if (tin && tout) {
       const effIn = settings.count_early ? tin : new Date(Math.max(tin, sStart || tin));
       const lunchMs = lo && li ? li - lo : 0;
-      out.worked = Math.max(0, Math.round((tout - effIn - lunchMs) / 60000));
+      out.worked = Math.max(0, Math.round((tout - effIn - lunchMs) / 60000)) + after;
       out.variance = out.worked - std;
       const block = Math.max(1, settings.ot_block_mins || 1);
       if (out.variance > 0) out.ot = Math.floor(out.variance / block) * block;
@@ -138,22 +140,34 @@
   const daysApart = (a, b) => Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 864e5);
   /** OT can be used on the next work day only: the next day they clock in, if it's within this many days (Fri → Mon/Tue). */
   const OT_WINDOW_DAYS = 4;
+  /** Carry-over OT bank (people with After-hours OT on, from staff.ot_carry_from): OT never expires, it waits until used. */
+  const carriesOt = (staff, date) => !!staff.ot_carry_from && date >= staff.ot_carry_from;
   /**
    * Work out every day for one person, in date order, passing each work day's OT to the next work day.
    * Returns a Map work_date → calcDay result. Give it a few days before the range you show, so the first day
    * knows about the OT before it. row.ot_adjust = extra OT credit an admin granted for that day.
+   * Carry-over bank: unused OT stays in the bank (oldest used first) and today's OT is added on top. Rows must go back
+   * to staff.ot_carry_from for the bank to be right (api.admin.attendance and punch() load them).
    */
   function calcDays(rows, staff, settings) {
     const list = rows.slice().sort((a, b) => (a.work_date < b.work_date ? -1 : a.work_date > b.work_date ? 1 : 0));
     const out = new Map(); let bank = 0, bankFrom = null, bankDate = null;
     for (const r of list) {
+      const carry = carriesOt(staff, r.work_date);
       let avail = Number(r.ot_adjust) || 0, from = null;
-      const live = bank > 0 && bankDate && daysApart(bankDate, r.work_date) <= OT_WINDOW_DAYS;
+      const live = bank > 0 && bankDate && (carry || daysApart(bankDate, r.work_date) <= OT_WINDOW_DAYS);
       if (live) { avail += bank; from = bankFrom; }
       const c = calcDay(r, staff, settings, { avail, availFrom: from });
+      c.carry = carry;
       out.set(r.work_date, c);
       if (!r.time_in) continue;
-      if (r.day_kind === "rest") {
+      if (carry) {
+        const left = avail - (c.complete ? c.otUsed : 0), add = c.complete ? c.ot : 0;
+        if (left <= 0) bankFrom = add ? r.work_date : null;   // bank was used up: what's left starts from today
+        else if (!bankFrom) bankFrom = r.work_date;
+        bank = left + add;
+        c.bankAfter = bank; c.overCap = bank > (settings.ot_bank_cap_mins ?? 480);
+      } else if (r.day_kind === "rest") {
         // A rest day never uses OT: it adds its own OT to the bank, and the bank waits for the next working day.
         bank = (live ? bank : 0) + (c.complete ? c.ot : 0);
         if (!live) bankFrom = r.work_date;
@@ -161,15 +175,16 @@
       bankDate = r.work_date;
     }
     out.bank = bank; out.bankFrom = bankFrom; out.bankDate = bankDate;
+    out.carry = carriesOt(staff, bankDate || "9999");
     return out;
   }
   /** OT this person can still use today: from their last work day (if today is their next one), minus what's used. */
   function otToday(rows, staff, settings, today) {
     const all = calcDays(rows.filter((r) => r.work_date <= today), staff, settings);
     const t = all.get(today);
-    if (t) return { mins: Math.max(0, t.otAvail - (t.complete ? t.otUsed : 0)), from: t.otFrom, used: t.otUsed, today: true };
-    if (all.bank > 0 && all.bankDate && daysApart(all.bankDate, today) <= OT_WINDOW_DAYS) return { mins: all.bank, from: all.bankFrom, used: 0, today: false };
-    return { mins: 0, from: null, used: 0, today: false };
+    if (t) return { mins: t.carry ? t.bankAfter ?? t.otAvail : Math.max(0, t.otAvail - (t.complete ? t.otUsed : 0)), from: t.otFrom, used: t.otUsed, today: true, carry: t.carry };
+    if (all.bank > 0 && all.bankDate && (all.carry || daysApart(all.bankDate, today) <= OT_WINDOW_DAYS)) return { mins: all.bank, from: all.bankFrom, used: 0, today: false, carry: all.carry };
+    return { mins: 0, from: null, used: 0, today: false, carry: carriesOt(staff, today) };
   }
 
   /** Roll a set of rows (one person) into period totals. opts.from: only count days from this date (earlier rows only feed OT). */
@@ -189,11 +204,13 @@
       } else if (r.work_date !== today) s.missingOut++;
     }
     s.bank = s.ot - s.otUsed;   // OT earned but not used (it expires after the next work day)
+    if (all.carry) { s.carryBank = all.bank; s.overCap = all.bank > (settings.ot_bank_cap_mins ?? 480); }   // carry-over bank now
+    s.after = s.days_list.reduce((a, x) => a + (x.c.complete ? x.c.after : 0), 0);   // after-hours OT clocked in the period
     s.billable = s.regular + s.ot;
     return s;
   }
 
-  function whatsappText(row, staff, settings) {
+  function whatsappText(row, staff, settings, sessions = []) {
     const tz = settings.timezone;
     const label = "GMT";
     const lines = [
@@ -204,6 +221,7 @@
     ];
     if (row.lunch_out) lines.push(`Lunch Break: ${clockIn(d(row.lunch_out), tz)} – ${row.lunch_in ? clockIn(d(row.lunch_in), tz) : "…"} ${label}`);
     lines.push(`Time out: ${row.time_out ? clockIn(d(row.time_out), tz) + " " + label : ""}`);
+    for (const o of sessions) lines.push(`After-hours OT: ${clockIn(d(o.started_at), tz)} – ${o.ended_at ? clockIn(d(o.ended_at), tz) + " " + label : "ongoing"} (${o.note})`);
     if (row.note) lines.push("", row.note);
     return lines.join("\n");
   }
