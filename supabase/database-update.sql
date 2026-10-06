@@ -315,7 +315,8 @@ end $$;
 
 -- The one staff action: check | in | lunch_start | lunch_end | out | note | ot_start | ot_end
 -- Uses the SERVER clock, so phone time can't be faked.
--- ot_start / ot_end: after-hours OT after clocking out (only for people with After-hours OT turned on).
+-- ot_start / ot_end: after-hours OT before the shift (working days) or after clocking out
+-- (only for people with After-hours OT turned on).
 create or replace function public.punch(
   p_staff uuid, p_pin text, p_action text,
   p_sched_start time default null, p_sched_end time default null, p_note text default null
@@ -330,6 +331,7 @@ declare
   v_note text := nullif(btrim(coalesce(p_note, '')), '');
   v_ss   time;
   v_se   time;
+  v_kind text;
   o      ot_sessions;
 begin
   v_err := _check_pin(p_staff, p_pin);
@@ -344,6 +346,9 @@ begin
 
   if p_action = 'in' then
     if a.time_in is not null then return json_build_object('ok', false, 'error', 'You already clocked in today.'); end if;
+    if exists (select 1 from ot_sessions where staff_id = p_staff and ended_at is null) then
+      return json_build_object('ok', false, 'error', 'Tap End OT first, then clock in.');
+    end if;
     if p_sched_start is not null and coalesce(p_sched_end, s.sched_end) <= p_sched_start then
       return json_build_object('ok', false, 'error', 'Schedule end must be after start.');
     end if;
@@ -351,9 +356,16 @@ begin
     if to_regprocedure('public.day_schedule(uuid,date)') is not null then
       execute 'select start_time, end_time from public.day_schedule($1, $2)' into v_ss, v_se using p_staff, v_day;
     end if;
-    insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end, time_in, note)
-      values (p_staff, v_day, coalesce(p_sched_start, v_ss, s.sched_start), coalesce(p_sched_end, v_se, s.sched_end),
-              coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), now(), v_note);
+    if a.id is not null then
+      -- the day already exists (pre-shift OT was clocked before the shift): clock in on it
+      update attendance set sched_start = coalesce(p_sched_start, v_ss, s.sched_start), sched_end = coalesce(p_sched_end, v_se, s.sched_end),
+        plan_start = coalesce(v_ss, s.sched_start), plan_end = coalesce(v_se, s.sched_end), time_in = now(), note = coalesce(v_note, note)
+        where id = a.id;
+    else
+      insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end, time_in, note)
+        values (p_staff, v_day, coalesce(p_sched_start, v_ss, s.sched_start), coalesce(p_sched_end, v_se, s.sched_end),
+                coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), now(), v_note);
+    end if;
   elsif p_action = 'lunch_start' then
     if a.time_in is null then return json_build_object('ok', false, 'error', 'Clock in first.'); end if;
     if a.time_out is not null then return json_build_object('ok', false, 'error', 'You already clocked out.'); end if;
@@ -378,9 +390,24 @@ begin
     if exists (select 1 from ot_sessions where staff_id = p_staff and ended_at is null) then
       return json_build_object('ok', false, 'error', 'You''re already on after-hours OT. Tap End OT first.');
     end if;
-    if a.time_in is null then return json_build_object('ok', false, 'error', 'Use Clock in instead. On a rest day, all your time counts as OT.'); end if;
-    if a.time_out is null then return json_build_object('ok', false, 'error', 'Clock out of your shift first, then start after-hours OT.'); end if;
+    if a.time_in is not null and a.time_out is null then
+      return json_build_object('ok', false, 'error', 'Clock out of your shift first, then start after-hours OT.');
+    end if;
     if v_note is null then return json_build_object('ok', false, 'error', 'Add a short note: who asked and what it''s for.'); end if;
+    if a.time_in is null then
+      -- Pre-shift OT: only on a working day (on a rest day, Clock in as usual: all that time is OT)
+      v_kind := 'shift';
+      if to_regprocedure('public.day_schedule(uuid,date)') is not null then
+        execute 'select kind, start_time, end_time from public.day_schedule($1, $2)' into v_kind, v_ss, v_se using p_staff, v_day;
+      end if;
+      if v_kind <> 'shift' then
+        return json_build_object('ok', false, 'error', 'It''s not a working day for you, so use Clock in instead: all your time today counts as OT.');
+      end if;
+      if a.id is null then   -- the day starts with the OT; Clock in later fills in the shift
+        insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end)
+          values (p_staff, v_day, coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end));
+      end if;
+    end if;
     insert into ot_sessions (staff_id, work_date, started_at, note) values (p_staff, v_day, now(), left(v_note, 300));
   elsif p_action = 'ot_end' then
     select * into o from ot_sessions where staff_id = p_staff and ended_at is null for update;

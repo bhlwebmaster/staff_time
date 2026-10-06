@@ -143,6 +143,9 @@
     const main = $("actMain"), alt = $("actAlt"), ot = openOt();
     main.hidden = false; main.disabled = false; main.className = "btn primary big"; alt.innerHTML = ""; armedOut = false;
     const sessions = row ? otOf(row.work_date) : [];
+    const otStartHtml = (q, btn) => `<div class="stack" style="gap:8px;width:100%"><label class="f">${q} <span class="muted" style="font-weight:400">Who asked and what for</span>
+      <input type="text" id="otNote" maxlength="300" placeholder="e.g. James: fix checkout email"></label>
+      <button class="btn ${row?.time_out ? "primary" : ""}" data-a="ot_start">${btn}</button></div>`;
     const otList = sessions.length ? `<p class="muted" style="margin:0;font-size:13px">After-hours OT today: ${sessions.map((o) =>
       `<span class="mono">${B.clockIn(new Date(o.started_at), set.timezone)}–${o.ended_at ? B.clockIn(new Date(o.ended_at), set.timezone) : "now"}</span>`).join(", ")}${row.after_mins ? ` (${B.fmtMins(row.after_mins)})` : ""}</p>` : "";
     if (ot) {
@@ -151,13 +154,17 @@
         (${B.clockIn(new Date(ot.started_at), LOCAL_TZ)} ${B.esc(cfg.LOCAL_LABEL || "")}). <span class="muted">${B.esc(ot.note)}</span></p>
         <p class="muted" style="margin:0;font-size:12.5px">Tap End OT when you're done. If you forget, it stops by itself after 4 hours and an admin checks it.</p>`;
     }
-    else if (!row?.time_in) { main.textContent = "Clock in"; main.dataset.a = "in"; }
+    else if (!row?.time_in) {
+      main.textContent = "Clock in"; main.dataset.a = "in";
+      // Pre-shift OT: called in before the shift starts (working days only; on a rest day Clock in counts it all as OT)
+      const tp = todayPlan(st);
+      if (canOt() && (!tp || tp.kind === "shift")) alt.innerHTML = otList + otStartHtml("Called in before your shift?", "Start OT before shift");
+      else alt.innerHTML = otList;
+    }
     else if (row.time_out) {
       main.hidden = true;
       alt.innerHTML = `<p style="margin:0">You clocked out at <b class="mono">${B.clockIn(new Date(row.time_out), set.timezone)}</b>. ${canOt() ? "" : "See you tomorrow."}</p>${otList}`
-        + (canOt() ? `<div class="stack" style="gap:8px;width:100%"><label class="f">Team needs you? <span class="muted" style="font-weight:400">Who asked and what for</span>
-          <input type="text" id="otNote" maxlength="300" placeholder="e.g. Myles: fix checkout email"></label>
-          <button class="btn primary" data-a="ot_start">Start after-hours OT</button></div>` : "");
+        + (canOt() ? otStartHtml("Team needs you?", "Start after-hours OT") : "");
     }
     else if (row.lunch_out && !row.lunch_in) { main.textContent = "End lunch"; main.dataset.a = "lunch_end"; main.classList.add("lunch"); }
     else if (!row.lunch_out) {
@@ -232,6 +239,7 @@
     if (a === "ot_end") {
       const o = r.ot_sessions?.filter((x) => x.ended_at).pop();
       if (o?.auto_stopped) B.toast("It ran over 4 hours, so it was stopped at 4:00. An admin can fix the time.", "err");
+      else if (!todayRow()?.time_in) B.toast("OT ended. Clock in when your shift starts.");
     }
     if (newBadges.length || onTimeIn || after.level.n > before.level.n) B.confetti();
     renderToday(); loadRoster(); bumpIdle();
@@ -451,7 +459,7 @@
   // Copies the message in the group's format; the person pastes it into the WhatsApp group themselves.
   const waText = () => {
     const ot = data && openOt(), row = data && (ot ? data.rows.find((r) => r.work_date === ot.work_date) : todayRow());
-    return row?.time_in ? B.whatsappText(row, data.staff, data.settings, otOf(row.work_date)) : "";
+    return row && (row.time_in || otOf(row.work_date).length) ? B.whatsappText(row, data.staff, data.settings, otOf(row.work_date)) : "";
   };
   function renderWa() { $("waNotify").setAttribute("aria-disabled", String(!waText())); }
   $("waNotify").addEventListener("click", async () => {
