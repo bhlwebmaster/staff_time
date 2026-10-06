@@ -141,30 +141,15 @@
 
     // actions
     const main = $("actMain"), alt = $("actAlt"), ot = openOt();
+    renderOtCard(row, ot);
     main.hidden = false; main.disabled = false; main.className = "btn primary big"; alt.innerHTML = ""; armedOut = false;
-    const sessions = row ? otOf(row.work_date) : [];
-    const otStartHtml = (q, btn) => `<div class="stack" style="gap:8px;width:100%"><label class="f">${q} <span class="muted" style="font-weight:400">Who asked and what for</span>
-      <input type="text" id="otNote" maxlength="300" placeholder="e.g. James: fix checkout email"></label>
-      <button class="btn ${row?.time_out ? "primary" : ""}" data-a="ot_start">${btn}</button></div>`;
-    const otList = sessions.length ? `<p class="muted" style="margin:0;font-size:13px">After-hours OT today: ${sessions.map((o) =>
-      `<span class="mono">${B.clockIn(new Date(o.started_at), set.timezone)}–${o.ended_at ? B.clockIn(new Date(o.ended_at), set.timezone) : "now"}</span>`).join(", ")}${row.after_mins ? ` (${B.fmtMins(row.after_mins)})` : ""}</p>` : "";
-    if (ot) {
-      main.textContent = "End OT"; main.dataset.a = "ot_end"; main.classList.add("out");
-      alt.innerHTML = `<p style="margin:0">On after-hours OT since <b class="mono">${B.clockIn(new Date(ot.started_at), set.timezone)} UK</b>
-        (${B.clockIn(new Date(ot.started_at), LOCAL_TZ)} ${B.esc(cfg.LOCAL_LABEL || "")}). <span class="muted">${B.esc(ot.note)}</span></p>
-        <p class="muted" style="margin:0;font-size:12.5px">Tap End OT when you're done. If you forget, it stops by itself after 4 hours and an admin checks it.</p>`;
-    }
-    else if (!row?.time_in) {
+    if (!row?.time_in) {
       main.textContent = "Clock in"; main.dataset.a = "in";
-      // Pre-shift OT: called in before the shift starts (working days only; on a rest day Clock in counts it all as OT)
-      const tp = todayPlan(st);
-      if (canOt() && (!tp || tp.kind === "shift")) alt.innerHTML = otList + otStartHtml("Called in before your shift?", "Start OT before shift");
-      else alt.innerHTML = otList;
+      if (ot) { main.disabled = true; main.textContent = "Clock in (end your OT first)"; }
     }
     else if (row.time_out) {
       main.hidden = true;
-      alt.innerHTML = `<p style="margin:0">You clocked out at <b class="mono">${B.clockIn(new Date(row.time_out), set.timezone)}</b>. ${canOt() ? "" : "See you tomorrow."}</p>${otList}`
-        + (canOt() ? otStartHtml("Team needs you?", "Start after-hours OT") : "");
+      alt.innerHTML = `<p style="margin:0">You clocked out at <b class="mono">${B.clockIn(new Date(row.time_out), set.timezone)}</b>.${canOt() ? "" : " See you tomorrow."}</p>`;
     }
     else if (row.lunch_out && !row.lunch_in) { main.textContent = "End lunch"; main.dataset.a = "lunch_end"; main.classList.add("lunch"); }
     else if (!row.lunch_out) {
@@ -197,6 +182,39 @@
     renderTeam();
   }
 
+  // ---------- out-of-hours OT card (pre-shift and post-shift, live Start/End) ----------
+  function renderOtCard(row, ot) {
+    const box = $("otCard"), set = data.settings;
+    box.hidden = !canOt();
+    if (box.hidden) return;
+    const uk = (v) => B.clockIn(new Date(v), set.timezone), ph = (v) => B.clockIn(new Date(v), LOCAL_TZ);
+    const kindOf = (o) => (row?.time_in && new Date(o.started_at) >= new Date(row.time_in) ? "Post-shift" : "Pre-shift");
+    const sessions = row ? otOf(row.work_date) : [];
+    const list = sessions.filter((o) => o.ended_at).map((o) => `<div class="ot-s"><span>${kindOf(o)}</span>
+      <span class="mono">${uk(o.started_at)}–${uk(o.ended_at)} UK</span><span class="mono muted">${ph(o.started_at)}–${ph(o.ended_at)} ${B.esc(cfg.LOCAL_LABEL || "")}</span>
+      <span class="muted">${B.esc(o.note)}</span></div>`).join("");
+    const total = row?.after_mins ? `<p class="muted" style="margin:0;font-size:12.5px">Total out-of-hours today: <b>${B.fmtMins(row.after_mins)}</b>. It's added to your day, then counted in ${set.ot_block_mins}-minute OT blocks.</p>` : "";
+    let body;
+    if (ot) {
+      body = `<div class="ot-live"><b>${kindOf(ot)} OT running</b>
+        <span>since <b class="mono">${uk(ot.started_at)} UK</b> · ${ph(ot.started_at)} ${B.esc(cfg.LOCAL_LABEL || "")}</span>
+        <span class="muted">${B.esc(ot.note)}</span></div>
+        <button class="btn primary big out" data-a="ot_end">End OT</button>
+        <p class="muted" style="margin:0;font-size:12.5px">Forget to tap it? It stops by itself after 4 hours and an admin checks the time.</p>`;
+    } else {
+      const tp = todayPlan(data.staff), workDay = !tp || tp.kind === "shift" || !!row?.time_in;
+      const pre = !row?.time_in && workDay, post = !!row?.time_out;
+      const hint = !workDay ? "Not a working day: just use Clock in, all your time today counts as OT."
+        : row?.time_in && !row.time_out ? "You're on your shift. Post-shift OT opens after you clock out." : "";
+      body = `<label class="f">Who asked and what for<input type="text" id="otNote" maxlength="300" placeholder="e.g. James: fix checkout email" ${pre || post ? "" : "disabled"}></label>
+        <div class="ot-btns"><button class="btn ${pre ? "primary" : ""}" data-a="ot_start" ${pre ? "" : "disabled"}>Start pre-shift OT</button>
+        <button class="btn ${post ? "primary" : ""}" data-a="ot_start" ${post ? "" : "disabled"}>Start post-shift OT</button></div>
+        ${hint ? `<p class="muted" style="margin:0;font-size:12.5px">${hint}</p>` : ""}`;
+    }
+    $("otCardBody").innerHTML = body + (list ? `<div class="ot-list">${list}</div>` : "") + total;
+  }
+  $("otCard").addEventListener("click", (e) => { const b = e.target.closest("button[data-a]"); if (b && !b.disabled) act(b.dataset.a, b); });
+
   async function act(a, btn) {
     const row = todayRow();
     if (a === "out" && !armedOut) {
@@ -226,7 +244,7 @@
     const before = game();
     data = r;
     const after = game();
-    const words = { in: "Clocked in", lunch_start: "Enjoy your lunch", lunch_end: "Welcome back", out: "Clocked out", note: "Note saved", ot_start: "After-hours OT started", ot_end: "After-hours OT ended" };
+    const words = { in: "Clocked in", lunch_start: "Enjoy your lunch", lunch_end: "Welcome back", out: "Clocked out", note: "Note saved", ot_start: "OT started", ot_end: "OT ended" };
     const gained = after.xp - before.xp;
     const newBadges = after.badges.filter((b, i) => b.earned && !before.badges[i].earned);
     let msg = `${words[a]} · ${B.clockIn(new Date(r.now), r.settings.timezone)} UK`;
@@ -246,7 +264,7 @@
     // Only the start and end of the shift go to the group (not lunch)
     if (a === "in" || a === "out" || a === "ot_start" || a === "ot_end") {
       $("waHintTitle").textContent = { in: "Tell the group you're in", out: "Tell the group you've clocked out",
-        ot_start: "Tell the group you're on after-hours OT", ot_end: "Tell the group you've finished OT" }[a];
+        ot_start: "Tell the group you're on OT", ot_end: "Tell the group you've finished OT" }[a];
       $("waHint").hidden = false;
       const w = $("waNotify"); w.classList.remove("nudge"); void w.offsetWidth; w.classList.add("nudge");
       w.scrollIntoView({ block: "center", behavior: "smooth" });
