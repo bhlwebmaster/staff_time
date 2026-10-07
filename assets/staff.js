@@ -316,7 +316,7 @@
     if (c.carry) {
       const left = c.complete ? c.otAvail - c.otUsed : c.otAvail;
       $("otTitle").textContent = c.complete ? (c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT from your bank today.` : "Your OT bank wasn't needed today.")
-        : `${B.fmtMins(c.otAvail)} OT from your bank covers you today.`;
+        : `Your ${B.fmtMins(c.otAvail)} OT bank covers any short time today.`;
       $("otSub").textContent = c.complete ? `Your bank is now ${B.fmtMins(c.bankAfter ?? left)}.` : "Start later or leave earlier by up to that much. Whatever you don't use stays in your bank.";
     } else if (c.complete) {
       $("otTitle").textContent = c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT${from} today.` : `Your ${B.fmtMins(c.otAvail)} OT${from} wasn't needed today.`;

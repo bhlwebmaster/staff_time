@@ -364,7 +364,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
         <li>The day's time (shift + out-of-hours) is added up, then counted in <b>30-minute blocks</b>. Two 20-minute calls = 0:30 OT.</li>
         <li><b>Your OT carries over</b> until you use it, in your <b>OT bank</b>. It doesn't expire the next day and it isn't paid.</li>
         <li>At clock-in, choose <b>how much</b> of your bank to use (start later or leave earlier). You can use up to <b>3 hours a day</b> (the most you can is picked for you; choose less if you like). The rest stays banked for another day.</li>
-        <li>Leave early by more than that? Only the daily max comes out of the bank; the rest shows as <b>Short</b>.</li>
+        <li>Any other short time (e.g. a half day that ends early) comes out of your bank too. Only when the bank is empty does the rest count as <b>Short</b> (undertime on your payslip).</li>
         <li>On a <b>rest day</b>, every minute counts as OT. Use <b>Start rest-day OT</b> for each call, or <b>Clock in</b> / <b>Clock out</b> for a longer stretch.</li>
         <li>On leave or a public holiday the buttons are off. If you're called in, ask an admin to add the OT.</li>
       </ul>
@@ -663,7 +663,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
           <tr><td><b>OT</b></td><td>Worked − expected, in whole blocks (default <b>30 min</b>: 45 → 0:30, 1:20 → 1:00).</td></tr>
           <tr><td><b>OT use</b></td><td>Only on the next work day (the next clock-in within 4 days, so Friday → Monday). Unused OT expires. Staff choose Start later / Leave earlier at clock-in.</td></tr>
           <tr><td><b>Out-of-hours OT</b></td><td>Only for people with <b>Out-of-hours OT</b> ticked (Staff → Edit). They clock pre-shift OT (before clocking in, working days), post-shift OT (after clocking out) and rest-day OT with a note; the minutes are added to that day's worked time before rounding. A session nobody ends stops after 4 hours and is flagged.</td></tr>
-          <tr><td><b>OT bank</b></td><td>For those same people: OT <b>carries over</b> until used (no expiry, not paid). They pick how much to use at clock-in, up to the <b>Max OT bank use per day</b> (Settings, default 3 h); short time beyond that is undertime. Above the <b>OT bank cap</b> (Settings, default 8 h) it's still banked but flagged in Timesheets.</td></tr>
+          <tr><td><b>OT bank</b></td><td>For those same people: OT <b>carries over</b> until used (no expiry, not paid). They pick how much to use at clock-in, up to the <b>Max OT bank use per day</b> (Settings, default 3 h). Any other short time is taken from the whole bank; it's undertime only once the bank is empty. Above the <b>OT bank cap</b> (Settings, default 8 h) it's still banked but flagged in Timesheets.</td></tr>
           <tr><td><b>Short</b></td><td>Under expected hours after OT is used. Counts as undertime in payroll.</td></tr>
           <tr><td><b>Late</b></td><td>After start + grace (5 min). With <b>Judge by hours</b> on, a day with full hours isn't late.</td></tr>
           <tr><td><b>No lunch logged</b></td><td>A day with a planned lunch but no taps. Worth a quick check.</td></tr>

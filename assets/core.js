@@ -150,7 +150,7 @@
   const OT_WINDOW_DAYS = 4;
   /** Carry-over OT bank (people with After-hours OT on, from staff.ot_carry_from): OT never expires, it waits until used. */
   const carriesOt = (staff, date) => !!staff.ot_carry_from && date >= staff.ot_carry_from;
-  /** The most of a carry-over bank that one day can use (Settings → Max OT bank use per day). Admin "Extra OT credit" is on top. */
+  /** The most of a carry-over bank someone can plan to use at clock-in (Settings → Max OT bank use per day). Other short time takes from the whole bank. */
   const dailyUse = (settings) => Math.max(0, settings.ot_daily_use_mins ?? 180);
   /**
    * Work out every day for one person, in date order, passing each work day's OT to the next work day.
@@ -164,19 +164,16 @@
     const out = new Map(); let bank = 0, bankFrom = null, bankDate = null;
     for (const r of list) {
       const carry = carriesOt(staff, r.work_date);
-      let avail = Number(r.ot_adjust) || 0, from = null, held = 0;
+      let avail = Number(r.ot_adjust) || 0, from = null;
       const live = bank > 0 && bankDate && (carry || daysApart(bankDate, r.work_date) <= OT_WINDOW_DAYS);
-      if (live) {
-        const usable = carry ? Math.min(bank, dailyUse(settings)) : bank;   // carry-over bank: only so much per day
-        avail += usable; held = bank - usable; from = bankFrom;
-      }
+      if (live) { avail += bank; from = bankFrom; }   // short time takes from the whole bank; undertime only once it's empty
       const c = calcDay(r, staff, settings, { avail, availFrom: from });
       c.carry = carry;
       out.set(r.work_date, c);
       if (carry) c.bankAfter = bank;   // until the day is done, the whole bank is still there
       if (!r.time_in && !c.complete) continue;
       if (carry) {
-        const left = held + avail - (c.complete ? c.otUsed : 0), add = c.complete ? c.ot : 0;
+        const left = avail - (c.complete ? c.otUsed : 0), add = c.complete ? c.ot : 0;
         if (left <= 0) bankFrom = add ? r.work_date : null;   // bank was used up: what's left starts from today
         else if (!bankFrom) bankFrom = r.work_date;
         bank = left + add;
@@ -201,7 +198,7 @@
     const t = all.get(today);
     if (t) {
       const left = Math.max(0, t.otAvail - (t.complete ? t.otUsed : 0));
-      return { mins: t.carry ? t.bankAfter ?? t.otAvail : left, use: left, from: t.otFrom, used: t.otUsed, today: true, carry: t.carry };
+      return { mins: t.carry ? t.bankAfter ?? t.otAvail : left, use: t.carry ? Math.min(left, dailyUse(settings)) : left, from: t.otFrom, used: t.otUsed, today: true, carry: t.carry };
     }
     if (all.bank > 0 && all.bankDate && (all.carry || daysApart(all.bankDate, today) <= OT_WINDOW_DAYS))
       return { mins: all.bank, use: all.carry ? Math.min(all.bank, dailyUse(settings)) : all.bank, from: all.bankFrom, used: 0, today: false, carry: all.carry };
