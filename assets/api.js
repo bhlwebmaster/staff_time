@@ -24,6 +24,9 @@
     requestWeek: async (staff, pin, week, days, note) => unwrap(await sb.rpc("request_week", { p_staff: staff, p_pin: pin, p_week: week, p_days: days, p_note: note || null })),
     myScheduleRequests: async (staff, pin) => unwrap(await sb.rpc("my_schedule_requests", { p_staff: staff, p_pin: pin })),
     cancelScheduleRequest: async (staff, pin, id) => unwrap(await sb.rpc("cancel_schedule_request", { p_staff: staff, p_pin: pin, p_id: id })),
+    savePush: async (staff, pin, sub, ua) => unwrap(await sb.rpc("save_push", { p_staff: staff, p_pin: pin, p_endpoint: sub.endpoint,
+      p_p256dh: sub.keys?.p256dh || "", p_auth: sub.keys?.auth || "", p_ua: ua || null })),
+    removePush: async (staff, pin, endpoint) => unwrap(await sb.rpc("remove_push", { p_staff: staff, p_pin: pin, p_endpoint: endpoint })),
     punch: async (staff, pin, action, extra = {}) =>
       unwrap(await sb.rpc("punch", { p_staff: staff, p_pin: pin, p_action: action,
         p_sched_start: extra.sched_start || null, p_sched_end: extra.sched_end || null, p_note: extra.note ?? null })),
@@ -43,6 +46,16 @@
       saveHoliday: async (h) => unwrap(await sb.from("holidays").upsert(h, { onConflict: "holiday_date" })),
       deleteHoliday: async (d) => unwrap(await sb.from("holidays").delete().eq("holiday_date", d)),
       saveSettings: async (s) => unwrap(await sb.from("settings").update(s).eq("id", 1)),
+      notifyRules: async () => unwrap(await sb.from("notify_rules").select("*")),
+      saveNotifyRules: async (rows) => unwrap(await sb.from("notify_rules").upsert(rows, { onConflict: "kind" })),
+      pushPhones: async () => unwrap(await sb.from("push_subscriptions").select("staff_id, user_agent, created_at, last_ok_at")),
+      testPush: async () => {
+        const { data, error } = await sb.functions.invoke("send-reminders", { body: { test: true } });
+        if (!error) return data;
+        let msg = error.message; try { const j = await error.context.json(); if (j?.error) msg = j.error; } catch {}
+        if (/Failed to send|not found/i.test(msg)) msg = "The send-reminders Edge Function isn't deployed yet (see README → Reminders).";
+        throw new Error(msg);
+      },
       staff: async () => unwrap(await sb.rpc("admin_staff")),
       saveStaff: async (s) => s.id ? unwrap(await sb.from("staff").update(s).eq("id", s.id)) : unwrap(await sb.from("staff").insert(s)),
       resetPin: async (id) => unwrap(await sb.from("staff").update({ pin_hash: null, failed_attempts: 0, locked_until: null }).eq("id", id)),
@@ -109,5 +122,5 @@
   if (cfgMissing) showSetupProblem("This app isn't set up yet", "The connection settings in <code>config.js</code> are missing. Ask the webmaster (biohack.webmaster@gmail.com) to add the Supabase URL and key.");
   else if (libMissing) showSetupProblem("Can't connect right now", "Part of the app couldn't load. Check your internet connection and try again.");
   const broken = new Proxy({}, { get: () => async () => { throw new Error("The app isn't connected. Try again in a moment."); } });
-  window.BHL.api = cfgMissing || libMissing ? Object.assign(Object.create(null), { ready: false, admin: broken, roster: broken.x, punch: broken.x, myPayslips: broken.x, weekSchedule: broken.x, requestWeek: broken.x, myScheduleRequests: broken.x, cancelScheduleRequest: broken.x, setPin: broken.x, setProfile: broken.x }) : Object.assign(live, { ready: true });
+  window.BHL.api = cfgMissing || libMissing ? Object.assign(Object.create(null), { ready: false, admin: broken, roster: broken.x, punch: broken.x, myPayslips: broken.x, weekSchedule: broken.x, requestWeek: broken.x, myScheduleRequests: broken.x, cancelScheduleRequest: broken.x, setPin: broken.x, setProfile: broken.x, savePush: broken.x, removePush: broken.x }) : Object.assign(live, { ready: true });
 })();

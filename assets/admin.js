@@ -398,7 +398,44 @@
     $("stDaily").value = (settings.ot_daily_use_mins ?? 180) / 60;
     $("stFlex").checked = settings.flex_hours !== false;
     renderHolidays();
+    loadReminders();
   }
+  // ---------- shift reminders (push notifications) ----------
+  const REM = { start: ["Before the shift starts", "minutes before start"], lunch: ["Lunch break nudge", "minutes after start"], end: ["Before the shift ends", "minutes before end"] };
+  let remRules = [];
+  async function loadReminders() {
+    try { [remRules] = await Promise.all([A.notifyRules()]); } catch (err) { $("remRules").innerHTML = `<p class="muted" style="margin:0">Reminders aren't set up in the database yet. Run supabase/database-update.sql.</p>`; return; }
+    $("remKey").value = settings.push_public_key || "";
+    $("remRules").innerHTML = Object.keys(REM).map((k) => { const r = remRules.find((x) => x.kind === k) || { kind: k, enabled: false, offset_mins: 30, title: "", body: "" };
+      return `<div class="stack rem" data-k="${k}" style="gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px">
+        <div class="row" style="gap:10px;flex-wrap:wrap"><label class="check" style="margin:0"><input type="checkbox" data-f="enabled" ${r.enabled ? "checked" : ""}> <b>${REM[k][0]}</b></label><span class="spacer"></span>
+          <label class="row" style="gap:6px;align-items:center;font-size:13px"><input type="number" data-f="offset_mins" min="0" max="720" value="${r.offset_mins}" style="width:90px"> ${REM[k][1]}</label></div>
+        <input type="text" data-f="title" maxlength="60" value="${B.esc(r.title)}" placeholder="Title" aria-label="${REM[k][0]} title">
+        <textarea data-f="body" rows="2" maxlength="240" placeholder="Message" aria-label="${REM[k][0]} message">${B.esc(r.body)}</textarea></div>`; }).join("");
+    try {
+      const phones = await A.pushPhones(), per = {};
+      for (const p of phones) per[p.staff_id] = (per[p.staff_id] || 0) + 1;
+      const names = Object.entries(per).map(([id, n]) => `${byId(id)?.display_name || "?"}${n > 1 ? ` (${n})` : ""}`);
+      $("remPhones").textContent = names.length ? `Reminders on: ${names.join(", ")}` : "No phones have reminders on yet.";
+    } catch { $("remPhones").textContent = ""; }
+  }
+  $("remForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const rows = [...$("remRules").querySelectorAll(".rem")].map((d) => ({ kind: d.dataset.k, enabled: d.querySelector('[data-f="enabled"]').checked,
+      offset_mins: Math.max(0, Math.min(720, Math.round(+d.querySelector('[data-f="offset_mins"]').value || 0))),
+      title: d.querySelector('[data-f="title"]').value.trim(), body: d.querySelector('[data-f="body"]').value.trim() }));
+    if (rows.some((r) => !r.title || !r.body)) return B.toast("Each reminder needs a title and a message.", "err");
+    const key = $("remKey").value.trim() || null;
+    try { await A.saveNotifyRules(rows); await A.saveSettings({ push_public_key: key }); settings.push_public_key = key; B.toast("Reminders saved"); }
+    catch (err) { B.toast(err.message, "err"); }
+  };
+  $("remTest").onclick = async () => {
+    $("remTest").disabled = true;
+    try { const r = await A.testPush(); B.toast(r.phones ? `Test sent to ${r.sent} of ${r.phones} phone${r.phones > 1 ? "s" : ""}` : "No phones have reminders on yet."); }
+    catch (err) { B.toast(err.message, "err"); }
+    $("remTest").disabled = false;
+  };
+
   $("setForm").onsubmit = async (e) => {
     e.preventDefault();
     const s = { company_name: $("stCompany").value.trim(), timezone: $("stTz").value, grace_mins: +$("stGrace").value,

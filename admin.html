@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20261007f">
+<link rel="stylesheet" href="assets/style.css?v=20261007g">
 <style>
   main { padding-block: 22px 70px; }
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -368,6 +368,16 @@
         Less time shows as Short and is covered by OT first.</p>
       <div><button class="btn primary" type="submit">Save settings</button></div>
     </form>
+    <form id="remForm" class="card pad stack" style="max-width:820px;margin-top:16px">
+      <div><div class="eyebrow">Phone notifications</div><h2 style="font-size:19px;margin-top:2px">Shift reminders</h2></div>
+      <p class="muted" style="margin:0;font-size:13px">Sent to staff who turned on reminders in the app (on a phone, add the app to the home screen first).
+        Working days only, and skipped when they no longer apply (e.g. no "start" reminder once they've clocked in). Times follow each person's shift for that day.</p>
+      <div id="remRules" class="stack" style="gap:12px"></div>
+      <label class="f">Push public key <span class="muted" style="font-weight:400">from the setup steps (README → Reminders). Without it, staff can't turn reminders on.</span>
+        <input type="text" id="remKey" autocomplete="off" spellcheck="false" placeholder="B…"></label>
+      <div class="row adminonly" style="gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Save reminders</button>
+        <button class="btn" type="button" id="remTest">Send a test to all phones</button><span class="muted" id="remPhones" style="font-size:13px"></span></div>
+    </form>
     <div class="card pad stack" style="max-width:820px;margin-top:16px">
       <div class="row" style="flex-wrap:wrap;gap:8px"><div><div class="eyebrow">Philippines</div><h2 style="font-size:19px;margin-top:2px">Public holidays</h2></div><span class="spacer"></span>
         <select id="holYear" aria-label="Year" style="width:auto;min-width:110px"></select></div>
@@ -520,13 +530,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20261007f"></script>
-<script src="assets/core.js?v=20261007f"></script>
-<script src="assets/game.js?v=20261007f"></script>
-<script src="assets/schedule.js?v=20261007f"></script>
-<script src="assets/logo.js?v=20261007f"></script>
-<script src="assets/payroll.js?v=20261007f"></script>
-<script src="assets/api.js?v=20261007f"></script>
-<script src="assets/admin.js?v=20261007f"></script>
+<script src="config.js?v=20261007g"></script>
+<script src="assets/core.js?v=20261007g"></script>
+<script src="assets/game.js?v=20261007g"></script>
+<script src="assets/schedule.js?v=20261007g"></script>
+<script src="assets/logo.js?v=20261007g"></script>
+<script src="assets/payroll.js?v=20261007g"></script>
+<script src="assets/api.js?v=20261007g"></script>
+<script src="assets/admin.js?v=20261007g"></script>
 </body>
 </html>

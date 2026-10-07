@@ -67,6 +67,8 @@ alter table public.staff add column if not exists ot_carry_from date;
 alter table public.settings add column if not exists ot_bank_cap_mins int not null default 480;
 -- The most of a carry-over OT bank one day can use (the rest stays banked)
 alter table public.settings add column if not exists ot_daily_use_mins int not null default 180;
+-- Public half of the push-notification keys (Settings → Reminders); the staff app needs it to turn reminders on
+alter table public.settings add column if not exists push_public_key text;
 -- Minutes of finished after-hours OT sessions on this day (kept up to date from ot_sessions)
 alter table public.attendance add column if not exists after_mins int not null default 0;
 -- What the schedule says the day is (shift, rest, holiday, leave). Rest days count every minute as OT. Set in schedule.sql.
@@ -253,7 +255,7 @@ language sql stable security definer set search_path = public as $$
     'today',    (select today from d),
     'settings', (select json_build_object('timezone', timezone, 'grace_mins', grace_mins,
                    'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours, 'company_name', company_name,
-                   'ot_bank_cap_mins', ot_bank_cap_mins, 'ot_daily_use_mins', ot_daily_use_mins) from s),
+                   'ot_bank_cap_mins', ot_bank_cap_mins, 'ot_daily_use_mins', ot_daily_use_mins, 'push_public_key', push_public_key) from s),
     'staff', coalesce((
       select json_agg(json_build_object(
         'id', st.id, 'display_name', st.display_name, 'full_name', st.full_name,

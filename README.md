@@ -129,6 +129,18 @@ In **Admin → Reports**:
 
 Use ← / → to step back or forward a period, and filter to one person if needed. **Export PDF** downloads a landscape A4 report: summary figures, the hours table with totals, full daily detail (missing clock-outs highlighted), and page numbers. **CSV** gives the same table in decimal hours for spreadsheets or invoicing.
 
+## Reminders (push notifications)
+Staff can turn on **Shift reminders** in the app: a notification before the shift starts (default 30 min), a lunch break nudge (default 4 h after start, just a reminder: it doesn't start lunch) and one before the shift ends (default 30 min). Working days only; each is skipped when it no longer applies (no "start" once clocked in, no lunch nudge once on or after lunch, no "end" once clocked out). Admins change the times, titles and messages in **Settings → Shift reminders**.
+
+On iPhone it only works from the home-screen app (Share → Add to Home Screen, iOS 16.4+). Android Chrome works in the browser or installed.
+
+**One-time setup (Supabase):**
+1. Run `supabase/database-update.sql` (adds the reminder tables).
+2. **Edge Functions → Secrets**: add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:biohack.webmaster@gmail.com`) and `CRON_SECRET` (a long random text). Generate the key pair with `npx web-push generate-vapid-keys`.
+3. **Edge Functions → Deploy a new function → Via Editor**, name it `send-reminders`, paste `supabase/functions/send-reminders/index.ts`, Deploy, then turn **off** "Verify JWT" in its settings.
+4. **Database → Extensions**: turn on `pg_cron` and `pg_net`. Put your `CRON_SECRET` into `supabase/reminders-cron.sql` and run it (every 5 minutes).
+5. Admin → **Settings → Shift reminders**: paste the public key, Save, then **Send a test to all phones** once someone has turned reminders on.
+
 ## How the numbers work
 All times are **UK time** (Europe/London). That's the "GMT" the team already uses in WhatsApp, and it follows BST automatically. You can change it in Settings.
 
@@ -180,5 +192,9 @@ supabase/security.sql locks internal/admin functions (Security Advisor)
                       (after-hours OT: ot_sessions table, ot_start/ot_end in punch(), in schema.sql)
 supabase/production-cleanup.sql   optional: clear test entries before go-live
 supabase/functions/admin-users/index.ts   Edge Function: create / change / remove logins
+supabase/functions/send-reminders/index.ts   Edge Function: shift reminders (push notifications)
+supabase/reminders.sql   reminder tables (included in database-update.sql)
+supabase/reminders-cron.sql   one-time: run send-reminders every 5 minutes
+sw.js                 service worker: shows the reminders
 .nojekyll         tells GitHub Pages to serve files as-is
 ```

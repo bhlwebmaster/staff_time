@@ -21,6 +21,7 @@ revoke execute on function public._ot_day_sync(uuid, date)        from public, a
 revoke execute on function public._ot_sessions_sync()             from public, anon, authenticated;
 revoke execute on function public._attendance_day_kind()          from public, anon, authenticated;
 revoke execute on function public._schedule_days_sync()           from public, anon, authenticated;
+revoke execute on function public.due_reminders(int)              from public, anon, authenticated;
 
 -- Admin / finance only: signed-in users (each one also checks the admin role inside)
 revoke execute on function public.admin_staff()                               from public, anon;
@@ -46,5 +47,7 @@ grant execute on function public.my_payslips(uuid, text)                        
 grant execute on function public.request_week(uuid, text, date, jsonb, text)                to anon, authenticated;
 grant execute on function public.my_schedule_requests(uuid, text)                           to anon, authenticated;
 grant execute on function public.cancel_schedule_request(uuid, text, uuid)                  to anon, authenticated;
+grant execute on function public.save_push(uuid, text, text, text, text, text)              to anon, authenticated;
+grant execute on function public.remove_push(uuid, text, text)                              to anon, authenticated;
 
 notify pgrst, 'reload schema';

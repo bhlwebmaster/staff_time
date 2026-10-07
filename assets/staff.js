@@ -175,6 +175,7 @@
     $("mHours").textContent = B.fmtMins(sum.worked);
     const otNow = B.otToday(data.rows, st, set, today);
     renderBank(otNow, today);
+    renderReminders();
     $("mBank").textContent = B.fmtMins(otNow.mins);
     $("mBank").style.color = otNow.mins > 0 ? "var(--accent)" : "";
     $("mBankLbl").textContent = otNow.carry ? "OT in your bank" : "OT to use today";
@@ -203,6 +204,50 @@
     $("bankNote").textContent = !o.mins ? "No OT in your bank yet. Out-of-hours and extra time you work is added here."
       : `Try to use it before the cut-off: start later or leave earlier, up to ${B.fmtMins(max)} a day (pick it when you clock in).`;
   }
+
+  // ---------- shift reminders (push notifications on this phone) ----------
+  const canPush = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent), installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  let swReg = null;
+  if (canPush) navigator.serviceWorker.register("sw.js").then((r) => { swReg = r; if (data) renderReminders(); }).catch(() => {});
+  const b64 = (s) => { const p = "=".repeat((4 - (s.length % 4)) % 4), raw = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from([...raw].map((c) => c.charCodeAt(0))); };
+  async function renderReminders() {
+    const card = $("remCard"), key = roster?.settings?.push_public_key;
+    card.hidden = !key;   // an admin hasn't set reminders up yet
+    if (card.hidden) return;
+    const state = $("remState"), btns = $("remBtns"), text = $("remText");
+    const set = (pill, label, html, note) => { state.className = "pill " + pill; state.textContent = label; btns.innerHTML = html; if (note) text.textContent = note; };
+    text.textContent = "Get a notification on this phone before your shift starts, a lunch break nudge, and before your shift ends.";
+    if (isIos && !installed) return set("absent", "Off", "", "On iPhone, reminders work from the home-screen app: tap Share → Add to Home Screen, open the app from there, then turn reminders on.");
+    if (!canPush) return set("absent", "Off", "", "This browser can't show reminders. Try Chrome on Android, or the home-screen app on iPhone.");
+    if (Notification.permission === "denied") return set("late", "Blocked", "", "Notifications are blocked for this app. Allow them in your phone's settings, then come back.");
+    const sub = swReg && (await swReg.pushManager.getSubscription());
+    const mine = sub && B.lsGet("bhl.push.staff") === me.id;
+    if (mine) set("in", "On", `<button class="btn" data-rem="test">Show a test</button><button class="btn ghost" data-rem="off">Turn off</button>`);
+    else set("absent", "Off", `<button class="btn primary" data-rem="on">Turn on reminders</button>`);
+  }
+  $("remBtns").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-rem]"); if (!b) return;
+    b.disabled = true;
+    try {
+      const reg = swReg || (await navigator.serviceWorker.ready);
+      if (b.dataset.rem === "on") {
+        if ((await Notification.requestPermission()) !== "granted") { B.toast("Notifications weren't allowed.", "err"); return renderReminders(); }
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(roster.settings.push_public_key) });
+        const r = await api.savePush(me.id, pin, sub.toJSON(), navigator.userAgent);
+        if (!r.ok) throw new Error(r.error);
+        B.lsSet("bhl.push.staff", me.id); B.toast("Reminders are on for this phone");
+      } else if (b.dataset.rem === "off") {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) { await api.removePush(me.id, pin, sub.endpoint).catch(() => {}); await sub.unsubscribe(); }
+        B.lsSet("bhl.push.staff", null); B.toast("Reminders are off for this phone");
+      } else {
+        await reg.showNotification("Test reminder", { body: "This is how your shift reminders will look.", icon: "assets/icon-192.png", tag: "bhl-test", actions: [{ action: "ok", title: "OK" }] });
+      }
+    } catch (err) { B.toast(err.message || "Couldn't change reminders on this phone.", "err"); }
+    finally { b.disabled = false; renderReminders(); }
+  });
 
   // ---------- out-of-hours OT card (pre-shift and post-shift, live Start/End) ----------
   function renderOtCard(row, ot) {
