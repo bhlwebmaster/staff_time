@@ -3,222 +3,295 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0d7656">
-<title>BHL Attendance Help</title>
+<meta name="theme-color" content="#065C5E">
+<title>BHL Attendance Help Center</title>
 <link rel="icon" href="../favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
 <link rel="manifest" href="../site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
+/* BioHack London help center. Layout after a help-center template: floating nav, centred hero with search,
+   topic cards, docs with a sidebar, contact. Brand: BioHack London teal + Roboto (same as the staff Knowledge Base). */
 :root {
-  --bg: #f1f4f0; --surface: #ffffff; --surface-2: #e8ede7; --ink: #15201b; --muted: #56655d; --line: #d6ded6;
-  --accent: #0d7656; --accent-ink: #ffffff; --accent-soft: #d9efe5; --lunch: #9a6606; --lunch-soft: #f7ebcf;
-  --late: #b23b2a; --late-soft: #f6dcd6; --shadow: 0 1px 2px rgba(20,40,30,.06), 0 10px 28px -14px rgba(20,40,30,.22);
-  --display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
-  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --bg: #F7FAFA; --surface: #ffffff; --surface-2: #EEF7F7; --ink: #10292a; --text: #2C3E3E; --muted: #5A7A7A; --line: #D4E8E8;
+  --accent: #065C5E; --accent-2: #2A5F5F; --accent-hover: #1A4F4F; --deep: #0f2e30; --accent-ink: #ffffff; --accent-soft: #d7f3f4;
+  --glow-1: rgba(42, 160, 156, .22); --glow-2: rgba(110, 196, 190, .20); --glow-3: rgba(6, 92, 94, .12);
+  --lunch: #9a6606; --lunch-soft: #fbf0d6; --late: #b23b2a; --late-soft: #f6dcd6;
+  --shadow: 0 1px 2px rgba(15,46,48,.05), 0 12px 32px -16px rgba(15,46,48,.25);
+  --shadow-lg: 0 2px 4px rgba(15,46,48,.04), 0 24px 60px -24px rgba(15,46,48,.30);
+  --radius: 18px;
+  --display: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0e1412; --surface: #161f1c; --surface-2: #1d2824; --ink: #e6eee9; --muted: #98a89f; --line: #293631;
-    --accent: #3cc491; --accent-ink: #06231a; --accent-soft: #173a2d; --lunch: #e5ad3d; --lunch-soft: #3a2e14;
-    --late: #f07b66; --late-soft: #3f1f1a; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px -14px rgba(0,0,0,.6); color-scheme: dark;
+    --bg: #0b1919; --surface: #112424; --surface-2: #163030; --ink: #e8f4f3; --text: #cfe2e0; --muted: #8fb1ae; --line: #22403f;
+    --accent: #5fc3bd; --accent-2: #7fd3cd; --accent-hover: #8be0da; --deep: #5fc3bd; --accent-ink: #062222; --accent-soft: #173a39;
+    --glow-1: rgba(95,195,189,.14); --glow-2: rgba(42,160,156,.12); --glow-3: rgba(95,195,189,.08);
+    --lunch: #e5ad3d; --lunch-soft: #3a2e14; --late: #f07b66; --late-soft: #3f1f1a;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px -14px rgba(0,0,0,.6); --shadow-lg: 0 24px 60px -24px rgba(0,0,0,.7); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0e1412; --surface: #161f1c; --surface-2: #1d2824; --ink: #e6eee9; --muted: #98a89f; --line: #293631;
-  --accent: #3cc491; --accent-ink: #06231a; --accent-soft: #173a2d; --lunch: #e5ad3d; --lunch-soft: #3a2e14;
-  --late: #f07b66; --late-soft: #3f1f1a; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px -14px rgba(0,0,0,.6); color-scheme: dark;
+  --bg: #0b1919; --surface: #112424; --surface-2: #163030; --ink: #e8f4f3; --text: #cfe2e0; --muted: #8fb1ae; --line: #22403f;
+  --accent: #5fc3bd; --accent-2: #7fd3cd; --accent-hover: #8be0da; --deep: #5fc3bd; --accent-ink: #062222; --accent-soft: #173a39;
+  --glow-1: rgba(95,195,189,.14); --glow-2: rgba(42,160,156,.12); --glow-3: rgba(95,195,189,.08);
+  --lunch: #e5ad3d; --lunch-soft: #3a2e14; --late: #f07b66; --late-soft: #3f1f1a;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px -14px rgba(0,0,0,.6); --shadow-lg: 0 24px 60px -24px rgba(0,0,0,.7); color-scheme: dark;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
-h1, h2, h3 { font-family: var(--display); line-height: 1.15; letter-spacing: -.01em; text-wrap: balance; margin: 0; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+h1, h2, h3 { font-family: var(--display); color: var(--ink); line-height: 1.15; letter-spacing: -.015em; text-wrap: balance; margin: 0; font-weight: 700; }
 a { color: var(--accent); }
 code, .mono { font-family: var(--mono); font-size: .88em; }
 code { background: var(--surface-2); padding: 1px 6px; border-radius: 6px; }
 .wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; }
 :focus-visible { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+img.logo-w { display: none !important; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) img.logo-d { display: none !important; } :root:not([data-theme="light"]) img.logo-w { display: block !important; } }
+:root[data-theme="dark"] img.logo-d { display: none !important; } :root[data-theme="dark"] img.logo-w { display: block !important; }
 
-/* top bar */
-.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: color-mix(in srgb, var(--bg) 90%, transparent);
-  backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
-.bar .wrap { display: flex; gap: 14px; align-items: center; padding-block: 10px; flex-wrap: wrap; }
-.brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 18px; }
-.mark { width: 32px; height: 32px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 12.5px; }
-.switch { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
-.switch button { border: 0; background: transparent; font: 600 14.5px var(--body); color: var(--muted); padding: 7px 16px; border-radius: 9px; cursor: pointer; }
-.switch button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
-.search { margin-left: auto; position: relative; flex: 1 1 220px; max-width: 320px; }
-.search input { width: 100%; font: 500 14.5px var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px 9px 34px; }
-.search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+/* soft brand glow behind the hero, like the template's gradient */
+.glow { position: absolute; inset: 0 0 auto 0; height: 760px; overflow: hidden; pointer-events: none; z-index: 0; }
+.glow::before, .glow::after { content: ""; position: absolute; border-radius: 50%; filter: blur(70px); }
+.glow::before { width: 620px; height: 620px; right: -160px; top: 120px; background: radial-gradient(circle, var(--glow-1), transparent 65%); }
+.glow::after { width: 560px; height: 560px; left: -200px; top: 260px; background: radial-gradient(circle, var(--glow-2), transparent 65%); }
+.grid-lines { position: absolute; inset: 0 0 auto 0; height: 700px; z-index: 0; pointer-events: none; opacity: .5;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 30%, #000 0%, transparent 62%); mask-image: radial-gradient(ellipse at 50% 30%, #000 0%, transparent 62%); }
+
+/* floating nav */
+.bar { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); z-index: 20; padding-inline: 16px; margin-top: 14px; }
+.nav { max-width: 1180px; margin: 0 auto; display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 18px; background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); flex: none; }
+.brand img { height: 34px; width: auto; display: block; }
+.brand .tagline { font-size: 12.5px; color: var(--muted); padding-left: 12px; border-left: 1px solid var(--line); line-height: 1.2; font-weight: 500; }
+.navlinks { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.navlinks a { color: var(--text); text-decoration: none; font-size: 14.5px; font-weight: 500; padding: 7px 12px; border-radius: 10px; }
+.navlinks a:hover { background: var(--surface-2); color: var(--ink); }
+.cta { display: inline-flex; align-items: center; gap: 8px; background: var(--deep); color: #fff !important; font-weight: 600 !important; border-radius: 12px !important; padding: 9px 16px !important; }
+.cta:hover { background: var(--accent) !important; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cta { color: var(--accent-ink) !important; } }
+@media (max-width: 760px) { .navlinks a:not(.cta) { display: none; } .brand .tagline { display: none; } .brand img { height: 30px; } }
 
 /* hero */
-.hero { padding-block: 34px 20px; display: grid; gap: 14px; }
-.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; color: var(--accent); }
-.hero h1 { font-size: clamp(30px, 5vw, 44px); }
-.hero p { margin: 0; color: var(--muted); max-width: 64ch; font-size: 17px; }
-.links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
-.linkcard { display: grid; gap: 2px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: var(--ink); min-width: 0; }
-.linkcard b { font-size: 14px; } .linkcard span { font-family: var(--mono); font-size: 12.5px; color: var(--accent); word-break: break-all; }
+main { position: relative; }
+.hero { position: relative; z-index: 1; text-align: center; padding: 72px 0 36px; display: grid; justify-items: center; gap: 16px; }
+.eyebrow { font-size: 12.5px; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; color: var(--accent); }
+.hero h1 { font-size: clamp(34px, 6vw, 58px); max-width: 20ch; letter-spacing: -.025em; }
+.hero p#heroText { margin: 0; color: var(--muted); max-width: 60ch; font-size: 17px; }
+.search { position: relative; width: min(560px, 100%); margin-top: 8px; }
+.search input { width: 100%; font: 400 16px var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 15px 52px 15px 22px; box-shadow: var(--shadow); }
+.search input::placeholder { color: var(--muted); }
+.search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow); }
+.search svg { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.switch { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px; box-shadow: var(--shadow); }
+.switch button { border: 0; background: transparent; font: 600 14.5px var(--body); color: var(--muted); padding: 9px 18px; border-radius: 10px; cursor: pointer; }
+.switch button[aria-pressed="true"] { background: var(--deep); color: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .switch button[aria-pressed="true"] { color: var(--accent-ink); } }
+.hero .note { font-size: 13px; color: var(--muted); max-width: 70ch; margin: 2px 0 0; }
 
-/* layout */
-.layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 40px; padding-bottom: 80px; }
-@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); gap: 0; } .toc { display: none; } }
-.toc { position: sticky; top: 76px; align-self: start; display: grid; gap: 2px; padding-top: 6px; max-height: calc(100vh - 90px); overflow: auto; }
-.toc a { text-decoration: none; color: var(--muted); font-size: 14px; font-weight: 500; padding: 6px 10px; border-radius: 8px; }
-.toc a:hover { color: var(--ink); background: var(--surface-2); }
-.toc .grp { font-size: 11.5px; text-transform: uppercase; letter-spacing: .09em; font-weight: 700; color: var(--muted); margin: 14px 10px 4px; }
+/* topic cards */
+.quick { position: relative; z-index: 1; padding-block: 8px 40px; }
+.quick h2 { font-size: 26px; text-align: center; margin-bottom: 22px; }
+.qgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; max-width: 980px; margin: 0 auto; }
+@media (max-width: 900px) { .qgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .qgrid { grid-template-columns: minmax(0, 1fr); } }
+.qcard { display: grid; justify-items: center; text-align: center; gap: 12px; padding: 26px 22px 22px; border-radius: var(--radius); background: var(--surface);
+  border: 1px solid var(--line); text-decoration: none; color: var(--ink); box-shadow: var(--shadow); transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.qcard:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.qcard i { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-style: normal; color: var(--accent);
+  background: linear-gradient(145deg, var(--accent-soft), color-mix(in srgb, var(--accent-soft) 40%, var(--surface))); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent); }
+.qcard span { font-weight: 700; font-size: 17px; line-height: 1.3; display: grid; gap: 6px; }
+.qcard small { display: block; font-weight: 400; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.qcard::after { content: "Read the answer →"; font-size: 14px; font-weight: 600; color: var(--accent); margin-top: 2px; }
 
-/* articles */
-.article { padding-block: 34px; border-top: 1px solid var(--line); scroll-margin-top: 70px; }
-.article:first-of-type { border-top: 0; padding-top: 12px; }
-.article h2 { font-size: clamp(22px, 3vw, 28px); display: flex; gap: 12px; align-items: baseline; }
-.article h2 .n { font-family: var(--mono); font-size: 14px; color: var(--accent); font-weight: 600; }
-.article > p.lede { color: var(--muted); margin: 8px 0 0; max-width: 66ch; }
-.split { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; align-items: start; margin-top: 20px; }
+/* docs: sidebar + articles */
+.layout { position: relative; z-index: 1; display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 28px; padding-bottom: 40px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } .side { position: static !important; max-height: none !important; } .side nav { display: none; } }
+.side { position: sticky; top: 96px; display: grid; gap: 16px; max-height: calc(100vh - 110px); overflow: auto; padding-bottom: 6px; }
+.side nav { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 10px; box-shadow: var(--shadow); display: grid; gap: 2px; }
+.toc .grp { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; color: var(--muted); margin: 2px 10px 8px; }
+.toc a { display: flex; gap: 10px; align-items: center; text-decoration: none; color: var(--text); font-size: 14.5px; font-weight: 500; padding: 8px 10px; border-radius: 10px; line-height: 1.3; }
+.toc a b { font: 600 11.5px var(--mono); color: var(--muted); min-width: 20px; }
+.toc a:hover { background: var(--surface-2); color: var(--ink); }
+.toc a.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; } .toc a.on b { color: var(--accent); }
+.helpcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); display: grid; gap: 8px; }
+.helpcard i { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); }
+.helpcard b { color: var(--ink); font-size: 16px; } .helpcard p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.5; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 12px; background: var(--deep); color: #fff; font: 600 14.5px var(--body);
+  padding: 11px 18px; text-decoration: none; cursor: pointer; justify-self: start; }
+.btn:hover { background: var(--accent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn { color: var(--accent-ink); } }
+
+@media (max-width: 900px) { .side nav { display: none; } }
+@media (max-width: 560px) {
+  .qgrid { gap: 10px; }
+  .qcard { grid-template-columns: 44px minmax(0, 1fr); justify-items: start; text-align: left; align-items: center; gap: 14px; padding: 14px 16px; }
+  .qcard i { width: 44px; height: 44px; }
+  .qcard span { font-size: 16px; gap: 2px; }
+  .qcard::after { display: none; }
+  .hero { padding-top: 44px; }
+}
+#content { display: grid; gap: 22px; min-width: 0; }
+.article { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: clamp(20px, 3.2vw, 36px); box-shadow: var(--shadow); scroll-margin-top: 100px; }
+.article h2 { font-size: clamp(23px, 3vw, 30px); display: flex; gap: 14px; align-items: center; }
+.article h2 .n { font: 600 13px var(--mono); color: var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 5px 9px; flex: none; }
+.article > p.lede { color: var(--muted); margin: 10px 0 0; max-width: 66ch; font-size: 16.5px; }
+.article h3 { color: var(--ink); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 30px; align-items: start; margin-top: 22px; }
 .split.wide { grid-template-columns: minmax(0, 1fr); }
-@media (max-width: 720px) { .split { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .split { grid-template-columns: minmax(0, 1fr); } }
 .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; counter-reset: s; }
 .steps li { counter-increment: s; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: start; }
-.steps li::before { content: counter(s); width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
-  font: 700 13px var(--mono); display: grid; place-items: center; margin-top: 1px; }
-.prose p { margin: 0 0 10px; max-width: 66ch; } .prose ul { margin: 0 0 10px; padding-left: 20px; } .prose li { margin-bottom: 4px; }
-.shots { display: flex; gap: 14px; flex-wrap: wrap; }
-figure { margin: 0; display: grid; gap: 6px; }
-figcaption { font-size: 12.5px; color: var(--muted); }
-.phone { width: 230px; max-width: 100%; border-radius: 24px; border: 6px solid var(--ink); overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+.steps li::before { content: counter(s); width: 28px; height: 28px; border-radius: 9px; background: var(--deep); color: #fff; font: 700 13px var(--mono); display: grid; place-items: center; margin-top: 1px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .steps li::before { color: var(--accent-ink); } }
+.prose p { margin: 0 0 10px; max-width: 66ch; } .prose ul { margin: 0 0 10px; padding-left: 20px; } .prose li { margin-bottom: 5px; }
+.prose b, .article b { color: var(--ink); }
+.shots { display: flex; gap: 16px; flex-wrap: wrap; }
+figure { margin: 0; display: grid; gap: 8px; }
+figcaption { font-size: 13px; color: var(--muted); }
+.phone { width: 230px; max-width: 100%; border-radius: 26px; border: 6px solid var(--deep); overflow: hidden; background: var(--surface); box-shadow: var(--shadow-lg); }
 .phone.sm { width: 190px; }
 .phone img, .desk img, .crop img { display: block; width: 100%; height: auto; cursor: zoom-in; }
-.desk { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--surface); }
-.desk::before { content: ""; display: block; height: 22px; background: var(--surface-2); border-bottom: 1px solid var(--line);
-  background-image: radial-gradient(circle at 12px 11px, #e0685a 4px, transparent 5px), radial-gradient(circle at 26px 11px, #e8b24a 4px, transparent 5px), radial-gradient(circle at 40px 11px, #5cb66f 4px, transparent 5px); }
-.crop { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); max-width: 380px; background: var(--surface); }
-.tip { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); margin-top: 14px; font-size: 14.5px; max-width: 70ch; }
-.tip.warn { background: var(--lunch-soft); }
+.desk { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-lg); background: var(--surface); }
+.desk::before { content: ""; display: block; height: 24px; background: var(--surface-2); border-bottom: 1px solid var(--line);
+  background-image: radial-gradient(circle at 13px 12px, #e0685a 4px, transparent 5px), radial-gradient(circle at 27px 12px, #e8b24a 4px, transparent 5px), radial-gradient(circle at 41px 12px, #5cb66f 4px, transparent 5px); }
+.crop { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-lg); max-width: 380px; background: var(--surface); }
+.tip { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; padding: 14px 16px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); margin-top: 16px; font-size: 14.5px; max-width: 70ch; }
+.tip.warn { background: var(--lunch-soft); border-color: color-mix(in srgb, var(--lunch) 25%, transparent); }
 .tip b:first-child { color: var(--accent); } .tip.warn b:first-child { color: var(--lunch); }
 table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
-.tablewrap { overflow-x: auto; margin-top: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
-th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
-td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tablewrap { overflow-x: auto; margin-top: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 11px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
 tr:last-child td { border-bottom: 0; }
 td.num { font-family: var(--mono); white-space: nowrap; color: var(--accent); font-weight: 600; }
 .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin-top: 14px; }
-.badge { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 14px; }
+.badge { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); font-size: 14px; }
 .badge i { width: 34px; height: 34px; border-radius: 50%; background: var(--bc); display: grid; place-items: center; color: #fff; font-style: normal; }
 .badge b { display: block; font-size: 14px; } .badge span { color: var(--muted); font-size: 13px; line-height: 1.35; }
-details.faq { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin-top: 10px; }
-details.faq summary { cursor: pointer; font-weight: 600; padding: 13px 16px; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+details.faq { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); margin-top: 10px; }
+details.faq summary { cursor: pointer; font-weight: 600; color: var(--ink); padding: 14px 18px; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+details.faq summary::-webkit-details-marker { display: none; }
 details.faq summary::after { content: "+"; font-family: var(--mono); color: var(--accent); font-weight: 700; }
 details.faq[open] summary::after { content: "−"; }
-details.faq div { padding: 0 16px 14px; color: var(--muted); max-width: 70ch; }
-.empty { padding: 40px 0; color: var(--muted); }
+details.faq div { padding: 0 18px 16px; color: var(--muted); max-width: 70ch; }
+details.faq:target, details.faq.flash { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.gloss { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 14px; }
+.gloss div { background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 14.5px; }
+.gloss b { display: block; font-size: 16px; margin-bottom: 2px; color: var(--ink); }
+.stuck { margin-top: 18px; padding: 18px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line); display: grid; gap: 6px; max-width: 70ch; }
+.tech { margin-top: 22px; } .tech > summary { cursor: pointer; font-weight: 700; color: var(--muted); }
+.empty { padding: 40px; color: var(--muted); text-align: center; background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); }
 .note { font-size: 13px; color: var(--muted); }
+
+/* contact */
+.contact { position: relative; z-index: 1; padding: 48px 0 30px; display: grid; justify-items: center; text-align: center; gap: 10px; }
+.contact h2 { font-size: clamp(28px, 4vw, 40px); }
+.contact > p { margin: 0; color: var(--muted); max-width: 56ch; }
+.cform { width: min(640px, 100%); margin-top: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: clamp(20px, 3vw, 32px); box-shadow: var(--shadow-lg);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: left; }
+.cform label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.cform .full { grid-column: 1 / -1; }
+.cform input, .cform select, .cform textarea { font: 400 15px var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; width: 100%; }
+.cform textarea { min-height: 120px; resize: vertical; }
+.cform input:focus, .cform select:focus, .cform textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cform .row { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.cform .row span { font-size: 13px; color: var(--muted); max-width: 40ch; }
+@media (max-width: 560px) { .cform { grid-template-columns: minmax(0,1fr); } }
+
+footer.site { position: relative; z-index: 1; border-top: 1px solid var(--line); margin-top: 40px; padding: 26px 0 40px; }
+footer.site .wrap { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; justify-content: space-between; font-size: 13.5px; color: var(--muted); }
+footer.site img { height: 28px; width: auto; display: block; }
+footer.site nav { display: flex; gap: 16px; flex-wrap: wrap; } footer.site a { color: var(--muted); text-decoration: none; } footer.site a:hover { color: var(--accent); }
+
 /* lightbox */
 dialog#lb { border: 0; padding: 0; background: transparent; max-width: min(96vw, 1400px); max-height: 92vh; }
-dialog#lb::backdrop { background: rgba(8, 14, 11, .82); }
-dialog#lb img { display: block; max-width: 100%; max-height: 88vh; border-radius: 12px; }
+dialog#lb::backdrop { background: rgba(6, 22, 22, .84); }
+dialog#lb img { display: block; max-width: 100%; max-height: 88vh; border-radius: 14px; }
 dialog#lb button { position: fixed; top: 16px; right: 16px; border: 0; border-radius: 999px; padding: 8px 14px; font: 700 14px var(--body); background: var(--surface); color: var(--ink); cursor: pointer; }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
-
-.bar .home { font-weight: 600; font-size: 14px; text-decoration: none; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
-.quick { padding-block: 6px 26px; }
-.quick h2 { font-size: 22px; margin-bottom: 12px; }
-.qgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
-.qcard { display: grid; grid-template-columns: 38px minmax(0,1fr); gap: 12px; align-items: center; padding: 14px; border-radius: 14px; background: var(--surface);
-  border: 1px solid var(--line); text-decoration: none; color: var(--ink); font-weight: 600; font-size: 15px; line-height: 1.3; box-shadow: var(--shadow); }
-.qcard:hover { border-color: var(--accent); }
-.qcard i { width: 38px; height: 38px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-style: normal; font-size: 18px; font-weight: 700; font-family: var(--mono); }
-.qcard small { display: block; font-weight: 500; color: var(--muted); font-size: 13px; margin-top: 2px; }
-.gloss { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 14px; }
-.gloss div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 14.5px; }
-.gloss b { display: block; font-family: var(--display); font-size: 16px; margin-bottom: 2px; }
-.stuck { margin-top: 18px; padding: 18px; border-radius: 14px; background: var(--surface-2); display: grid; gap: 6px; max-width: 70ch; }
-details.faq:target, details.faq.flash { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.tech { margin-top: 22px; }
-@media (max-width: 600px) {
-  .bar { position: static; }
-  .bar .wrap { gap: 10px; }
-  .brand { order: 0; } .bar .sitenav { order: 1; margin-left: auto; } .switch { order: 2; }
-  .search { order: 3; flex-basis: 100%; max-width: none; margin-left: 0; }
-  .hero { padding-top: 22px; } .hero .links { display: none; }
-}
-.tech > summary { cursor: pointer; font-weight: 700; color: var(--muted); }
-
-a.brand { text-decoration: none; color: inherit; border-radius: 10px; }
-a.brand:hover .mark { filter: brightness(1.08); }
-.brand .logo { width: 34px; height: 34px; display: block; flex: none; }
-@media (prefers-color-scheme: dark) { .brand .logo { filter: drop-shadow(0 0 1px rgba(255,255,255,.45)); } }
-.sitenav { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
-.sitenav a { padding: 5px 13px; border-radius: 999px; font-weight: 700; font-size: 13.5px; text-decoration: none; color: var(--muted); }
-.sitenav a:hover { color: var(--ink); }
-.sitenav a[aria-current="page"] { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+@media (prefers-reduced-motion: reduce) { .qcard { transition: none; } }
 </style>
 
 </head>
 <body>
+<div class="glow" aria-hidden="true"></div><div class="grid-lines" aria-hidden="true"></div>
 <header class="bar">
-  <div class="wrap">
-    <a class="brand" href="../" aria-label="BHL Attendance home"><img class="logo" src="../assets/icon-192.png" alt="" width="34" height="34">Attendance Help</a>
-    <div class="switch" role="group" aria-label="Choose a guide">
-      <button id="tabStaff" aria-pressed="true" data-g="staff">Staff</button>
-      <button id="tabAdmin" aria-pressed="false" data-g="admin">Admin &amp; Finance</button>
-    </div>
-    <nav class="sitenav" aria-label="Open the app"><a href="../">Staff app</a><a href="../admin.html">Admin app</a></nav>
-    <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-      <input id="q" type="search" placeholder="Search help (e.g. PIN, lunch, PDF)" aria-label="Search help"></label>
+  <div class="nav">
+    <a class="brand" href="./" aria-label="BioHack London Help Center home">
+      <img class="logo-d" src="img/bhl-logo-d.png" alt="BioHack London" width="88" height="34"><img class="logo-w" src="img/bhl-logo-w.png" alt="BioHack London" width="88" height="34">
+      <span class="tagline">Attendance<br>Help Center</span></a>
+    <nav class="navlinks" aria-label="Main">
+      <a href="#" data-goto="staff">Staff guide</a>
+      <a href="#" data-goto="admin">Admin guide</a>
+      <a href="#contact">Contact</a>
+      <a class="cta" href="../"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h4.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H14"/><path d="M4 12h11"/><path d="m11 8 4 4-4 4"/></svg>Open the app</a>
+    </nav>
   </div>
 </header>
 
 <main class="wrap">
   <section class="hero">
     <div class="eyebrow" id="heroEyebrow">Staff guide</div>
-    <h1 id="heroTitle">Clock in, take lunch, clock out. That's it.</h1>
-    <p id="heroText">Everything the Philippine team needs: clocking in, using your OT, your schedule, telling the WhatsApp group and your payslips. It takes about ten seconds a day.</p>
-    <div class="links">
-      <a class="linkcard" href="../"><b>← Open the staff app</b><span>bhlwebmaster.github.io/staff_time</span></a>
-      <a class="linkcard" href="../admin.html"><b>Open the admin page</b><span>…/staff_time/admin.html</span></a>
+    <h1 id="heroTitle">Welcome to the Attendance Help Center</h1>
+    <p id="heroText">Everything the Philippine team needs: clocking in, using your OT, your schedule, telling the WhatsApp group and your payslips.</p>
+    <label class="search"><input id="q" type="search" placeholder="Search for answers (e.g. PIN, lunch, OT, payslip)" aria-label="Search help">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></label>
+    <div class="switch" role="group" aria-label="Choose a guide">
+      <button id="tabStaff" aria-pressed="true" data-g="staff">Staff guide</button>
+      <button id="tabAdmin" aria-pressed="false" data-g="admin">Admin &amp; Finance</button>
     </div>
-    <p class="note">The pictures show example entries, and all pay amounts in them are blurred. All times in the app are UK time (the "GMT" used in WhatsApp). Manila time is shown underneath in grey.</p>
+    <p class="note">The pictures show example entries, and all pay amounts in them are blurred. All times in the app are UK time (the "GMT" used in WhatsApp); Manila time is shown underneath in grey.</p>
   </section>
-
 
   <section class="quick" data-quick="staff">
     <h2>What do you need help with?</h2>
     <div class="qgrid">
-      <a class="qcard" href="#q-forgot-pin"><i>?</i><span>I forgot my PIN<small>How to get a new one</small></span></a>
-      <a class="qcard" href="#q-locked"><i>!</i><span>It says "Too many wrong PINs"<small>What to do now</small></span></a>
-      <a class="qcard" href="#q-forgot-out"><i>↺</i><span>I forgot to clock out<small>Or clocked in at the wrong time</small></span></a>
-      <a class="qcard" href="#q-no-name"><i>…</i><span>I can't see my name<small>Or I'm new to the team</small></span></a>
-      <a class="qcard" href="#q-wont-load"><i>⟳</i><span>The page won't load<small>Or looks broken</small></span></a>
-      <a class="qcard" href="#clock-in"><i>1</i><span>How do I clock in?<small>Step by step with pictures</small></span></a>
-      <a class="qcard" href="#hours-ot"><i>+</i><span>How does OT work?<small>30-min blocks, use it next work day</small></span></a>
-      <a class="qcard" href="#out-of-hours"><i>☎</i><span>Called in outside my shift<small>Pre-shift, post-shift and rest-day OT</small></span></a>
-      <a class="qcard" href="#my-schedule"><i>▦</i><span>Change my schedule<small>Ask for a swap or leave</small></span></a>
-      <a class="qcard" href="#whatsapp"><i>✉</i><span>Tell the WhatsApp group<small>Copy &amp; send in one tap</small></span></a>
-      <a class="qcard" href="#payslips"><i>£</i><span>Where's my payslip?<small>View and download it</small></span></a>
-      <a class="qcard" href="#reminders"><i>🔔</i><span>Shift reminders<small>Notifications on your phone</small></span></a>
+      <a class="qcard" href="#q-forgot-pin"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.6"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></i><span>I forgot my PIN<small>How to get a new one</small></span></a>
+      <a class="qcard" href="#q-locked"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 2.8 19.5h18.4L12 3.5Z"/><path d="M12 10v4"/><circle cx="12" cy="16.8" r=".6" fill="currentColor"/></svg></i><span>It says "Too many wrong PINs"<small>What to do now</small></span></a>
+      <a class="qcard" href="#q-forgot-out"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v4.5H8"/></svg></i><span>I forgot to clock out<small>Or clocked in at the wrong time</small></span></a>
+      <a class="qcard" href="#q-no-name"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/></svg></i><span>I can't see my name<small>Or I'm new to the team</small></span></a>
+      <a class="qcard" href="#q-wont-load"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 12a8.5 8.5 0 0 1-14.6 5.9"/><path d="M3.5 12A8.5 8.5 0 0 1 18.1 6.1"/><path d="M18.5 2.5v4h-4M5.5 21.5v-4h4"/></svg></i><span>The page won't load<small>Or looks broken</small></span></a>
+      <a class="qcard" href="#clock-in"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h4.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H14"/><path d="M4 12h11"/><path d="m11 8 4 4-4 4"/></svg></i><span>How do I clock in?<small>Step by step with pictures</small></span></a>
+      <a class="qcard" href="#hours-ot"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9.5 2.5h5"/></svg></i><span>How does OT work?<small>30-min blocks, use it next work day</small></span></a>
+      <a class="qcard" href="#out-of-hours"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5h3l1.5 4.5-2 1.3a11 11 0 0 0 5.2 5.2l1.3-2 4.5 1.5v3a2 2 0 0 1-2 2A16.5 16.5 0 0 1 3 5.5a2 2 0 0 1 2-2Z"/></svg></i><span>Called in outside my shift<small>Pre-shift, post-shift and rest-day OT</small></span></a>
+      <a class="qcard" href="#my-schedule"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></i><span>Change my schedule<small>Ask for a swap or leave</small></span></a>
+      <a class="qcard" href="#whatsapp"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.5a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.4-4.4A8.5 8.5 0 1 1 20.5 11.5Z"/></svg></i><span>Tell the WhatsApp group<small>Copy &amp; send in one tap</small></span></a>
+      <a class="qcard" href="#payslips"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h12v17l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3v-17Z"/><path d="M9 8.5h6M9 12h6M9 15.5h3"/></svg></i><span>Where's my payslip?<small>View and download it</small></span></a>
+      <a class="qcard" href="#reminders"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15l1.5-2Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></i><span>Shift reminders<small>Notifications on your phone</small></span></a>
     </div>
   </section>
   <section class="quick" data-quick="admin" hidden>
     <h2>What do you need help with?</h2>
     <div class="qgrid">
-      <a class="qcard" href="#q-a-reset"><i>?</i><span>Someone forgot their PIN<small>Reset it in 3 clicks</small></span></a>
-      <a class="qcard" href="#fix-entry"><i>✎</i><span>Fix a wrong or missing time<small>Edit any day</small></span></a>
-      <a class="qcard" href="#reports"><i>↓</i><span>Get a PDF report for finance<small>Daily, weekly, monthly or custom</small></span></a>
-      <a class="qcard" href="#staff-mgmt"><i>+</i><span>Add a new team member<small>And what to send them</small></span></a>
-      <a class="qcard" href="#access"><i>@</i><span>Give someone admin or finance access<small>Create a login</small></span></a>
-      <a class="qcard" href="#payroll"><i>£</i><span>Run payroll and payslips<small>From attendance, in a few clicks</small></span></a>
-      <a class="qcard" href="#schedule-admin"><i>▦</i><span>Schedule and staff requests<small>Shifts, leave, approve changes</small></span></a>
-      <a class="qcard" href="#rules"><i>⏱</i><span>How hours and OT work<small>Rules and Settings</small></span></a>
-      <a class="qcard" href="#holidays"><i>☀</i><span>Public holidays<small>Add, remove, paid or not</small></span></a>
-      <a class="qcard" href="#q-a-signin"><i>!</i><span>I can't sign in<small>Password or access problems</small></span></a>
+      <a class="qcard" href="#q-a-reset"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.6"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></i><span>Someone forgot their PIN<small>Reset it in 3 clicks</small></span></a>
+      <a class="qcard" href="#fix-entry"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.5 4.5 19.5 8.5 8.5 19.5H4.5v-4l11-11Z"/><path d="m13.5 6.5 4 4"/></svg></i><span>Fix a wrong or missing time<small>Edit any day</small></span></a>
+      <a class="qcard" href="#reports"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v12"/><path d="m7 11 5 5 5-5"/><path d="M4.5 20.5h15"/></svg></i><span>Get a PDF report for finance<small>Daily, weekly, monthly or custom</small></span></a>
+      <a class="qcard" href="#staff-mgmt"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9.5 2.5h5"/></svg></i><span>Add a new team member<small>And what to send them</small></span></a>
+      <a class="qcard" href="#access"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4.5"/><path d="m11.2 11.8 8.3-8.3M16.5 6.5l2.5 2.5M14.5 8.5l2 2"/></svg></i><span>Give someone admin or finance access<small>Create a login</small></span></a>
+      <a class="qcard" href="#payroll"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h12v17l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3v-17Z"/><path d="M9 8.5h6M9 12h6M9 15.5h3"/></svg></i><span>Run payroll and payslips<small>From attendance, in a few clicks</small></span></a>
+      <a class="qcard" href="#schedule-admin"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></i><span>Schedule and staff requests<small>Shifts, leave, approve changes</small></span></a>
+      <a class="qcard" href="#rules"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9.5 2.5h5"/></svg></i><span>How hours and OT work<small>Rules and Settings</small></span></a>
+      <a class="qcard" href="#holidays"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg></i><span>Public holidays<small>Add, remove, paid or not</small></span></a>
+      <a class="qcard" href="#q-a-signin"><i><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 2.8 19.5h18.4L12 3.5Z"/><path d="M12 10v4"/><circle cx="12" cy="16.8" r=".6" fill="currentColor"/></svg></i><span>I can't sign in<small>Password or access problems</small></span></a>
     </div>
   </section>
   <div class="layout">
-    <nav class="toc" id="toc" aria-label="Contents"></nav>
+    <aside class="side">
+      <nav class="toc" id="toc" aria-label="Contents"></nav>
+      <div class="helpcard"><i><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.5a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.4-4.4A8.5 8.5 0 1 1 20.5 11.5Z"/></svg></i>
+        <b>Need more help?</b><p>Message an admin in the BHL Attendance WhatsApp group, or send the webmaster a note.</p>
+        <a class="btn" href="#contact">Get in touch</a></div>
+    </aside>
     <div id="content">
 
 <!-- ===================== STAFF ===================== -->
@@ -809,7 +882,26 @@ a.brand:hover .mark { filter: brightness(1.08); }
       <p class="empty" id="noResults" hidden>No matches. Try another word, such as PIN, lunch, report or photo.</p>
     </div>
   </div>
+  <section class="contact" id="contact">
+    <div class="eyebrow">Still stuck?</div>
+    <h2>Get in touch</h2>
+    <p>For quick questions, message an admin in the <b>BHL Attendance</b> WhatsApp group. For anything else, send the webmaster a note: this opens your email app with the details filled in.</p>
+    <form class="cform" id="cform">
+      <label>Your name<input name="name" type="text" autocomplete="name" placeholder="e.g. Rae" required></label>
+      <label>Your role<select name="role"><option>Staff</option><option>Admin</option><option>Finance</option></select></label>
+      <label class="full">Topic<select name="topic"><option>Clocking in or out</option><option>PIN or sign-in</option><option>OT or hours</option><option>Schedule or leave</option><option>Payslip or payroll</option><option>Shift reminders</option><option>Something else</option></select></label>
+      <label class="full">Your message<textarea name="msg" placeholder="What happened, the date, and what you expected" required></textarea></label>
+      <div class="row"><span>Goes to biohack.webmaster@gmail.com. A screenshot helps: attach it in your email app.</span>
+        <button class="btn" type="submit">Write the email</button></div>
+    </form>
+  </section>
 </main>
+
+<footer class="site"><div class="wrap">
+  <img class="logo-d" src="img/bhl-logo-d.png" alt="BioHack London" width="73" height="28"><img class="logo-w" src="img/bhl-logo-w.png" alt="BioHack London" width="73" height="28">
+  <nav aria-label="Footer"><a href="../">Staff app</a><a href="../admin.html">Admin app</a><a href="#contact">Contact</a></nav>
+  <span>© BioHack London · Attendance Help Center</span>
+</div></footer>
 
 <dialog id="lb" aria-label="Screenshot"><button type="button" id="lbClose">Close</button><img id="lbImg" alt=""></dialog>
 
@@ -818,8 +910,8 @@ a.brand:hover .mark { filter: brightness(1.08); }
   const $ = (id) => document.getElementById(id);
   const arts = [...document.querySelectorAll(".article")];
   const heroes = {
-    staff: ["Staff guide", "Clock in, take lunch, clock out. That's it.", "Everything the Philippine team needs: clocking in, using your OT, your schedule, telling the WhatsApp group and your payslips. It takes about ten seconds a day."],
-    admin: ["Admin & finance guide", "Run the team's attendance from one page.", "Track who's in, plan the schedule and approve requests, set the hours and OT rules and holidays, run bi-monthly payroll and payslips, and export reports."],
+    staff: ["Staff guide", "Welcome to the Attendance Help Center", "Everything the Philippine team needs: clocking in, using your OT, your schedule, telling the WhatsApp group, reminders and your payslips."],
+    admin: ["Admin & finance guide", "Run the team's attendance from one page", "Track who's in, plan the schedule and approve requests, set the hours and OT rules and holidays, run bi-monthly payroll and payslips, and export reports."],
   };
   let guide = "staff";
   function setGuide(g, scroll) {
@@ -840,9 +932,30 @@ a.brand:hover .mark { filter: brightness(1.08); }
     }
     $("noResults").hidden = shown > 0;
     $("toc").innerHTML = `<div class="grp">${guide === "staff" ? "Staff guide" : "Admin & finance"}</div>` +
-      arts.filter((a) => !a.hidden).map((a) => `<a href="#${a.id}">${a.dataset.title}</a>`).join("");
+      arts.filter((a) => !a.hidden).map((a) => `<a href="#${a.id}" data-id="${a.id}"><b>${a.querySelector("h2 .n")?.textContent || ""}</b>${a.dataset.title}</a>`).join("");
+    markActive();
   }
-  document.querySelector(".switch").addEventListener("click", (e) => { const b = e.target.closest("button[data-g]"); if (b) setGuide(b.dataset.g, true); });
+  document.querySelector(".switch").addEventListener("click", (e) => { const b = e.target.closest("button[data-g]"); if (b) setGuide(b.dataset.g, false); });
+  // nav: Staff guide / Admin guide jump to that guide's topics
+  document.querySelectorAll("[data-goto]").forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault(); setGuide(a.dataset.goto, false); document.querySelector(`[data-quick="${a.dataset.goto}"]`).scrollIntoView({ block: "start" });
+  }));
+  // sidebar: highlight the section being read
+  let current = null;
+  function markActive() { for (const a of $("toc").querySelectorAll("a")) a.classList.toggle("on", a.dataset.id === current); }
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver((es) => {
+      for (const e of es) if (e.isIntersecting) { current = e.target.id; markActive(); }
+    }, { rootMargin: "-30% 0px -60% 0px" });
+    arts.forEach((a) => io.observe(a));
+  }
+  // contact: opens the email app with the details filled in (nothing is sent from this page)
+  $("cform").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target), subject = `Attendance help: ${f.get("topic")} (${f.get("name")})`;
+    const body = `Name: ${f.get("name")}\nRole: ${f.get("role")}\nTopic: ${f.get("topic")}\n\n${f.get("msg")}\n`;
+    location.href = `mailto:biohack.webmaster@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  });
   $("q").addEventListener("input", filter);
   // lightbox
   document.addEventListener("click", (e) => {
