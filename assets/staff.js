@@ -121,9 +121,10 @@
     $("meAv").innerHTML = B.avatarHtml(st, 58);
     $("tTag").textContent = st.tagline || "";
     renderSeason();
-    const [k, label] = statusOf(row ? { ...row, ot_open: !!openOt() } : openOt() ? { ot_open: true } : null);
+    const plan = row?.time_in ? null : todayPlan(st), offDay = !!plan && plan.kind !== "shift";
+    let [k, label] = statusOf(row ? { ...row, ot_open: !!openOt() } : openOt() ? { ot_open: true } : null);
+    if (offDay && !row?.time_in && !openOt()) { k = "out"; label = B.sched.KINDS[plan.kind]?.label || "Day off"; }   // rest day / leave, not "Not in yet"
     $("tStatus").className = "pill " + k; $("tStatus").textContent = label;
-    const plan = row ? null : todayPlan(st);
     const ss = row?.sched_start || (plan?.kind === "shift" ? plan.start + ":00" : st.sched_start), se = row?.sched_end || (plan?.kind === "shift" ? plan.end + ":00" : st.sched_end);
     $("tSched").textContent = plan && plan.kind !== "shift" ? `${B.sched.KINDS[plan.kind].label} today` : `${B.clockStr(ss)} – ${B.clockStr(se)} UK`;
     $("schedEdit").hidden = !!row?.time_in;
@@ -131,7 +132,7 @@
     if (document.activeElement !== $("tNote")) $("tNote").value = row?.note || "";
 
     const c = row ? B.calcDays(data.rows, st, set).get(row.work_date) : null;
-    renderOt(row, c, ss, se, today);
+    renderOt(row, c, ss, se, today, offDay);
     const flags = [];
     if (c?.late) flags.push(`<span class="flag late">Late ${B.fmtMins(c.late)}</span>`);
     if (c?.complete && c.ot) flags.push(`<span class="flag ot">OT +${B.fmtMins(c.ot)}</span>`);
@@ -188,7 +189,8 @@
     box.hidden = !canOt();
     if (box.hidden) return;
     const uk = (v) => B.clockIn(new Date(v), set.timezone), ph = (v) => B.clockIn(new Date(v), LOCAL_TZ);
-    const kindOf = (o) => (row?.time_in && new Date(o.started_at) >= new Date(row.time_in) ? "Post-shift" : "Pre-shift");
+    const tp = todayPlan(data.staff), dayKind = row?.day_kind || tp?.kind || "shift", rest = dayKind === "rest";
+    const kindOf = (o) => (rest ? "Rest-day" : row?.time_in && new Date(o.started_at) >= new Date(row.time_in) ? "Post-shift" : "Pre-shift");
     const sessions = row ? otOf(row.work_date) : [];
     const list = sessions.filter((o) => o.ended_at).map((o) => `<div class="ot-s"><span>${kindOf(o)}</span>
       <span class="mono">${uk(o.started_at)}–${uk(o.ended_at)} UK</span><span class="mono muted">${ph(o.started_at)}–${ph(o.ended_at)} ${B.esc(cfg.LOCAL_LABEL || "")}</span>
@@ -202,13 +204,16 @@
         <button class="btn primary big out" data-a="ot_end">End OT</button>
         <p class="muted" style="margin:0;font-size:12.5px">Forget to tap it? It stops by itself after 4 hours and an admin checks the time.</p>`;
     } else {
-      const tp = todayPlan(data.staff), workDay = !tp || tp.kind === "shift" || !!row?.time_in;
-      const pre = !row?.time_in && workDay, post = !!row?.time_out;
-      const hint = !workDay ? "Not a working day: just use Clock in, all your time today counts as OT."
-        : row?.time_in && !row.time_out ? "You're on your shift. Post-shift OT opens after you clock out." : "";
-      body = `<label class="f">Who asked and what for<input type="text" id="otNote" maxlength="300" placeholder="e.g. James: fix checkout email" ${pre || post ? "" : "disabled"}></label>
-        <div class="ot-btns"><button class="btn ${pre ? "primary" : ""}" data-a="ot_start" ${pre ? "" : "disabled"}>Start pre-shift OT</button>
-        <button class="btn ${post ? "primary" : ""}" data-a="ot_start" ${post ? "" : "disabled"}>Start post-shift OT</button></div>
+      const onShift = !!row?.time_in && !row.time_out, off = !rest && dayKind !== "shift" && !row?.time_in;
+      const pre = !rest && !off && !row?.time_in, post = !!row?.time_out, restOk = rest && !onShift, can = pre || post || restOk;
+      const hint = off ? "You're off today (leave or a holiday). If you're called in, ask an admin to add the OT."
+        : onShift ? (rest ? "You're clocked in. Rest-day OT opens again after you clock out." : "You're on your shift. Post-shift OT opens after you clock out.")
+        : rest ? "Rest day: every minute counts as OT. Start and end OT for each call." : "";
+      const btns = rest ? `<button class="btn ${restOk ? "primary" : ""}" data-a="ot_start" ${restOk ? "" : "disabled"} style="grid-column:1/-1">Start rest-day OT</button>`
+        : `<button class="btn ${pre ? "primary" : ""}" data-a="ot_start" ${pre ? "" : "disabled"}>Start pre-shift OT</button>
+        <button class="btn ${post ? "primary" : ""}" data-a="ot_start" ${post ? "" : "disabled"}>Start post-shift OT</button>`;
+      body = `<label class="f">Who asked and what for<input type="text" id="otNote" maxlength="300" placeholder="e.g. James: fix checkout email" ${can ? "" : "disabled"}></label>
+        <div class="ot-btns">${btns}</div>
         ${hint ? `<p class="muted" style="margin:0;font-size:12.5px">${hint}</p>` : ""}`;
     }
     $("otCardBody").innerHTML = body + (list ? `<div class="ot-list">${list}</div>` : "") + total;
@@ -257,7 +262,7 @@
     if (a === "ot_end") {
       const o = r.ot_sessions?.filter((x) => x.ended_at).pop();
       if (o?.auto_stopped) B.toast("It ran over 4 hours, so it was stopped at 4:00. An admin can fix the time.", "err");
-      else if (!todayRow()?.time_in) B.toast("OT ended. Clock in when your shift starts.");
+      else if (!todayRow()?.time_in && todayRow()?.day_kind !== "rest") B.toast("OT ended. Clock in when your shift starts.");
     }
     if (newBadges.length || onTimeIn || after.level.n > before.level.n) B.confetti();
     renderToday(); loadRoster(); bumpIdle();
@@ -281,12 +286,12 @@
     const p = otPlan; if (!p) return null;
     return otPick === "late" ? { s: addM(p.ss, p.mins), e: p.se.slice(0, 5) } : otPick === "early" ? { s: p.ss.slice(0, 5), e: addM(p.se, -p.mins) } : { s: p.ss.slice(0, 5), e: p.se.slice(0, 5) };
   }
-  function renderOt(row, c, ss, se, today) {
+  function renderOt(row, c, ss, se, today, offDay) {
     const box = $("otBox"), when = (d) => B.prettyDate(d, { weekday: "short", day: "numeric", month: "short" });
     otPlan = null;
     if (!row?.time_in) {
       const o = B.otToday(data.rows, data.staff, data.settings, today);
-      if (!o.mins || !ss) { box.hidden = true; otPick = "no"; return; }
+      if (!o.mins || !ss || offDay) { box.hidden = true; otPick = "no"; return; }   // nothing to cover on a day off
       // Carry-over bank: choose how much to use (the rest stays banked). Otherwise it's all of it, today only.
       const block = Math.max(1, data.settings.ot_block_mins || 30), steps = [];
       if (o.carry) for (let m = block; m < o.mins; m += block) steps.push(m);

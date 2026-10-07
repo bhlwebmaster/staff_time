@@ -137,6 +137,7 @@
       const plan = B.sched.effective(s, day, planOv);
       const c = r ? otMarks(B.calcDays(pre.filter((x) => x.staff_id === s.id), s, settings).get(day), ots, s.id, day) : { status: plan.kind === "shift" ? "absent" : "off" };
       if (ots.some((o) => o.staff_id === s.id && !o.ended_at)) c.otRunning = true;
+      if (r && !r.time_in && plan.kind !== "shift" && c.status === "absent") c.status = "off";   // day off with only OT sessions
       if (c.status !== "off") n[c.status]++; if (c.late) n.late++;   // KPIs count everyone
       if (i < da || i >= db) return "";
       const [k, label] = c.otRunning ? ["in", "Out-of-hours OT"] : c.status === "off" ? ["out", B.sched.KINDS[plan.kind].label] : pillFor(c);

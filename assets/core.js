@@ -132,6 +132,11 @@
       }
       if (flex && out.short === 0) out.late = 0;             // full hours done (with OT): starting late doesn't count
       out.noLunch = planLunch > 0 && !(lo && li);
+    } else if (!tin && isRest && after > 0) {
+      // Rest day worked only in OT sessions (no clock-in): all of it is OT
+      out.worked = after; out.variance = after; out.complete = true; out.status = "out";
+      const block = Math.max(1, settings.ot_block_mins || 1);
+      out.ot = Math.floor(after / block) * block;
     }
     out.schedStart = sStart; out.schedEnd = sEnd;
     return out;
@@ -160,7 +165,7 @@
       const c = calcDay(r, staff, settings, { avail, availFrom: from });
       c.carry = carry;
       out.set(r.work_date, c);
-      if (!r.time_in) continue;
+      if (!r.time_in && !c.complete) continue;
       if (carry) {
         const left = avail - (c.complete ? c.otUsed : 0), add = c.complete ? c.ot : 0;
         if (left <= 0) bankFrom = add ? r.work_date : null;   // bank was used up: what's left starts from today
@@ -195,7 +200,7 @@
       if (opts.from && r.work_date < opts.from) continue;
       const c = all.get(r.work_date);
       s.days_list.push({ row: r, c });
-      if (!c.tin) continue;
+      if (!c.tin && !c.complete) continue;
       s.days++;
       if (c.late) { s.late++; s.lateMins += c.late; }
       if (c.complete) {
@@ -221,7 +226,7 @@
     ];
     if (row.lunch_out) lines.push(`Lunch Break: ${clockIn(d(row.lunch_out), tz)} – ${row.lunch_in ? clockIn(d(row.lunch_in), tz) : "…"} ${label}`);
     lines.push(`Time out: ${row.time_out ? clockIn(d(row.time_out), tz) + " " + label : ""}`);
-    for (const o of sessions) lines.push(`${row.time_in && d(o.started_at) >= d(row.time_in) ? "Post-shift" : "Pre-shift"} OT: ${clockIn(d(o.started_at), tz)} – ${o.ended_at ? clockIn(d(o.ended_at), tz) + " " + label : "ongoing"} (${o.note})`);
+    for (const o of sessions) lines.push(`${row.day_kind === "rest" ? "Rest-day" : row.time_in && d(o.started_at) >= d(row.time_in) ? "Post-shift" : "Pre-shift"} OT: ${clockIn(d(o.started_at), tz)} – ${o.ended_at ? clockIn(d(o.ended_at), tz) + " " + label : "ongoing"} (${o.note})`);
     if (row.note) lines.push("", row.note);
     return lines.join("\n");
   }

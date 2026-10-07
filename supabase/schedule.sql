@@ -105,6 +105,45 @@ $$;
 grant execute on function public.week_schedule(date) to anon, authenticated;
 revoke all on function public.day_schedule(uuid, date) from public, anon, authenticated;
 
+-- ---------- Day kind on attendance (rest days count every minute as OT) ----------
+-- Each attendance row keeps what the schedule says the day is; kept in step when the schedule for that date changes.
+alter table public.attendance add column if not exists day_kind text;
+create or replace function public._attendance_day_kind() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.day_kind is null or (tg_op = 'UPDATE' and (new.staff_id, new.work_date) is distinct from (old.staff_id, old.work_date)) then
+    select kind into new.day_kind from day_schedule(new.staff_id, new.work_date);
+  end if;
+  return new;
+end $$;
+drop trigger if exists attendance_day_kind_trg on public.attendance;
+create trigger attendance_day_kind_trg before insert or update on public.attendance
+  for each row execute function public._attendance_day_kind();
+
+create or replace function public._schedule_days_sync() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if tg_op <> 'INSERT' then
+    update attendance a set day_kind = (select kind from day_schedule(a.staff_id, a.work_date))
+      where a.staff_id = old.staff_id and a.work_date = old.work_date;
+  end if;
+  if tg_op <> 'DELETE' then
+    update attendance a set day_kind = (select kind from day_schedule(a.staff_id, a.work_date))
+      where a.staff_id = new.staff_id and a.work_date = new.work_date;
+  end if;
+  return null;
+end $$;
+drop trigger if exists schedule_days_sync_trg on public.schedule_days;
+create trigger schedule_days_sync_trg after insert or update or delete on public.schedule_days
+  for each row execute function public._schedule_days_sync();
+revoke all on function public._attendance_day_kind() from public, anon, authenticated;
+revoke all on function public._schedule_days_sync() from public, anon, authenticated;
+
+-- Fill in existing rows once (without filling the change history)
+alter table public.attendance disable trigger attendance_audit_trg;
+update public.attendance a set day_kind = (select kind from public.day_schedule(a.staff_id, a.work_date)) where a.day_kind is null;
+alter table public.attendance enable trigger attendance_audit_trg;
+
 -- Admin staff list: include the weekly pattern and pay details
 create or replace function public.admin_staff() returns json
 language sql stable security definer set search_path = public as $$

@@ -71,6 +71,8 @@ alter table public.staff add column if not exists ot_carry_from date;
 alter table public.settings add column if not exists ot_bank_cap_mins int not null default 480;
 -- Minutes of finished after-hours OT sessions on this day (kept up to date from ot_sessions)
 alter table public.attendance add column if not exists after_mins int not null default 0;
+-- What the schedule says the day is (shift, rest, holiday, leave). Rest days count every minute as OT. Set in schedule.sql.
+alter table public.attendance add column if not exists day_kind text;
 
 create table if not exists public.ot_sessions (
   id            uuid primary key default gen_random_uuid(),
@@ -262,7 +264,7 @@ language sql stable security definer set search_path = public as $$
         'avatar', st.avatar, 'photo', st.photo, 'tagline', st.tagline, 'color', st.color, 'ot_carry_from', st.ot_carry_from,
         'recent', coalesce((select json_agg(json_build_object('work_date', r.work_date, 'sched_start', r.sched_start,
             'sched_end', r.sched_end, 'plan_start', r.plan_start, 'plan_end', r.plan_end, 'ot_adjust', r.ot_adjust, 'time_in', r.time_in, 'lunch_out', r.lunch_out, 'lunch_in', r.lunch_in,
-            'time_out', r.time_out, 'after_mins', r.after_mins) order by r.work_date)
+            'time_out', r.time_out, 'after_mins', r.after_mins, 'day_kind', r.day_kind) order by r.work_date)
           from attendance r where r.staff_id = st.id and r.work_date >= (select today from d) - 45), '[]'::json),
         'today', case when a.id is null then null else json_build_object(
             'sched_start', a.sched_start, 'sched_end', a.sched_end,
@@ -315,8 +317,8 @@ end $$;
 
 -- The one staff action: check | in | lunch_start | lunch_end | out | note | ot_start | ot_end
 -- Uses the SERVER clock, so phone time can't be faked.
--- ot_start / ot_end: after-hours OT before the shift (working days) or after clocking out
--- (only for people with After-hours OT turned on).
+-- ot_start / ot_end: out-of-hours OT before the shift (working days), after clocking out, or on a rest day
+-- (only for people with Out-of-hours OT turned on).
 create or replace function public.punch(
   p_staff uuid, p_pin text, p_action text,
   p_sched_start time default null, p_sched_end time default null, p_note text default null
@@ -395,15 +397,15 @@ begin
     end if;
     if v_note is null then return json_build_object('ok', false, 'error', 'Add a short note: who asked and what it''s for.'); end if;
     if a.time_in is null then
-      -- Pre-shift OT: only on a working day (on a rest day, Clock in as usual: all that time is OT)
+      -- Pre-shift OT on a working day, or rest-day OT (every minute counts). Not on leave or a holiday.
       v_kind := 'shift';
       if to_regprocedure('public.day_schedule(uuid,date)') is not null then
         execute 'select kind, start_time, end_time from public.day_schedule($1, $2)' into v_kind, v_ss, v_se using p_staff, v_day;
       end if;
-      if v_kind <> 'shift' then
-        return json_build_object('ok', false, 'error', 'It''s not a working day for you, so use Clock in instead: all your time today counts as OT.');
+      if v_kind not in ('shift', 'rest') then
+        return json_build_object('ok', false, 'error', 'You''re off today (leave or a holiday). Ask an admin to add the OT if you were called in.');
       end if;
-      if a.id is null then   -- the day starts with the OT; Clock in later fills in the shift
+      if a.id is null then   -- the day starts with the OT; on a working day Clock in later fills in the shift
         insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end)
           values (p_staff, v_day, coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end));
       end if;
@@ -428,7 +430,7 @@ begin
                'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours, 'ot_bank_cap_mins', ot_bank_cap_mins) from settings where id = 1),
     -- this month + last month, for the personal OT bank (a carry-over bank goes back to when it started)
     'rows', coalesce((select json_agg(x order by x.work_date) from (
-               select work_date, sched_start, sched_end, plan_start, plan_end, ot_adjust, after_mins, time_in, lunch_out, lunch_in, time_out, note
+               select work_date, sched_start, sched_end, plan_start, plan_end, ot_adjust, after_mins, day_kind, time_in, lunch_out, lunch_in, time_out, note
                from attendance where staff_id = p_staff
                  and work_date >= least(date_trunc('month', v_day - interval '1 month')::date, coalesce(s.ot_carry_from - 5, v_day))) x), '[]'::json),
     -- after-hours OT sessions on those days, and the one running now (if any)
@@ -712,6 +714,45 @@ $$;
 grant execute on function public.week_schedule(date) to anon, authenticated;
 revoke all on function public.day_schedule(uuid, date) from public, anon, authenticated;
 
+-- ---------- Day kind on attendance (rest days count every minute as OT) ----------
+-- Each attendance row keeps what the schedule says the day is; kept in step when the schedule for that date changes.
+alter table public.attendance add column if not exists day_kind text;
+create or replace function public._attendance_day_kind() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.day_kind is null or (tg_op = 'UPDATE' and (new.staff_id, new.work_date) is distinct from (old.staff_id, old.work_date)) then
+    select kind into new.day_kind from day_schedule(new.staff_id, new.work_date);
+  end if;
+  return new;
+end $$;
+drop trigger if exists attendance_day_kind_trg on public.attendance;
+create trigger attendance_day_kind_trg before insert or update on public.attendance
+  for each row execute function public._attendance_day_kind();
+
+create or replace function public._schedule_days_sync() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if tg_op <> 'INSERT' then
+    update attendance a set day_kind = (select kind from day_schedule(a.staff_id, a.work_date))
+      where a.staff_id = old.staff_id and a.work_date = old.work_date;
+  end if;
+  if tg_op <> 'DELETE' then
+    update attendance a set day_kind = (select kind from day_schedule(a.staff_id, a.work_date))
+      where a.staff_id = new.staff_id and a.work_date = new.work_date;
+  end if;
+  return null;
+end $$;
+drop trigger if exists schedule_days_sync_trg on public.schedule_days;
+create trigger schedule_days_sync_trg after insert or update or delete on public.schedule_days
+  for each row execute function public._schedule_days_sync();
+revoke all on function public._attendance_day_kind() from public, anon, authenticated;
+revoke all on function public._schedule_days_sync() from public, anon, authenticated;
+
+-- Fill in existing rows once (without filling the change history)
+alter table public.attendance disable trigger attendance_audit_trg;
+update public.attendance a set day_kind = (select kind from public.day_schedule(a.staff_id, a.work_date)) where a.day_kind is null;
+alter table public.attendance enable trigger attendance_audit_trg;
+
 -- Admin staff list: include the weekly pattern and pay details
 create or replace function public.admin_staff() returns json
 language sql stable security definer set search_path = public as $$
@@ -965,6 +1006,8 @@ revoke execute on function public.attendance_audit()              from public, a
 revoke execute on function public._fx_proof_stamp()               from public, anon, authenticated;
 revoke execute on function public._ot_day_sync(uuid, date)        from public, anon, authenticated;
 revoke execute on function public._ot_sessions_sync()             from public, anon, authenticated;
+revoke execute on function public._attendance_day_kind()          from public, anon, authenticated;
+revoke execute on function public._schedule_days_sync()           from public, anon, authenticated;
 
 -- Admin / finance only: signed-in users (each one also checks the admin role inside)
 revoke execute on function public.admin_staff()                               from public, anon;

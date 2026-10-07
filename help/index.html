@@ -195,7 +195,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
       <a class="qcard" href="#q-wont-load"><i>⟳</i><span>The page won't load<small>Or looks broken</small></span></a>
       <a class="qcard" href="#clock-in"><i>1</i><span>How do I clock in?<small>Step by step with pictures</small></span></a>
       <a class="qcard" href="#hours-ot"><i>+</i><span>How does OT work?<small>30-min blocks, use it next work day</small></span></a>
-      <a class="qcard" href="#out-of-hours"><i>☎</i><span>Called in outside my shift<small>Pre-shift and post-shift OT</small></span></a>
+      <a class="qcard" href="#out-of-hours"><i>☎</i><span>Called in outside my shift<small>Pre-shift, post-shift and rest-day OT</small></span></a>
       <a class="qcard" href="#my-schedule"><i>▦</i><span>Change my schedule<small>Ask for a swap or leave</small></span></a>
       <a class="qcard" href="#whatsapp"><i>✉</i><span>Tell the WhatsApp group<small>Copy &amp; send in one tap</small></span></a>
       <a class="qcard" href="#payslips"><i>£</i><span>Where's my payslip?<small>View and download it</small></span></a>
@@ -349,22 +349,23 @@ a.brand:hover .mark { filter: brightness(1.08); }
 
 <article class="article" data-g="staff" id="out-of-hours" data-title="Out-of-hours OT">
   <h2><span class="n">08</span>Out-of-hours OT (called in outside your shift)</h2>
-  <p class="lede">For urgent work before your shift starts or after you've clocked out. Only for people an admin turns it on for. Everyone else keeps the usual OT rules.</p>
+  <p class="lede">For urgent work before your shift starts, after you've clocked out, or on your rest day. Only for people an admin turns it on for. Everyone else keeps the usual OT rules.</p>
   <div class="prose">
       <ol class="steps">
         <li><div>Open the app and enter your PIN. Under the Clock in / Clock out card is the <b>Out-of-hours OT</b> card.</div></li>
         <li><div>Type <b>who asked and what for</b>, e.g. <i>"James: fix checkout email"</i>.</div></li>
-        <li><div>Called in <b>before your shift</b> (e.g. 1 PM Manila when you start at 4 PM)? Tap <b>Start pre-shift OT</b>. Called in <b>after you've clocked out</b>? Tap <b>Start post-shift OT</b>.</div></li>
+        <li><div>Called in <b>before your shift</b> (e.g. 1 PM Manila when you start at 4 PM)? Tap <b>Start pre-shift OT</b>. Called in <b>after you've clocked out</b>? Tap <b>Start post-shift OT</b>. Called in on your <b>rest day</b>? Tap <b>Start rest-day OT</b>.</div></li>
         <li><div>Tap <b>End OT</b> when you're done. Do this every time you're called in; you can have several sessions in a day.</div></li>
         <li><div>Pre-shift OT? End it first, then <b>Clock in</b> as usual when your shift starts.</div></li>
       </ol>
       <ul>
-        <li>Only the button that fits is active: pre-shift before you clock in, post-shift after you clock out. During your shift both are greyed out.</li>
+        <li>Only the button that fits is active: pre-shift before you clock in, post-shift after you clock out. During your shift they're greyed out. On a rest day there's one button, <b>Start rest-day OT</b>.</li>
         <li>The app uses its own clock and keeps your note, so there's a clear record of what you did and why.</li>
         <li>The day's time (shift + out-of-hours) is added up, then counted in <b>30-minute blocks</b>. Two 20-minute calls = 0:30 OT.</li>
         <li><b>Your OT carries over</b> until you use it, in your <b>OT bank</b>. It doesn't expire the next day and it isn't paid.</li>
         <li>At clock-in, choose <b>how much</b> of your bank to use (start later or leave earlier). The rest stays banked.</li>
-        <li>On a <b>rest day</b>, just use Clock in: all your time that day counts as OT.</li>
+        <li>On a <b>rest day</b>, every minute counts as OT. Use <b>Start rest-day OT</b> for each call, or <b>Clock in</b> / <b>Clock out</b> for a longer stretch.</li>
+        <li>On leave or a public holiday the buttons are off. If you're called in, ask an admin to add the OT.</li>
       </ul>
       <div class="tip warn"><b>Forgot to tap End OT?</b><span>It stops by itself after 4 hours and an admin checks the time. Tell an admin the right end time.</span></div>
   </div>
@@ -372,6 +373,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
       <figure style="flex:1 1 220px;max-width:280px"><div class="crop" style="max-width:none"><img src="img/s-ot-pre.jpg?v=20261007" alt="Out-of-hours OT card before the shift"></div><figcaption>1. Before your shift: type the note, Start pre-shift OT</figcaption></figure>
       <figure style="flex:1 1 220px;max-width:280px"><div class="crop" style="max-width:none"><img src="img/s-ot-running.jpg?v=20261007" alt="Pre-shift OT running with End OT"></div><figcaption>2. Running: tap End OT when done</figcaption></figure>
       <figure style="flex:1 1 220px;max-width:280px"><div class="crop" style="max-width:none"><img src="img/s-ot-post.jpg?v=20261007" alt="Today's pre-shift and post-shift sessions"></div><figcaption>3. After clocking out: post-shift OT, and today's sessions</figcaption></figure>
+      <figure style="flex:1 1 220px;max-width:280px"><div class="crop" style="max-width:none"><img src="img/s-ot-rest.jpg?v=20261007" alt="Rest-day OT"></div><figcaption>4. Rest day: Start rest-day OT for each call</figcaption></figure>
     </div>
 </article>
 
@@ -505,7 +507,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
     <div><b>OT</b>Extra time beyond your expected hours, in 30-minute blocks.</div>
     <div><b>OT to use today</b>OT from your last work day. Use it today or it expires tonight.</div>
     <div><b>OT in your bank</b>For people with Out-of-hours OT: OT that carries over until you use it.</div>
-    <div><b>Pre-shift / Post-shift OT</b>Work you're called in for before your shift or after you clock out, clocked with Start / End OT.</div>
+    <div><b>Pre-shift / Post-shift / Rest-day OT</b>Work you're called in for before your shift, after you clock out, or on your rest day, clocked with Start / End OT.</div>
     <div><b>Offset</b>Starting later or leaving earlier using your OT. The app adds the note for you.</div>
     <div><b>Short</b>Time under your expected hours that OT didn't cover (undertime on the payslip).</div>
     <div><b>Cut-off</b>A pay period: 1st–15th or 16th–end of the month.</div>
@@ -659,7 +661,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
           <tr><td><b>Expected</b></td><td>That day's planned schedule minus its planned lunch (Staff → Usual week).</td></tr>
           <tr><td><b>OT</b></td><td>Worked − expected, in whole blocks (default <b>30 min</b>: 45 → 0:30, 1:20 → 1:00).</td></tr>
           <tr><td><b>OT use</b></td><td>Only on the next work day (the next clock-in within 4 days, so Friday → Monday). Unused OT expires. Staff choose Start later / Leave earlier at clock-in.</td></tr>
-          <tr><td><b>Out-of-hours OT</b></td><td>Only for people with <b>Out-of-hours OT</b> ticked (Staff → Edit). They clock pre-shift OT (before clocking in, working days) and post-shift OT (after clocking out) with a note; the minutes are added to that day's worked time before rounding. A session nobody ends stops after 4 hours and is flagged.</td></tr>
+          <tr><td><b>Out-of-hours OT</b></td><td>Only for people with <b>Out-of-hours OT</b> ticked (Staff → Edit). They clock pre-shift OT (before clocking in, working days), post-shift OT (after clocking out) and rest-day OT with a note; the minutes are added to that day's worked time before rounding. A session nobody ends stops after 4 hours and is flagged.</td></tr>
           <tr><td><b>OT bank</b></td><td>For those same people: OT <b>carries over</b> until used (no expiry, not paid). They pick how much to use at clock-in. Above the <b>OT bank cap</b> (Settings, default 8 h) it's still banked but flagged in Timesheets.</td></tr>
           <tr><td><b>Short</b></td><td>Under expected hours after OT is used. Counts as undertime in payroll.</td></tr>
           <tr><td><b>Late</b></td><td>After start + grace (5 min). With <b>Judge by hours</b> on, a day with full hours isn't late.</td></tr>

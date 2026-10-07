@@ -19,6 +19,8 @@ revoke execute on function public.attendance_audit()              from public, a
 revoke execute on function public._fx_proof_stamp()               from public, anon, authenticated;
 revoke execute on function public._ot_day_sync(uuid, date)        from public, anon, authenticated;
 revoke execute on function public._ot_sessions_sync()             from public, anon, authenticated;
+revoke execute on function public._attendance_day_kind()          from public, anon, authenticated;
+revoke execute on function public._schedule_days_sync()           from public, anon, authenticated;
 
 -- Admin / finance only: signed-in users (each one also checks the admin role inside)
 revoke execute on function public.admin_staff()                               from public, anon;
