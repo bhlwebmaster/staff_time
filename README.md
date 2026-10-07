@@ -138,7 +138,7 @@ On iPhone it only works from the home-screen app (Share → Add to Home Screen, 
 1. Run `supabase/database-update.sql` (adds the reminder tables).
 2. **Edge Functions → Secrets**: add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:biohack.webmaster@gmail.com`) and `CRON_SECRET` (a long random text). Generate the key pair with `npx web-push generate-vapid-keys`.
 3. **Edge Functions → Deploy a new function → Via Editor**, name it `send-reminders`, paste `supabase/functions/send-reminders/index.ts`, Deploy, then turn **off** "Verify JWT" in its settings.
-4. **Database → Extensions**: turn on `pg_cron` and `pg_net`. Put your `CRON_SECRET` into `supabase/reminders-cron.sql` and run it (every 5 minutes).
+4. Put your `CRON_SECRET` into `supabase/reminders-cron.sql` and run it in SQL Editor (it turns on `pg_cron` and `pg_net` and runs the sender every 5 minutes).
 5. Admin → **Settings → Shift reminders**: paste the public key, Save, then **Send a test to all phones** once someone has turned reminders on.
 
 ## How the numbers work
