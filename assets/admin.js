@@ -97,8 +97,8 @@
     if (c.ot) f.push(`<span class="flag ot">OT +${B.fmtMins(c.ot)}</span>`);
     if (c.otUsed) f.push(`<span class="flag ot" title="OT from ${c.otFrom ? B.prettyDate(c.otFrom) : "the last work day"} used today">OT used ${B.fmtMins(c.otUsed)}</span>`);
     if (c.short) f.push(`<span class="flag short">Short ${B.fmtMins(c.short)}</span>`);
-    if (c.after) f.push(`<span class="flag ot" title="After-hours OT clocked after the shift (included in Worked)">After-hours ${B.fmtMins(c.after)}</span>`);
-    if (c.otRunning) f.push(`<span class="flag ot">On after-hours OT now</span>`);
+    if (c.after) f.push(`<span class="flag ot" title="Out-of-hours OT clocked before or after the shift (included in Worked)">Out-of-hours ${B.fmtMins(c.after)}</span>`);
+    if (c.otRunning) f.push(`<span class="flag ot">On out-of-hours OT now</span>`);
     if (c.autoStopped) f.push(`<span class="flag miss" title="Nobody tapped End OT, so it stopped after 4 hours. Check the time in Edit.">OT auto-stopped</span>`);
     if (c.overCap) f.push(`<span class="flag miss" title="OT bank is over the cap in Settings">OT bank ${B.fmtMins(c.bankAfter)} · over cap</span>`);
     if (c.open && !isToday) f.push(`<span class="flag miss">No clock-out</span>`);
@@ -139,7 +139,7 @@
       if (ots.some((o) => o.staff_id === s.id && !o.ended_at)) c.otRunning = true;
       if (c.status !== "off") n[c.status]++; if (c.late) n.late++;   // KPIs count everyone
       if (i < da || i >= db) return "";
-      const [k, label] = c.otRunning ? ["in", "After-hours OT"] : c.status === "off" ? ["out", B.sched.KINDS[plan.kind].label] : pillFor(c);
+      const [k, label] = c.otRunning ? ["in", "Out-of-hours OT"] : c.status === "off" ? ["out", B.sched.KINDS[plan.kind].label] : pillFor(c);
       let worked = "—";
       if (c.worked != null) worked = B.fmtMins(c.worked);
       else if (r?.time_in && day === today()) {
@@ -240,12 +240,12 @@
   }
   const period = () => `${$("from").value}_to_${$("to").value}`;
   $("csvSum").onclick = () => download(`BHL-timesheet-summary_${period()}.csv`, [
-    ["Name", "Timesheet name", "Period from", "Period to", "Days worked", "Worked hours", "Regular hours", "OT earned hours", "OT used hours", "Short hours (not covered)", "Late arrivals", "Late minutes", "Missing clock-outs", "Billable hours", "After-hours OT hours", "OT bank hours (carry-over)"],
+    ["Name", "Timesheet name", "Period from", "Period to", "Days worked", "Worked hours", "Regular hours", "OT earned hours", "OT used hours", "Short hours (not covered)", "Late arrivals", "Late minutes", "Missing clock-outs", "Billable hours", "Out-of-hours OT hours", "OT bank hours (carry-over)"],
     ...computeSheets().map(({ s, sum }) => [s.display_name, s.full_name, $("from").value, $("to").value, sum.days, B.hoursDec(sum.worked), B.hoursDec(sum.regular),
       B.hoursDec(sum.ot), B.hoursDec(sum.otUsed), B.hoursDec(sum.short), sum.late, sum.lateMins, sum.missingOut, B.hoursDec(sum.billable), B.hoursDec(sum.after), sum.carryBank != null ? B.hoursDec(sum.carryBank) : ""]),
   ]);
   $("csvDay").onclick = () => download(`BHL-timesheet-daily_${period()}.csv`, [
-    ["Date", "Name", "Timesheet name", "Sched start (UK)", "Sched end (UK)", "Time in (UK)", "Lunch out", "Lunch in", "Time out (UK)", "Worked hours", "Late minutes", "OT earned minutes", "OT used minutes", "Short minutes", "Note", "After-hours OT minutes"],
+    ["Date", "Name", "Timesheet name", "Sched start (UK)", "Sched end (UK)", "Time in (UK)", "Lunch out", "Lunch in", "Time out (UK)", "Worked hours", "Late minutes", "OT earned minutes", "OT used minutes", "Short minutes", "Note", "Out-of-hours OT minutes"],
     ...computeSheets().flatMap(({ s, sum }) => sum.days_list.map(({ row: r, c }) => [r.work_date, s.display_name, s.full_name, r.sched_start.slice(0, 5), r.sched_end.slice(0, 5),
       B.hhmmIn(c.tin, tz()), B.hhmmIn(c.lo, tz()), B.hhmmIn(c.li, tz()), B.hhmmIn(c.tout, tz()), c.worked != null ? B.hoursDec(c.worked) : "", c.late, c.ot, c.otUsed, c.short, r.note || "", c.after || 0])),
   ]);
@@ -304,9 +304,9 @@
     $("eOtList").innerHTML = entryOts.map((o, i) => `<div class="row otrow" data-i="${i}" style="gap:6px;flex-wrap:wrap">
       <input type="time" aria-label="Start" value="${h(o.started_at)}" style="width:auto"><span>–</span>
       <input type="time" aria-label="End" value="${h(o.ended_at)}" style="width:auto">
-      <input type="text" aria-label="Note" value="${B.esc(o.note || "")}" placeholder="Who asked and what for" style="flex:1;min-width:140px">
-      ${o.auto_stopped ? `<span class="flag miss" title="Nobody tapped End OT">auto-stopped</span>` : ""}
-      <button class="btn sm" type="button" data-ot="save">Save</button><button class="btn ghost sm" type="button" data-ot="del">Delete</button></div>`).join("")
+      ${o.auto_stopped ? `<span class="flag miss" title="Nobody tapped End OT">auto-stopped</span>` : ""}<span class="spacer"></span>
+      <button class="btn sm" type="button" data-ot="save">Save</button><button class="btn ghost sm" type="button" data-ot="del">Delete</button>
+      <input type="text" aria-label="Note" value="${B.esc(o.note || "")}" placeholder="Who asked and what for" style="flex:1 1 100%"></div>`).join("")
       || `<span class="muted" style="font-size:13px">None on this day.</span>`;
   }
   $("eOtAdd").onclick = () => { entryOts.push({ staff_id: editing.staff_id, work_date: editing.work_date, note: "" }); renderEntryOt(); };

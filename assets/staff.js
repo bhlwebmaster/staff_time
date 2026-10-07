@@ -18,7 +18,7 @@
 
   // ---------- roster / pick ----------
   function statusOf(t) {
-    if (t?.ot_open) return ["in", "After-hours OT"];
+    if (t?.ot_open) return ["in", "Out-of-hours OT"];
     if (!t || !t.time_in) return ["absent", "Not in yet"];
     if (t.time_out) return ["out", "Clocked out"];
     if (t.lunch_out && !t.lunch_in) return ["lunch", "On lunch"];
@@ -433,7 +433,7 @@
       return `<span class="pill absent">Not in yet</span>`;
     }
     const at = (v) => B.clockIn(new Date(v), tzn);
-    if (t.ot_open) return `<span class="pill in">After-hours OT</span><small>shift ${at(t.time_in)}–${at(t.time_out)}</small>`;
+    if (t.ot_open) return `<span class="pill in">Out-of-hours OT</span><small>shift ${at(t.time_in)}–${at(t.time_out)}</small>`;
     if (t.time_out) return `<span class="pill out">Clocked out</span><small>${at(t.time_in)}–${at(t.time_out)}</small>`;
     if (t.lunch_out && !t.lunch_in) return `<span class="pill lunch">On lunch</span><small>since ${at(t.lunch_out)}</small>`;
     return `<span class="pill in">Working</span><small>in ${at(t.time_in)}</small>`;
