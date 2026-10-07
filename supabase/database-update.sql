@@ -69,6 +69,8 @@ alter table public.attendance add column if not exists ot_adjust  int not null d
 alter table public.staff add column if not exists ot_carry_from date;
 -- Soft cap on a carry-over OT bank: OT above it is still banked, admins are warned
 alter table public.settings add column if not exists ot_bank_cap_mins int not null default 480;
+-- The most of a carry-over OT bank one day can use (the rest stays banked)
+alter table public.settings add column if not exists ot_daily_use_mins int not null default 180;
 -- Minutes of finished after-hours OT sessions on this day (kept up to date from ot_sessions)
 alter table public.attendance add column if not exists after_mins int not null default 0;
 -- What the schedule says the day is (shift, rest, holiday, leave). Rest days count every minute as OT. Set in schedule.sql.
@@ -255,7 +257,7 @@ language sql stable security definer set search_path = public as $$
     'today',    (select today from d),
     'settings', (select json_build_object('timezone', timezone, 'grace_mins', grace_mins,
                    'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours, 'company_name', company_name,
-                   'ot_bank_cap_mins', ot_bank_cap_mins) from s),
+                   'ot_bank_cap_mins', ot_bank_cap_mins, 'ot_daily_use_mins', ot_daily_use_mins) from s),
     'staff', coalesce((
       select json_agg(json_build_object(
         'id', st.id, 'display_name', st.display_name, 'full_name', st.full_name,
@@ -427,7 +429,7 @@ begin
                'sched_start', s.sched_start, 'sched_end', s.sched_end, 'lunch_mins', s.lunch_mins, 'week_pattern', s.week_pattern,
                'avatar', s.avatar, 'photo', s.photo, 'tagline', s.tagline, 'color', s.color, 'ot_carry_from', s.ot_carry_from),
     'settings', (select json_build_object('timezone', timezone, 'grace_mins', grace_mins,
-               'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours, 'ot_bank_cap_mins', ot_bank_cap_mins) from settings where id = 1),
+               'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours, 'ot_bank_cap_mins', ot_bank_cap_mins, 'ot_daily_use_mins', ot_daily_use_mins) from settings where id = 1),
     -- this month + last month, for the personal OT bank (a carry-over bank goes back to when it started)
     'rows', coalesce((select json_agg(x order by x.work_date) from (
                select work_date, sched_start, sched_end, plan_start, plan_end, ot_adjust, after_mins, day_kind, time_in, lunch_out, lunch_in, time_out, note

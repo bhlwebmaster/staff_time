@@ -395,6 +395,7 @@
     $("stGrace").value = settings.grace_mins; $("stBlock").value = settings.ot_block_mins; $("stEarly").checked = settings.count_early;
     $("stDpc").value = settings.days_per_cutoff ?? 10;
     $("stCap").value = (settings.ot_bank_cap_mins ?? 480) / 60;
+    $("stDaily").value = (settings.ot_daily_use_mins ?? 180) / 60;
     $("stFlex").checked = settings.flex_hours !== false;
     renderHolidays();
   }
@@ -402,7 +403,8 @@
     e.preventDefault();
     const s = { company_name: $("stCompany").value.trim(), timezone: $("stTz").value, grace_mins: +$("stGrace").value,
       ot_block_mins: Math.max(1, +$("stBlock").value), count_early: $("stEarly").checked, flex_hours: $("stFlex").checked, days_per_cutoff: Math.max(1, Math.round(+$("stDpc").value || 10)),
-      ot_bank_cap_mins: Math.max(0, Math.round((+$("stCap").value || 0) * 60)) };
+      ot_bank_cap_mins: Math.max(0, Math.round((+$("stCap").value || 0) * 60)),
+      ot_daily_use_mins: Math.max(0, Math.round((+$("stDaily").value || 0) * 60)) };
     try { await A.saveSettings(s); settings = { ...settings, ...s }; B.toast("Settings saved"); } catch (err) { B.toast(err.message, "err"); }
   };
 

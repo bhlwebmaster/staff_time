@@ -293,14 +293,15 @@
       const o = B.otToday(data.rows, data.staff, data.settings, today);
       if (!o.mins || !ss || offDay) { box.hidden = true; otPick = "no"; return; }   // nothing to cover on a day off
       // Carry-over bank: choose how much to use (the rest stays banked). Otherwise it's all of it, today only.
-      const block = Math.max(1, data.settings.ot_block_mins || 30), steps = [];
-      if (o.carry) for (let m = block; m < o.mins; m += block) steps.push(m);
-      if (o.carry) steps.push(o.mins);
-      if (!o.carry || !steps.includes(otAmt)) otAmt = o.mins;
+      // Carry-over bank: choose how much to use, up to the daily max (pre-selected); the rest stays banked
+      const block = Math.max(1, data.settings.ot_block_mins || 30), steps = [], max = o.carry ? o.use : o.mins;
+      if (o.carry) { for (let m = block; m < max; m += block) steps.push(m); steps.push(max); }
+      if (!o.carry || !steps.includes(otAmt)) otAmt = max;
       otPlan = { mins: otAmt, from: o.from, ss, se, carry: o.carry };
       box.hidden = false; box.classList.remove("info");
       $("otTitle").textContent = o.carry ? `You have ${B.fmtMins(o.mins)} OT in your bank.` : `You have ${B.fmtMins(o.mins)} OT from ${when(o.from)}.`;
-      $("otSub").textContent = o.carry ? "Use some today? Whatever you don't use stays in your bank." : "Use it today? It expires at the end of today.";
+      $("otSub").textContent = o.carry ? (max < o.mins ? `Up to ${B.fmtMins(max)} can be used today; the rest stays in your bank.` : "Use some today? Whatever you don't use stays in your bank.")
+        : "Use it today? It expires at the end of today.";
       $("otAmtRow").hidden = !o.carry || steps.length < 2;
       $("otAmt").innerHTML = steps.map((m) => `<option value="${m}" ${m === otAmt ? "selected" : ""}>${B.fmtMins(m)}</option>`).join("");
       for (const b of $("otPick").children) b.setAttribute("aria-pressed", b.dataset.o === otPick);
@@ -315,7 +316,7 @@
     if (c.carry) {
       const left = c.complete ? c.otAvail - c.otUsed : c.otAvail;
       $("otTitle").textContent = c.complete ? (c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT from your bank today.` : "Your OT bank wasn't needed today.")
-        : `${B.fmtMins(c.otAvail)} OT in your bank covers you today.`;
+        : `${B.fmtMins(c.otAvail)} OT from your bank covers you today.`;
       $("otSub").textContent = c.complete ? `Your bank is now ${B.fmtMins(c.bankAfter ?? left)}.` : "Start later or leave earlier by up to that much. Whatever you don't use stays in your bank.";
     } else if (c.complete) {
       $("otTitle").textContent = c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT${from} today.` : `Your ${B.fmtMins(c.otAvail)} OT${from} wasn't needed today.`;

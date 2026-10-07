@@ -147,6 +147,8 @@
   const OT_WINDOW_DAYS = 4;
   /** Carry-over OT bank (people with After-hours OT on, from staff.ot_carry_from): OT never expires, it waits until used. */
   const carriesOt = (staff, date) => !!staff.ot_carry_from && date >= staff.ot_carry_from;
+  /** The most of a carry-over bank that one day can use (Settings → Max OT bank use per day). Admin "Extra OT credit" is on top. */
+  const dailyUse = (settings) => Math.max(0, settings.ot_daily_use_mins ?? 180);
   /**
    * Work out every day for one person, in date order, passing each work day's OT to the next work day.
    * Returns a Map work_date → calcDay result. Give it a few days before the range you show, so the first day
@@ -159,15 +161,19 @@
     const out = new Map(); let bank = 0, bankFrom = null, bankDate = null;
     for (const r of list) {
       const carry = carriesOt(staff, r.work_date);
-      let avail = Number(r.ot_adjust) || 0, from = null;
+      let avail = Number(r.ot_adjust) || 0, from = null, held = 0;
       const live = bank > 0 && bankDate && (carry || daysApart(bankDate, r.work_date) <= OT_WINDOW_DAYS);
-      if (live) { avail += bank; from = bankFrom; }
+      if (live) {
+        const usable = carry ? Math.min(bank, dailyUse(settings)) : bank;   // carry-over bank: only so much per day
+        avail += usable; held = bank - usable; from = bankFrom;
+      }
       const c = calcDay(r, staff, settings, { avail, availFrom: from });
       c.carry = carry;
       out.set(r.work_date, c);
+      if (carry) c.bankAfter = bank;   // until the day is done, the whole bank is still there
       if (!r.time_in && !c.complete) continue;
       if (carry) {
-        const left = avail - (c.complete ? c.otUsed : 0), add = c.complete ? c.ot : 0;
+        const left = held + avail - (c.complete ? c.otUsed : 0), add = c.complete ? c.ot : 0;
         if (left <= 0) bankFrom = add ? r.work_date : null;   // bank was used up: what's left starts from today
         else if (!bankFrom) bankFrom = r.work_date;
         bank = left + add;
@@ -183,13 +189,20 @@
     out.carry = carriesOt(staff, bankDate || "9999");
     return out;
   }
-  /** OT this person can still use today: from their last work day (if today is their next one), minus what's used. */
+  /**
+   * OT this person can still use today: from their last work day (if today is their next one), minus what's used.
+   * mins = OT to use today, or the whole bank for a carry-over bank. use = what today can actually use (bank: up to the daily max).
+   */
   function otToday(rows, staff, settings, today) {
     const all = calcDays(rows.filter((r) => r.work_date <= today), staff, settings);
     const t = all.get(today);
-    if (t) return { mins: t.carry ? t.bankAfter ?? t.otAvail : Math.max(0, t.otAvail - (t.complete ? t.otUsed : 0)), from: t.otFrom, used: t.otUsed, today: true, carry: t.carry };
-    if (all.bank > 0 && all.bankDate && (all.carry || daysApart(all.bankDate, today) <= OT_WINDOW_DAYS)) return { mins: all.bank, from: all.bankFrom, used: 0, today: false, carry: all.carry };
-    return { mins: 0, from: null, used: 0, today: false, carry: carriesOt(staff, today) };
+    if (t) {
+      const left = Math.max(0, t.otAvail - (t.complete ? t.otUsed : 0));
+      return { mins: t.carry ? t.bankAfter ?? t.otAvail : left, use: left, from: t.otFrom, used: t.otUsed, today: true, carry: t.carry };
+    }
+    if (all.bank > 0 && all.bankDate && (all.carry || daysApart(all.bankDate, today) <= OT_WINDOW_DAYS))
+      return { mins: all.bank, use: all.carry ? Math.min(all.bank, dailyUse(settings)) : all.bank, from: all.bankFrom, used: 0, today: false, carry: all.carry };
+    return { mins: 0, use: 0, from: null, used: 0, today: false, carry: carriesOt(staff, today) };
   }
 
   /** Roll a set of rows (one person) into period totals. opts.from: only count days from this date (earlier rows only feed OT). */
