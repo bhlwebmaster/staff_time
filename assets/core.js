@@ -88,6 +88,8 @@
    *   plus any after-hours OT clocked after the shift (row.after_mins), so all of a day's time is rounded once.
    *   Minutes before the scheduled start count only if Settings → "count early minutes" is on.
    * - Expected = that day's scheduled start→end − that day's planned lunch (Staff → Usual week).
+   *   No lunch tapped: the shift length, but no more than their normal day (e.g. 8:00) or the shift minus lunch if that's longer.
+   *   So a 9:00–18:00 day without lunch still expects 8:00, and a 9:00–13:00 half day without lunch expects 4:00 (not 3:00).
    * - OT = worked beyond expected, in whole blocks (Settings, e.g. 30 min: 45 min extra → 30).
    * - Short = worked below expected (taken from OT first, then counted as undertime in payroll).
    * - Late: clocked in after start + grace. With "judge by hours" on, a complete day with its full hours isn't late.
@@ -106,7 +108,8 @@
     if (span <= 0) span += 1440;                              // overnight shift
     const isRest = row.day_kind === "rest";                   // rest day: nothing is expected, every worked minute is OT
     const planLunch = isRest ? 0 : plannedLunch(staff, row.work_date);
-    const std = isRest ? 0 : Math.max(0, span - planLunch);
+    const tookLunch = !!(row.lunch_out && row.lunch_in);
+    const std = isRest ? 0 : tookLunch ? Math.max(0, span - planLunch) : Math.min(span, Math.max(span - planLunch, standardMins(staff)));
     const flex = settings.flex_hours !== false;
     const avail = Math.max(0, Number(opts.avail) || 0);
     const after = Math.max(0, Number(row.after_mins) || 0);
@@ -131,7 +134,7 @@
         out.short = -out.variance - out.otUsed;
       }
       if (flex && out.short === 0) out.late = 0;             // full hours done (with OT): starting late doesn't count
-      out.noLunch = planLunch > 0 && !(lo && li);
+      out.noLunch = planLunch > 0 && !(lo && li) && std < span;   // a short day that needs no lunch isn't flagged
     } else if (!tin && isRest && after > 0) {
       // Rest day worked only in OT sessions (no clock-in): all of it is OT
       out.worked = after; out.variance = after; out.complete = true; out.status = "out";

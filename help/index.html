@@ -334,7 +334,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
     <div class="prose">
       <ul>
         <li><b>Worked</b> = time out − time in − the lunch you tapped.</li>
-        <li><b>Expected</b> = your schedule for that day minus its planned lunch (e.g. 9:00–6:00 with 1-hour lunch = 8:00; a 4-hour part-time day with no lunch = 4:00).</li>
+        <li><b>Expected</b> = your schedule for that day minus its planned lunch (e.g. 9:00–6:00 with 1-hour lunch = 8:00). <b>No lunch taken?</b> Then it's the shift length, but never more than your normal day: a 9:00–6:00 day is still 8:00, a 9:00–1:00 half day is 4:00.</li>
         <li><b>OT</b> counts in <b>30-minute blocks</b>: 30 min extra = 0:30, 45 min = 0:30, 1:20 = 1:00, 1:30 = 1:30.</li>
         <li><b>Use OT on your next work day only</b> (start later or leave earlier). Rest days, leave and holidays are skipped, so Friday's OT works on Monday.</li>
         <li><b>Unused OT expires</b> at the end of that day. It isn't paid and doesn't carry over. (People with <a href="#out-of-hours">Out-of-hours OT</a> have an OT bank instead.)</li>
@@ -659,7 +659,7 @@ a.brand:hover .mark { filter: brightness(1.08); }
         <thead><tr><th>Term</th><th>Rule</th></tr></thead>
         <tbody>
           <tr><td><b>Worked</b></td><td>Time out − time in − the lunch they tapped. No lunch tapped = nothing taken off.</td></tr>
-          <tr><td><b>Expected</b></td><td>That day's planned schedule minus its planned lunch (Staff → Usual week).</td></tr>
+          <tr><td><b>Expected</b></td><td>That day's planned schedule minus its planned lunch (Staff → Usual week). If no lunch was tapped: the shift length, capped at their normal day (9:00–6:00 → 8:00; a 9:00–1:00 half day → 4:00, not 3:00).</td></tr>
           <tr><td><b>OT</b></td><td>Worked − expected, in whole blocks (default <b>30 min</b>: 45 → 0:30, 1:20 → 1:00).</td></tr>
           <tr><td><b>OT use</b></td><td>Only on the next work day (the next clock-in within 4 days, so Friday → Monday). Unused OT expires. Staff choose Start later / Leave earlier at clock-in.</td></tr>
           <tr><td><b>Out-of-hours OT</b></td><td>Only for people with <b>Out-of-hours OT</b> ticked (Staff → Edit). They clock pre-shift OT (before clocking in, working days), post-shift OT (after clocking out) and rest-day OT with a note; the minutes are added to that day's worked time before rounding. A session nobody ends stops after 4 hours and is flagged.</td></tr>

@@ -135,7 +135,7 @@ All times are **UK time** (Europe/London). That's the "GMT" the team already use
 | Term | Rule |
 |---|---|
 | **Worked** | Time out − time in − the lunch actually tapped (no lunch tapped = nothing taken off). |
-| **Expected** | That day's schedule minus its planned lunch (Staff → Usual week, lunch per day). |
+| **Expected** | That day's schedule minus its planned lunch (Staff → Usual week, lunch per day). No lunch tapped: the shift length, capped at their normal day (so 9:00–18:00 still expects 8:00, a 9:00–13:00 half day expects 4:00). |
 | **OT earned** | Worked − expected, in whole blocks (default 30 min: 45 extra → 30, 1:20 → 1:00). |
 | **Short** | Worked below expected. Covered by OT from the last work day first ("OT used"); the rest is undertime in payroll. |
 | **Rest days** | Each attendance row stores what the schedule says the day is (`day_kind`). On a rest day nothing is expected, so every worked minute (clocked or OT sessions) is OT. |
