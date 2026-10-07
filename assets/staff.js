@@ -174,6 +174,7 @@
     $("mDays").textContent = sum.days;
     $("mHours").textContent = B.fmtMins(sum.worked);
     const otNow = B.otToday(data.rows, st, set, today);
+    renderBank(otNow, today);
     $("mBank").textContent = B.fmtMins(otNow.mins);
     $("mBank").style.color = otNow.mins > 0 ? "var(--accent)" : "";
     $("mBankLbl").textContent = otNow.carry ? "OT in your bank" : "OT to use today";
@@ -181,6 +182,26 @@
     $("mOtRule").hidden = otNow.carry; $("mOtCarry").hidden = !otNow.carry;
     renderWa();
     renderTeam();
+  }
+
+  // ---------- OT bank card (people with Out-of-hours OT): the bank, the daily limit and the next cut-off ----------
+  /** Pay cut-offs are the 15th and the last day of the month. */
+  function nextCutoff(today) {
+    const [y, m, d] = today.split("-").map(Number);
+    return d <= 15 ? `${today.slice(0, 8)}15` : new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  }
+  function renderBank(o, today) {
+    const card = $("bankCard");
+    card.hidden = !o.carry;
+    if (card.hidden) return;
+    const cut = nextCutoff(today), left = Math.round((Date.parse(cut) - Date.parse(today)) / 864e5);
+    $("bankMins").textContent = B.fmtMins(o.mins);
+    $("bankCut").textContent = B.prettyDate(cut, { weekday: "short", day: "numeric", month: "short" });
+    $("bankLeft").textContent = left === 0 ? "Cut-off is today" : left === 1 ? "1 day left" : `${left} days left`;
+    $("bankLeft").className = left <= 3 ? "soon" : "muted";
+    const max = data.settings.ot_daily_use_mins ?? 180;
+    $("bankNote").textContent = !o.mins ? "No OT in your bank yet. Out-of-hours and extra time you work is added here."
+      : `Try to use it before the cut-off: start later or leave earlier, up to ${B.fmtMins(max)} a day (pick it when you clock in).`;
   }
 
   // ---------- out-of-hours OT card (pre-shift and post-shift, live Start/End) ----------

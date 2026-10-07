@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20261007e">
+<link rel="stylesheet" href="assets/style.css?v=20261007f">
 <style>
   main { padding-block: 20px 60px; }
   .hello { display: grid; gap: 4px; margin-bottom: 18px; }
@@ -141,6 +141,12 @@
   .ot-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .ot-btns .btn { justify-content: center; }
   .ot-btns .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .bankcard { display: grid; gap: 8px; border-color: var(--accent); }
+  .bank-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  #bankMins { display: block; font-size: 34px; line-height: 1.1; color: var(--accent); }
+  .bank-cut { display: grid; text-align: right; font-size: 13px; }
+  .bank-cut b { font-size: 15px; }
+  .bank-cut .soon { color: var(--late); font-weight: 600; }
   .ot-live { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; font-size: 14px; }
   .ot-list { display: grid; gap: 6px; }
   .ot-s { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
@@ -257,6 +263,11 @@
 
     <div class="tcols">
     <div class="tcol">
+    <div class="card pad o1 bankcard" id="bankCard" hidden>
+      <div class="bank-top"><div><div class="eyebrow">My OT bank</div><b id="bankMins" class="mono">0:00</b></div>
+        <div class="bank-cut"><span class="muted">Next cut-off</span><b id="bankCut"></b><span id="bankLeft"></span></div></div>
+      <p id="bankNote" class="muted" style="margin:0;font-size:13px"></p>
+    </div>
     <div class="timeline o1" id="timeline"></div>
     <div class="card pad stack o2">
       <div class="row" style="justify-content:space-between">
@@ -385,13 +396,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=20261007e"></script>
-<script src="assets/core.js?v=20261007e"></script>
-<script src="assets/game.js?v=20261007e"></script>
-<script src="assets/schedule.js?v=20261007e"></script>
-<script src="assets/logo.js?v=20261007e"></script>
-<script src="assets/payroll.js?v=20261007e"></script>
-<script src="assets/api.js?v=20261007e"></script>
-<script src="assets/staff.js?v=20261007e"></script>
+<script src="config.js?v=20261007f"></script>
+<script src="assets/core.js?v=20261007f"></script>
+<script src="assets/game.js?v=20261007f"></script>
+<script src="assets/schedule.js?v=20261007f"></script>
+<script src="assets/logo.js?v=20261007f"></script>
+<script src="assets/payroll.js?v=20261007f"></script>
+<script src="assets/api.js?v=20261007f"></script>
+<script src="assets/staff.js?v=20261007f"></script>
 </body>
 </html>
