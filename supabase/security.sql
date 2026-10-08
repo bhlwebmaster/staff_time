@@ -49,5 +49,6 @@ grant execute on function public.my_schedule_requests(uuid, text)               
 grant execute on function public.cancel_schedule_request(uuid, text, uuid)                  to anon, authenticated;
 grant execute on function public.save_push(uuid, text, text, text, text, text)              to anon, authenticated;
 grant execute on function public.remove_push(uuid, text, text)                              to anon, authenticated;
+grant execute on function public.hub_signin(uuid, text)                                     to anon, authenticated;
 
 notify pgrst, 'reload schema';

@@ -474,12 +474,25 @@ begin
   return json_build_object('ok', true);
 end $$;
 
+-- Support hub front door (biohacksupport.dev): is this staff member's PIN right? Same lock-out as clocking.
+-- Returns only ok + id + display name, or the reason. The hub never sees or stores PINs.
+create or replace function public.hub_signin(p_staff uuid, p_pin text) returns json
+language plpgsql security definer set search_path = public, extensions as $$
+declare v_err text; s staff;
+begin
+  v_err := _check_pin(p_staff, p_pin);
+  if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
+  select * into s from staff where id = p_staff;
+  return json_build_object('ok', true, 'id', s.id, 'name', s.display_name);
+end $$;
+
 -- ---------- Permissions ----------
 revoke all on function public._check_pin(uuid, text) from public, anon, authenticated;
 grant execute on function public.roster() to anon, authenticated;
 grant execute on function public.set_pin(uuid, text, text) to anon, authenticated;
 grant execute on function public.punch(uuid, text, text, time, time, text) to anon, authenticated;
 grant execute on function public.set_profile(uuid, text, text, text, text, text) to anon, authenticated;
+grant execute on function public.hub_signin(uuid, text) to anon, authenticated;
 grant execute on function public.is_admin() to authenticated;
 grant execute on function public.is_full_admin() to authenticated;
 grant execute on function public.my_role() to authenticated;
@@ -1171,6 +1184,7 @@ grant execute on function public.my_schedule_requests(uuid, text)               
 grant execute on function public.cancel_schedule_request(uuid, text, uuid)                  to anon, authenticated;
 grant execute on function public.save_push(uuid, text, text, text, text, text)              to anon, authenticated;
 grant execute on function public.remove_push(uuid, text, text)                              to anon, authenticated;
+grant execute on function public.hub_signin(uuid, text)                                     to anon, authenticated;
 
 -- ------------------------------------------------------------
 -- Keep the privileged code out of the public API (Supabase's recommended pattern)
@@ -1196,7 +1210,7 @@ begin
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname in (
       'roster', 'week_schedule', 'punch', 'set_pin', 'set_profile', 'my_payslips', 'request_week',
-      'my_schedule_requests', 'cancel_schedule_request', 'save_push', 'remove_push',      -- staff app (PIN-checked, no login)
+      'my_schedule_requests', 'cancel_schedule_request', 'save_push', 'remove_push', 'hub_signin', -- staff app (PIN-checked, no login)
       'admin_staff', 'decide_schedule_request', 'is_admin', 'is_full_admin', 'my_role', 'ot_autostop')   -- signed-in admin / finance
   loop
     if f.prosecdef then

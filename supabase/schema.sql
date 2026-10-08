@@ -470,12 +470,25 @@ begin
   return json_build_object('ok', true);
 end $$;
 
+-- Support hub front door (biohacksupport.dev): is this staff member's PIN right? Same lock-out as clocking.
+-- Returns only ok + id + display name, or the reason. The hub never sees or stores PINs.
+create or replace function public.hub_signin(p_staff uuid, p_pin text) returns json
+language plpgsql security definer set search_path = public, extensions as $$
+declare v_err text; s staff;
+begin
+  v_err := _check_pin(p_staff, p_pin);
+  if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
+  select * into s from staff where id = p_staff;
+  return json_build_object('ok', true, 'id', s.id, 'name', s.display_name);
+end $$;
+
 -- ---------- Permissions ----------
 revoke all on function public._check_pin(uuid, text) from public, anon, authenticated;
 grant execute on function public.roster() to anon, authenticated;
 grant execute on function public.set_pin(uuid, text, text) to anon, authenticated;
 grant execute on function public.punch(uuid, text, text, time, time, text) to anon, authenticated;
 grant execute on function public.set_profile(uuid, text, text, text, text, text) to anon, authenticated;
+grant execute on function public.hub_signin(uuid, text) to anon, authenticated;
 grant execute on function public.is_admin() to authenticated;
 grant execute on function public.is_full_admin() to authenticated;
 grant execute on function public.my_role() to authenticated;
