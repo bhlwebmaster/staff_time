@@ -938,13 +938,14 @@ dialog#lb button { position: fixed; top: 16px; right: 16px; border: 0; border-ra
   function setGuide(g, scroll) {
     guide = g;
     for (const b of document.querySelectorAll(".switch button")) b.setAttribute("aria-pressed", b.dataset.g === g);
-    document.querySelectorAll("[data-quick]").forEach((q) => { q.hidden = q.dataset.quick !== g; });
     const [e, t, p] = heroes[g]; $("heroEyebrow").textContent = e; $("heroTitle").textContent = t; $("heroText").textContent = p;
     try { localStorage.setItem("bhl.kb.guide", g); } catch {}
     filter(); if (scroll) window.scrollTo({ top: 0 });
   }
   function filter() {
     const q = $("q").value.trim().toLowerCase();
+    // while searching, hide the quick-help cards so the results sit right under the search box
+    document.querySelectorAll("[data-quick]").forEach((s) => { s.hidden = s.dataset.quick !== guide || !!q; });
     let shown = 0;
     for (const a of arts) {
       const ok = a.dataset.g === guide && (!q || a.textContent.toLowerCase().includes(q));
@@ -978,6 +979,12 @@ dialog#lb button { position: fixed; top: 16px; right: 16px; border: 0; border-ra
     location.href = `mailto:biohack.webmaster@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   });
   $("q").addEventListener("input", filter);
+  // Enter: jump to the first result (and close the phone keyboard)
+  $("q").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault(); filter(); $("q").blur();
+    (arts.find((a) => !a.hidden) || $("noResults")).scrollIntoView({ block: "start", behavior: "smooth" });
+  });
   // lightbox
   document.addEventListener("click", (e) => {
     const img = e.target.closest(".phone img, .desk img, .crop img"); if (!img) return;
