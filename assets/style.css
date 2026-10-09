@@ -66,6 +66,9 @@ a.brand:hover .logo { transform: rotate(-6deg); transition: transform .2s; }
 .help-link { order: 3; font-weight: 700; font-size: 13.5px; text-decoration: none; color: var(--accent); border: 1px solid var(--line); background: var(--surface); padding: 5px 12px; border-radius: 999px; }
 .help-link:hover { border-color: var(--accent); }
 .clocks { margin-left: auto; display: flex; gap: 14px; align-items: baseline; }
+/* admin: the tabs and the clock group don't fit on one row, so centre both rows */
+.bar .wrap:has(> .tabs:not([hidden])) { justify-content: center; }
+.bar .wrap:has(> .tabs:not([hidden])) .clocks { margin-left: 0; align-items: center; }
 .clock b { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--clock-uk); }
 .clock span { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--clock-uk); font-weight: 700; margin-left: 4px; }
 .clock.sub b { font-size: 12.5px; font-weight: 400; color: var(--clock-ph); }
