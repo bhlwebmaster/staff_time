@@ -297,13 +297,31 @@ dialog#lb button { position: fixed; top: 16px; right: 16px; border: 0; border-ra
 
 <!-- ===================== STAFF ===================== -->
 <article class="article" data-g="staff" id="open-app" data-title="Open the app">
-  <h2><span class="n">01</span>Open the app and save it to your phone</h2>
-  <p class="lede">Use the staff link on your phone. Save it to your home screen once so it opens like an app.</p>
+  <h2><span class="n">01</span>Open the app and install it on your phone</h2>
+  <p class="lede">Open the Time Tracker from the Support Hub, then install it on your home screen once so it opens like an app.</p>
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div>On your phone, open <a href="../">bhlwebmaster.github.io/staff_time</a> in Chrome or Safari.</div></li>
-        <li><div><b>iPhone:</b> tap <b>Share → Add to Home Screen</b>. <b>Android:</b> tap <b>⋮ → Add to Home screen</b>.</div></li>
+        <li><div>On your phone, open <a href="/timetracker/">biohacksupport.dev/timetracker</a> and sign in with your name and PIN.</div></li>
+      </ol>
+      <h3 style="margin-top:20px;font-size:17px">iPhone (Safari)</h3>
+      <ol class="steps">
+        <li><div>Open the link in <b>Safari</b>. Other browsers on iPhone may not offer this.</div></li>
+        <li><div>Tap <b>Share</b> (the square with the arrow). On newer iPhones, tap <b>⋯</b> first, then <b>Share</b>.</div></li>
+        <li><div>Scroll down and tap <b>Add to Home Screen</b>.</div></li>
+        <li><div>Leave <b>Open as Web App</b> switched on, then tap <b>Add</b>.</div></li>
+        <li><div>From now on, open the app from the new <b>Attendance</b> icon on your home screen.</div></li>
+      </ol>
+      <h3 style="margin-top:20px;font-size:17px">Android (Chrome)</h3>
+      <ol class="steps">
+        <li><div>Open the link in <b>Chrome</b>.</div></li>
+        <li><div>Tap <b>⋮</b> (top right), then <b>Add to home screen</b> or <b>Install app</b>.</div></li>
+        <li><div>Tap <b>Install</b>. The <b>Attendance</b> icon appears on your home screen or in your app list.</div></li>
+      </ol>
+      <div class="tip"><b>Tip</b><span>On iPhone the installed app keeps its own sign-in, separate from Safari. Sign in once <b>inside the app</b> (it lasts 14 days), and switch <b>shift reminders</b> on from inside the app too.</span></div>
+      <div class="tip warn"><b>Had the old app?</b><span>If you saved the app before, from <b>bhlwebmaster.github.io</b>, delete that icon, install the new one with the steps above, then turn shift reminders on again.</span></div>
+      <h3 style="margin-top:20px;font-size:17px">Using the app</h3>
+      <ol class="steps">
         <li><div>Everyone is shown as a card with their photo, status and today's hours. Tap <b>your own name</b>.</div></li>
       </ol>
       <p>At the top: the <b>BHL logo</b> or <b>Staff</b> brings you back to this screen. <b>Admin</b> is for admins and finance only. <b>Help</b> opens this guide.</p>
@@ -591,6 +609,8 @@ dialog#lb button { position: fixed; top: 16px; right: 16px; border: 0; border-ra
   <details class="faq" id="q-locked"><summary>It says "Too many wrong PINs"</summary><div>After 5 wrong tries your name is locked for 15 minutes. Wait, then try again, or ask an admin to reset your PIN.</div></details>
   <details class="faq" id="q-forgot-out"><summary>I forgot to clock out, or clocked in at the wrong time</summary><div>Send an admin the correct time (e.g. "Clocked out 3:05 PM UK yesterday"). You can't change past days yourself; this keeps records fair.</div></details>
   <details class="faq" id="q-no-name"><summary>I can't see my name</summary><div>An admin needs to add you first under Staff. Then refresh the page.</div></details>
+  <details class="faq" id="q-install"><summary>I can't find Add to Home Screen</summary><div>On iPhone, open the link in <b>Safari</b>, tap <b>Share</b> (or <b>⋯</b> then <b>Share</b>) and scroll down the list. On Android, use <b>Chrome</b> and tap <b>⋮</b>. See step 01.</div></details>
+  <details class="faq" id="q-signin-loop"><summary>The app keeps asking me to sign in</summary><div>On iPhone the installed app has its own sign-in. Sign in <b>inside the app</b>, not in Safari. It then lasts 14 days. If it still asks every time, tell an admin.</div></details>
   <details class="faq" id="q-wont-load"><summary>The page won't load or looks broken</summary><div>Check your internet, then pull down to refresh (Ctrl+R / Cmd+R on a computer). Still stuck? Tell an admin, and post your times in WhatsApp for now.</div></details>
   <details class="faq" id="q-ot"><summary>Where did my OT go?</summary><div>OT can only be used on your next work day, then it expires. Check <b>OT to use today</b> on the This month card. If you couldn't use it for a good reason, ask an admin: they can add it back to a day. With an OT bank (Out-of-hours OT), it stays until you use it: check <b>OT in your bank</b>.</div></details>
   <details class="faq" id="q-ot-end"><summary>I forgot to tap End OT</summary><div>It stops by itself 4 hours after it started, and admins see an <b>OT auto-stopped</b> flag. Send an admin the real end time (e.g. "Ended pre-shift OT at 2:10 PM Manila") and they'll fix it.</div></details>
@@ -623,7 +643,7 @@ dialog#lb button { position: fixed; top: 16px; right: 16px; border: 0; border-ra
   <div class="split">
     <div class="prose">
       <ol class="steps">
-        <li><div>Open <a href="../admin.html">bhlwebmaster.github.io/staff_time/admin.html</a> and bookmark it.</div></li>
+        <li><div>Open <a href="/timetracker/admin">biohacksupport.dev/timetracker/admin</a> and bookmark it.</div></li>
         <li><div>Sign in with the email and password you were given.</div></li>
         <li><div>Got a temporary password? Change it under <b>Access → My password</b>.</div></li>
       </ol>
