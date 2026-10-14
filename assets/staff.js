@@ -174,7 +174,8 @@
     $("mDays").textContent = sum.days;
     $("mHours").textContent = B.fmtMins(sum.worked);
     const otNow = B.otToday(data.rows, st, set, today);
-    renderBank(otNow, today);
+    const tr = todayRow();
+    renderBank(otNow, today, tr && tr.time_in && !tr.time_out ? Math.min(B.bankPlanned(tr), otNow.mins) : 0);
     renderReminders();
     $("mBank").textContent = B.fmtMins(otNow.mins);
     $("mBank").style.color = otNow.mins > 0 ? "var(--accent)" : "";
@@ -191,17 +192,19 @@
     const [y, m, d] = today.split("-").map(Number);
     return d <= 15 ? `${today.slice(0, 8)}15` : new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   }
-  function renderBank(o, today) {
+  function renderBank(o, today, setAside = 0) {
     const card = $("bankCard");
     card.hidden = !o.carry;
     if (card.hidden) return;
     const cut = nextCutoff(today), left = Math.round((Date.parse(cut) - Date.parse(today)) / 864e5);
-    $("bankMins").textContent = B.fmtMins(o.mins);
+    // OT bank put towards today (at clock-in or with "OT from your bank for today") is shown as already taken; it's final at clock-out
+    $("bankMins").textContent = B.fmtMins(o.mins - setAside);
     $("bankCut").textContent = B.prettyDate(cut, { weekday: "short", day: "numeric", month: "short" });
     $("bankLeft").textContent = left === 0 ? "Cut-off is today" : left === 1 ? "1 day left" : `${left} days left`;
     $("bankLeft").className = left <= 3 ? "soon" : "muted";
     const max = data.settings.ot_daily_use_mins ?? 180;
-    $("bankNote").textContent = !o.mins ? "No OT in your bank yet. Out-of-hours and extra time you work is added here."
+    $("bankNote").textContent = setAside ? `${B.fmtMins(setAside)} of your ${B.fmtMins(o.mins)} goes towards today. It's final when you clock out (short time beyond that also comes from the bank).`
+      : !o.mins ? "No OT in your bank yet. Out-of-hours and extra time you work is added here."
       : `Try to use it before the cut-off: start later or leave earlier, up to ${B.fmtMins(max)} a day (pick it when you clock in).`;
   }
 
