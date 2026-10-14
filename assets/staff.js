@@ -197,13 +197,13 @@
     card.hidden = !o.carry;
     if (card.hidden) return;
     const cut = nextCutoff(today), left = Math.round((Date.parse(cut) - Date.parse(today)) / 864e5);
-    // OT bank put towards today (at clock-in or with "OT from your bank for today") is shown as already taken; it's final at clock-out
-    $("bankMins").textContent = B.fmtMins(o.mins - setAside);
+    // OT bank set to cover today (at clock-in or with "Bank covers up to"): only the real short time comes out, at clock-out
+    $("bankMins").textContent = B.fmtMins(o.mins);
     $("bankCut").textContent = B.prettyDate(cut, { weekday: "short", day: "numeric", month: "short" });
     $("bankLeft").textContent = left === 0 ? "Cut-off is today" : left === 1 ? "1 day left" : `${left} days left`;
     $("bankLeft").className = left <= 3 ? "soon" : "muted";
     const max = data.settings.ot_daily_use_mins ?? 180;
-    $("bankNote").textContent = setAside ? `${B.fmtMins(setAside)} of your ${B.fmtMins(o.mins)} goes towards today. It's final when you clock out (short time beyond that also comes from the bank).`
+    $("bankNote").textContent = setAside ? `Up to ${B.fmtMins(setAside)} can cover short time today. Only what you're actually short comes out, to the minute, when you clock out. The rest stays.`
       : !o.mins ? "No OT in your bank yet. Out-of-hours and extra time you work is added here."
       : `Try to use it before the cut-off: start later or leave earlier, up to ${B.fmtMins(max)} a day (pick it when you clock in).`;
   }
@@ -394,7 +394,7 @@
       if (!steps.includes(used)) steps.push(used);
       $("otUse").innerHTML = steps.sort((x, y) => x - y).map((m) => `<option value="${m}" ${m === used ? "selected" : ""}>${m ? B.fmtMins(m) : "None"}</option>`).join("");
       $("otUseRow").hidden = steps.length < 2;
-      if (used) $("otSub").textContent += ` You've put ${B.fmtMins(used)} of it towards today.`;
+      if (used) $("otSub").textContent += ` Set to cover up to ${B.fmtMins(used)} today: only your real short time comes out, to the minute.`;
     } else if (c.complete) {
       $("otTitle").textContent = c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT${from} today.` : `Your ${B.fmtMins(c.otAvail)} OT${from} wasn't needed today.`;
       $("otSub").textContent = c.otUsed && c.otUsed < c.otAvail ? `The other ${B.fmtMins(c.otAvail - c.otUsed)} expired.` : c.otUsed ? "" : "It has now expired.";
@@ -410,7 +410,7 @@
     btn.disabled = false;
     if (!r.ok) { B.toast(r.error, "err"); if (/PIN/.test(r.error)) { pin = ""; pick(me); } return; }
     data = r; renderToday();
-    B.toast(mins ? `${B.fmtMins(mins)} of your OT bank goes towards today` : "OT bank taken off today");
+    B.toast(mins ? `Your bank covers up to ${B.fmtMins(mins)} of short time today` : "OT bank no longer set for today");
   });
   $("otPick").addEventListener("click", (e) => { const b = e.target.closest("button[data-o]"); if (!b) return; otPick = b.dataset.o; renderToday(); });
   $("otAmt").addEventListener("change", (e) => { otAmt = +e.target.value; renderToday(); });
