@@ -264,6 +264,7 @@
     $("eIn").value = h(r?.time_in); $("eOut").value = h(r?.time_out); $("eLO").value = h(r?.lunch_out); $("eLI").value = h(r?.lunch_in);
     $("eNote").value = r?.note || "";
     $("eOtAdj").value = r?.ot_adjust || "";
+    $("eBankRow").hidden = !s.ot_carry_from; $("eBank").value = B.bankPlanned(r) || "";
     $("eDel").hidden = !r;
     $("eHist").innerHTML = "";
     $("eOtBox").hidden = !r || (!s.ot_carry_from && !r.after_mins);
@@ -286,6 +287,8 @@
     // Changing the schedule here is an admin decision: it becomes the planned schedule for the day
     const hh = (t) => (t || "").slice(0, 5);
     if (!editing || hh(editing.sched_start) !== rec.sched_start || hh(editing.sched_end) !== rec.sched_end) { rec.plan_start = rec.sched_start; rec.plan_end = rec.sched_end; }
+    // Carry-over bank: "OT bank used" makes the planned day that much longer than the actual one, so the gap comes out of the bank
+    if (!$("eBankRow").hidden) { const used = Math.max(0, Math.round(+$("eBank").value || 0)); rec.plan_start = B.bankPlanStart(rec.sched_start, used); rec.plan_end = rec.sched_end; }
     const seq = [rec.time_in, rec.lunch_out, rec.lunch_in, rec.time_out].filter(Boolean);
     if (seq.some((v, i) => i && v < seq[i - 1])) return B.toast("Times must run in order: in → lunch out → lunch in → out.", "err");
     if (rec.sched_end <= rec.sched_start) return B.toast("Schedule end must be after start.", "err");

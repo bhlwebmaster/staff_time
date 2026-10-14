@@ -205,6 +205,18 @@
     return { mins: 0, use: 0, from: null, used: 0, today: false, carry: carriesOt(staff, today) };
   }
 
+  const spanOf = (a, b) => { const m = minsOf(b) - minsOf(a); return m <= 0 ? m + 1440 : m; };
+  /** OT bank put towards a day after clock-in (staff "Use OT bank", admin "OT bank used"): how much longer the planned day is than the actual one. */
+  function bankPlanned(row) {
+    if (!row || !row.plan_start || !row.plan_end || !row.sched_start || !row.sched_end) return 0;
+    return Math.max(0, spanOf(row.plan_start, row.plan_end) - spanOf(row.sched_start, row.sched_end));
+  }
+  /** Planned start that puts `mins` of the bank towards a day: the actual start moved back by that much (the planned end stays the actual end). */
+  function bankPlanStart(schedStart, mins) {
+    const t = (((minsOf(schedStart) - Math.max(0, mins || 0)) % 1440) + 1440) % 1440;
+    return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+  }
+
   /** Roll a set of rows (one person) into period totals. opts.from: only count days from this date (earlier rows only feed OT). */
   function summarise(rows, staff, settings, today, opts = {}) {
     const s = { days: 0, complete: 0, worked: 0, regular: 0, ot: 0, otUsed: 0, short: 0, late: 0, lateMins: 0, missingOut: 0, days_list: [] };
@@ -262,5 +274,5 @@
   function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
 
   window.BHL = { cfg, sb, configured, tzOffsetMs, zonedToDate, dateIn, hhmmIn, clockIn, clockStr, tzShort, minsOf,
-    fmtMins, hoursDec, prettyDate, standardMins, plannedLunch, calcDay, calcDays, otToday, summarise, whatsappText, esc, toast, copyText, lsGet, lsSet };
+    fmtMins, hoursDec, prettyDate, standardMins, plannedLunch, calcDay, calcDays, otToday, bankPlanned, bankPlanStart, dailyUse, summarise, whatsappText, esc, toast, copyText, lsGet, lsSet };
 })();

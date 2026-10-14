@@ -375,7 +375,7 @@
       $("otPreview").textContent = otPick === "no" ? `Today: ${B.clockStr(ss)} – ${B.clockStr(se)} UK` : `Today: ${B.clockStr(adj.s)} – ${B.clockStr(adj.e)} UK (was ${B.clockStr(ss)} – ${B.clockStr(se)})`;
       return;
     }
-    otPick = "no"; $("otAmtRow").hidden = true;
+    otPick = "no"; $("otAmtRow").hidden = true; $("otUseRow").hidden = true;
     if (!c || !c.otAvail) { box.hidden = true; return; }
     box.hidden = false; box.classList.add("info");
     const from = c.otFrom ? ` from ${when(c.otFrom)}` : "";
@@ -384,6 +384,14 @@
       $("otTitle").textContent = c.complete ? (c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT from your bank today.` : "Your OT bank wasn't needed today.")
         : `Your ${B.fmtMins(c.otAvail)} OT bank covers any short time today.`;
       $("otSub").textContent = c.complete ? `Your bank is now ${B.fmtMins(c.bankAfter ?? left)}.` : "Start later or leave earlier by up to that much. Whatever you don't use stays in your bank.";
+      // Forgot to pick it at clock-in (or changed the schedule)? Put some of the bank towards today, up to the daily max.
+      const block = Math.max(1, data.settings.ot_block_mins || 30), used = B.bankPlanned(row);
+      const max = Math.max(used, Math.floor(Math.min(B.dailyUse(data.settings), c.otAvail) / block) * block), steps = [];
+      for (let m = 0; m <= max; m += block) steps.push(m);
+      if (!steps.includes(used)) steps.push(used);
+      $("otUse").innerHTML = steps.sort((x, y) => x - y).map((m) => `<option value="${m}" ${m === used ? "selected" : ""}>${m ? B.fmtMins(m) : "None"}</option>`).join("");
+      $("otUseRow").hidden = steps.length < 2;
+      if (used) $("otSub").textContent += ` You've put ${B.fmtMins(used)} of it towards today.`;
     } else if (c.complete) {
       $("otTitle").textContent = c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT${from} today.` : `Your ${B.fmtMins(c.otAvail)} OT${from} wasn't needed today.`;
       $("otSub").textContent = c.otUsed && c.otUsed < c.otAvail ? `The other ${B.fmtMins(c.otAvail - c.otUsed)} expired.` : c.otUsed ? "" : "It has now expired.";
@@ -392,6 +400,15 @@
       $("otSub").textContent = "Start later or leave earlier by up to that much. Unused OT expires at the end of today.";
     }
   }
+  $("otUseSave").addEventListener("click", async (e) => {
+    const btn = e.currentTarget, mins = +$("otUse").value;
+    btn.disabled = true;
+    const r = await api.useOtBank(me.id, pin, mins).catch((err) => ({ ok: false, error: err.message }));
+    btn.disabled = false;
+    if (!r.ok) { B.toast(r.error, "err"); if (/PIN/.test(r.error)) { pin = ""; pick(me); } return; }
+    data = r; renderToday();
+    B.toast(mins ? `${B.fmtMins(mins)} of your OT bank goes towards today` : "OT bank taken off today");
+  });
   $("otPick").addEventListener("click", (e) => { const b = e.target.closest("button[data-o]"); if (!b) return; otPick = b.dataset.o; renderToday(); });
   $("otAmt").addEventListener("change", (e) => { otAmt = +e.target.value; renderToday(); });
 

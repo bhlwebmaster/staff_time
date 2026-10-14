@@ -30,6 +30,7 @@
     punch: async (staff, pin, action, extra = {}) =>
       unwrap(await sb.rpc("punch", { p_staff: staff, p_pin: pin, p_action: action,
         p_sched_start: extra.sched_start || null, p_sched_end: extra.sched_end || null, p_note: extra.note ?? null })),
+    useOtBank: async (staff, pin, mins) => unwrap(await sb.rpc("use_ot_bank", { p_staff: staff, p_pin: pin, p_mins: mins })),
     admin: {
       session: async () => (await sb.auth.getSession()).data.session,
       signIn: async (email, password) => unwrap(await sb.auth.signInWithPassword({ email, password })),
@@ -122,5 +123,5 @@
   if (cfgMissing) showSetupProblem("This app isn't set up yet", "The connection settings in <code>config.js</code> are missing. Ask the webmaster (biohack.webmaster@gmail.com) to add the Supabase URL and key.");
   else if (libMissing) showSetupProblem("Can't connect right now", "Part of the app couldn't load. Check your internet connection and try again.");
   const broken = new Proxy({}, { get: () => async () => { throw new Error("The app isn't connected. Try again in a moment."); } });
-  window.BHL.api = cfgMissing || libMissing ? Object.assign(Object.create(null), { ready: false, admin: broken, roster: broken.x, punch: broken.x, myPayslips: broken.x, weekSchedule: broken.x, requestWeek: broken.x, myScheduleRequests: broken.x, cancelScheduleRequest: broken.x, setPin: broken.x, setProfile: broken.x, savePush: broken.x, removePush: broken.x }) : Object.assign(live, { ready: true });
+  window.BHL.api = cfgMissing || libMissing ? Object.assign(Object.create(null), { ready: false, admin: broken, roster: broken.x, punch: broken.x, myPayslips: broken.x, weekSchedule: broken.x, requestWeek: broken.x, myScheduleRequests: broken.x, cancelScheduleRequest: broken.x, setPin: broken.x, setProfile: broken.x, savePush: broken.x, removePush: broken.x, useOtBank: broken.x }) : Object.assign(live, { ready: true });
 })();

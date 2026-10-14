@@ -482,6 +482,36 @@ begin
   return json_build_object('ok', true, 'id', s.id, 'name', s.display_name);
 end $$;
 
+-- Use OT bank after clock-in (carry-over bank only, today only): put p_mins of the bank towards today.
+-- The planned schedule becomes the actual one with its start moved back by p_mins, so today expects p_mins more
+-- than the actual hours and the gap comes out of the bank. 0 takes it off again. Admins fix other days in Edit.
+create or replace function public.use_ot_bank(p_staff uuid, p_pin text, p_mins int) returns json
+language plpgsql security definer set search_path = public, extensions as $$
+declare
+  v_err text; v_tz text; v_max int; v_day date; s staff; a attendance; v_note text; v_tag text;
+begin
+  v_err := _check_pin(p_staff, p_pin);
+  if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
+  select * into s from staff where id = p_staff;
+  if s.ot_carry_from is null then return json_build_object('ok', false, 'error', 'You don''t have an OT bank. Ask an admin.'); end if;
+  select timezone, ot_daily_use_mins into v_tz, v_max from settings where id = 1;
+  v_day := (now() at time zone v_tz)::date;
+  select * into a from attendance where staff_id = p_staff and work_date = v_day for update;
+  if a.time_in is null then return json_build_object('ok', false, 'error', 'Clock in first.'); end if;
+  if p_mins is null or p_mins < 0 or p_mins > coalesce(v_max, 180) then
+    return json_build_object('ok', false, 'error', format('You can use up to %s:%s from your bank in a day.', coalesce(v_max, 180) / 60, lpad((coalesce(v_max, 180) % 60)::text, 2, '0')));
+  end if;
+  perform set_config('bhl.actor', 'staff: ' || s.display_name, true);
+  -- swap any earlier "Offset: h:mm OT from ..." tag for the new one
+  v_note := nullif(btrim(regexp_replace(coalesce(a.note, ''), '^Offset: [0-9]+:[0-9]{2} OT from [^.]*(\.\s*|$)', '')), '');
+  if p_mins > 0 then
+    v_tag := format('Offset: %s:%s OT from my bank', p_mins / 60, lpad((p_mins % 60)::text, 2, '0'));
+    v_note := case when v_note is null then v_tag else v_tag || '. ' || v_note end;
+  end if;
+  update attendance set plan_start = (sched_start - make_interval(mins => p_mins))::time, plan_end = sched_end, note = v_note where id = a.id;
+  return punch(p_staff, p_pin, 'check');
+end $$;
+
 -- ---------- Permissions ----------
 revoke all on function public._check_pin(uuid, text) from public, anon, authenticated;
 grant execute on function public.roster() to anon, authenticated;
@@ -489,6 +519,7 @@ grant execute on function public.set_pin(uuid, text, text) to anon, authenticate
 grant execute on function public.punch(uuid, text, text, time, time, text) to anon, authenticated;
 grant execute on function public.set_profile(uuid, text, text, text, text, text) to anon, authenticated;
 grant execute on function public.hub_signin(uuid, text) to anon, authenticated;
+grant execute on function public.use_ot_bank(uuid, text, int) to anon, authenticated;
 grant execute on function public.is_admin() to authenticated;
 grant execute on function public.is_full_admin() to authenticated;
 grant execute on function public.my_role() to authenticated;

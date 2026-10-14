@@ -449,6 +449,8 @@
     <label class="f">Note<textarea id="eNote" rows="2"></textarea></label>
     <label class="f" style="max-width:320px">Extra OT credit for this day (minutes)<input type="number" id="eOtAdj" min="0" max="600" step="30" placeholder="0">
       <span class="muted" style="font-weight:400;font-size:12px">Use this to let someone use OT that already expired, e.g. 60.</span></label>
+    <label class="f" id="eBankRow" style="max-width:320px" hidden>OT bank used this day (minutes)<input type="number" id="eBank" min="0" max="600" step="30" placeholder="0">
+      <span class="muted" style="font-weight:400;font-size:12px">How much of their OT bank covers this day, e.g. 90 for a 7:30 start instead of 6:00.</span></label>
     <div class="stack" id="eOtBox" style="gap:6px" hidden>
       <div class="row"><b style="font-size:14px">Out-of-hours OT</b><span class="spacer"></span><button class="btn sm" type="button" id="eOtAdd">Add session</button></div>
       <div id="eOtList" class="stack" style="gap:6px"></div>
@@ -531,13 +533,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20261007g"></script>
-<script src="assets/core.js?v=20261007g"></script>
-<script src="assets/game.js?v=20261007g"></script>
-<script src="assets/schedule.js?v=20261007g"></script>
-<script src="assets/logo.js?v=20261007g"></script>
-<script src="assets/payroll.js?v=20261007g"></script>
-<script src="assets/api.js?v=20261007g"></script>
-<script src="assets/admin.js?v=20261007g"></script>
+<script src="config.js?v=20261014a"></script>
+<script src="assets/core.js?v=20261014a"></script>
+<script src="assets/game.js?v=20261014a"></script>
+<script src="assets/schedule.js?v=20261014a"></script>
+<script src="assets/logo.js?v=20261014a"></script>
+<script src="assets/payroll.js?v=20261014a"></script>
+<script src="assets/api.js?v=20261014a"></script>
+<script src="assets/admin.js?v=20261014a"></script>
 </body>
 </html>
