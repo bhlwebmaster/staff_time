@@ -247,6 +247,11 @@
     return s;
   }
 
+  /**
+   * A day's note without the "Offset: 1:30 OT from my bank" tag (also a typed "Offset 1:30 OT bank"): that was the plan,
+   * not what was used. The OT used flag / line shows the real amount.
+   */
+  const noteText = (note) => String(note || "").replace(/^Offset:? [0-9]+:[0-9]{2} OT( from| bank)[^.]*(\.\s*|$)/i, "").trim();
   /** WhatsApp message for the group. otUsed = OT (bank) actually used that day, shown once clocked out ("None" if none). */
   function whatsappText(row, staff, settings, sessions = [], otUsed = 0) {
     const tz = settings.timezone;
@@ -262,8 +267,7 @@
     lines.push(`Time out: ${row.time_out ? clockIn(d(row.time_out), tz) + " " + label : ""}`);
     if (row.time_out) lines.push(`OT used: ${otUsed > 0 ? fmtMins(otUsed) : "None"}`);
     for (const o of sessions) lines.push(`${row.day_kind === "rest" ? "Rest-day" : row.time_in && d(o.started_at) >= d(row.time_in) ? "Post-shift" : "Pre-shift"} OT: ${clockIn(d(o.started_at), tz)} – ${o.ended_at ? clockIn(d(o.ended_at), tz) + " " + label : "ongoing"} (${o.note})`);
-    // the app's own "Offset: 1:30 OT from …" tag is a plan, not what was used: the OT used line replaces it
-    const note = String(row.note || "").replace(/^Offset: [0-9]+:[0-9]{2} OT from [^.]*(\.\s*|$)/, "").trim();
+    const note = noteText(row.note);   // the OT used line replaces the app's "Offset" plan
     if (note) lines.push("", note);
     return lines.join("\n");
   }
@@ -286,5 +290,5 @@
   function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
 
   window.BHL = { cfg, sb, configured, tzOffsetMs, zonedToDate, dateIn, hhmmIn, clockIn, clockStr, tzShort, minsOf,
-    fmtMins, hoursDec, prettyDate, standardMins, plannedLunch, calcDay, calcDays, otToday, bankPlanned, bankPlanStart, bankCover, usualSpan, dailyUse, summarise, whatsappText, esc, toast, copyText, lsGet, lsSet };
+    fmtMins, hoursDec, prettyDate, standardMins, plannedLunch, calcDay, calcDays, otToday, bankPlanned, bankPlanStart, bankCover, usualSpan, dailyUse, summarise, whatsappText, noteText, esc, toast, copyText, lsGet, lsSet };
 })();

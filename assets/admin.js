@@ -150,7 +150,7 @@
       return `<tr><td style="white-space:nowrap">${B.avatarHtml(s, 28)}<b>${B.esc(s.display_name)}</b></td><td><span class="pill ${k}">${label}</span></td>
         <td class="mono">${r ? `${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}` : plan.kind === "shift" ? `${B.clockStr(plan.start)}–${B.clockStr(plan.end)}` : "—"}</td>
         <td class="mono">${r ? t(r.time_in) : "—"}</td><td class="mono">${r ? lunchCell(r) : "—"}</td><td class="mono">${r ? t(r.time_out) : "—"}</td>
-        <td class="num">${worked}</td><td>${r ? flagsHtml(c, day === today()) : ""}${r?.note ? `<span class="sub" title="${B.esc(r.note)}">${B.esc(r.note)}</span>` : ""}</td>
+        <td class="num">${worked}</td><td>${r ? flagsHtml(c, day === today()) : ""}${B.noteText(r?.note) ? `<span class="sub" title="${B.esc(B.noteText(r.note))}">${B.esc(B.noteText(r.note))}</span>` : ""}</td>
         <td><button class="btn sm adminonly" data-edit="${r ? B.esc(r.id) : ""}" data-staff="${B.esc(s.id)}" data-date="${day}">${r ? "Edit" : "Add"}</button></td></tr>`;
     }).join("") || `<tr><td colspan="9" class="muted">No staff yet. Add people in the Staff tab.</td></tr>`;
     $("dayKpis").innerHTML = [
@@ -225,7 +225,7 @@
       <td class="mono">${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}</td>
       <td class="mono">${t(r.time_in)}</td><td class="mono">${lunchCell(r)}</td><td class="mono">${t(r.time_out)}</td>
       <td class="num">${c.worked != null ? B.fmtMins(c.worked) : "—"}</td><td>${flagsHtml(c, r.work_date === today())}</td>
-      <td class="note">${B.esc(r.note || "")}</td><td class="noprint"><button class="btn sm adminonly" data-edit="${B.esc(r.id)}">Edit</button></td></tr>`).join("")
+      <td class="note">${B.esc(B.noteText(r.note))}</td><td class="noprint"><button class="btn sm adminonly" data-edit="${B.esc(r.id)}">Edit</button></td></tr>`).join("")
       || `<tr><td colspan="10" class="muted">No entries.</td></tr>`;
   }
   $("sumRows").onclick = (e) => { const tr = e.target.closest("tr[data-id]"); if (!tr) return; $("who").value = $("who").value === tr.dataset.id ? "" : tr.dataset.id; dailyPg.page = 1; renderSheets(); };
@@ -248,7 +248,7 @@
   $("csvDay").onclick = () => download(`BHL-timesheet-daily_${period()}.csv`, [
     ["Date", "Name", "Timesheet name", "Sched start (UK)", "Sched end (UK)", "Time in (UK)", "Lunch out", "Lunch in", "Time out (UK)", "Worked hours", "Late minutes", "OT rendered minutes", "OT used minutes", "Short minutes", "Note", "Out-of-hours OT minutes"],
     ...computeSheets().flatMap(({ s, sum }) => sum.days_list.map(({ row: r, c }) => [r.work_date, s.display_name, s.full_name, r.sched_start.slice(0, 5), r.sched_end.slice(0, 5),
-      B.hhmmIn(c.tin, tz()), B.hhmmIn(c.lo, tz()), B.hhmmIn(c.li, tz()), B.hhmmIn(c.tout, tz()), c.worked != null ? B.hoursDec(c.worked) : "", c.late, c.ot, c.otUsed, c.short, r.note || "", c.after || 0])),
+      B.hhmmIn(c.tin, tz()), B.hhmmIn(c.lo, tz()), B.hhmmIn(c.li, tz()), B.hhmmIn(c.tout, tz()), c.worked != null ? B.hoursDec(c.worked) : "", c.late, c.ot, c.otUsed, c.short, B.noteText(r.note), c.after || 0])),
   ]);
 
   // ---------- entry dialog ----------
@@ -585,7 +585,7 @@
       <tbody>${X.detail.slice(ra, rb).map(({ s, row: r, c }) => `<tr><td class="mono">${B.prettyDate(r.work_date)}</td><td>${B.esc(s.display_name)}</td>
         <td class="mono">${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}</td><td class="mono">${t(r.time_in)}</td><td class="mono">${lunchCell(r)}</td>
         <td class="mono">${t(r.time_out)}</td><td class="num">${c.worked != null ? B.fmtMins(c.worked) : "—"}</td><td>${flagsHtml(c, r.work_date === today())}</td>
-        <td class="note">${B.esc(r.note || "")}</td></tr>`).join("") || `<tr><td colspan="9" class="muted">No entries in this period.</td></tr>`}</tbody>`;
+        <td class="note">${B.esc(B.noteText(r.note))}</td></tr>`).join("") || `<tr><td colspan="9" class="muted">No entries in this period.</td></tr>`}</tbody>`;
   }
 
   const fileBase = () => { const { R } = report; return `BHL-${R.title.split(" ")[0].toLowerCase()}-report_${R.from}${R.to !== R.from ? "_to_" + R.to : ""}`; };
@@ -640,11 +640,11 @@
     if (y > doc.internal.pageSize.getHeight() - 90) { doc.addPage(); y = 50; }
     doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text("Daily detail (UK time)", M, y);
     doc.autoTable({ ...common, startY: y + 8,
-      head: [["Date", "Name", "Schedule", "In", "Lunch", "Out", "Worked", "Late", "OT", "Short", "Note"]],
+      head: [["Date", "Name", "Schedule", "In", "Lunch", "Out", "Worked", "Late", "OT rendered", "OT used", "Short", "Note"]],
       body: X.detail.map(({ s, row: r, c }) => [B.prettyDate(r.work_date), s.display_name, `${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}`,
         r.time_in ? t(r.time_in) : "—", r.lunch_out ? lunchCell(r) : "—", r.time_out ? t(r.time_out) : (c.open && r.work_date !== today() ? "MISSING" : "—"),
-        c.worked != null ? B.fmtMins(c.worked) : "—", c.late ? B.fmtMins(c.late) : "", c.ot ? B.fmtMins(c.ot) : "", c.short ? B.fmtMins(c.short) : "", r.note || ""]),
-      columnStyles: { 6: { halign: "right", font: "courier" }, 7: { halign: "right", textColor: [178, 59, 42] }, 8: { halign: "right", textColor: green }, 9: { halign: "right" }, 10: { cellWidth: 170 } },
+        c.worked != null ? B.fmtMins(c.worked) : "—", c.late ? B.fmtMins(c.late) : "", c.ot ? B.fmtMins(c.ot) : "", c.otUsed ? B.fmtMins(c.otUsed) : "", c.short ? B.fmtMins(c.short) : "", B.noteText(r.note)]),
+      columnStyles: { 6: { halign: "right", font: "courier" }, 7: { halign: "right", textColor: [178, 59, 42] }, 8: { halign: "right", textColor: green }, 9: { halign: "right", textColor: green }, 10: { halign: "right" }, 11: { cellWidth: 150 } },
       didParseCell: (d) => { if (d.section === "body" && d.column.index === 5 && d.cell.raw === "MISSING") { d.cell.styles.textColor = [178, 59, 42]; d.cell.styles.fontStyle = "bold"; } } });
     // footer on every page
     const n = doc.getNumberOfPages();
@@ -710,7 +710,7 @@
         <div class="req-h">${B.avatarHtml(s, 26)}${B.esc(s.display_name)} · week of ${B.prettyDate(r.week_start, { day: "numeric", month: "short" })}
           <span class="muted">sent ${B.prettyDate(B.dateIn(new Date(r.created_at), tz()))}</span></div>
         <table class="req-t">${rows}</table>
-        ${r.note ? `<div class="note">“${B.esc(r.note)}”</div>` : ""}
+        ${B.noteText(r.note) ? `<div class="note">“${B.esc(B.noteText(r.note))}”</div>` : ""}
         ${role === "admin" ? `<div class="acts"><input placeholder="Message to ${B.esc(s.display_name)} (optional)" aria-label="Message">
           <button class="btn primary sm" data-dec="1">Approve</button><button class="btn sm" data-dec="0">Reject</button></div>` : `<div class="muted" style="font-size:12.5px">Waiting for an admin.</div>`}
       </div>`;
