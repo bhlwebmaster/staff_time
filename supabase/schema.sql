@@ -483,12 +483,13 @@ begin
 end $$;
 
 -- Use OT bank after clock-in (carry-over bank only, today only): put p_mins of the bank towards today.
--- The planned schedule becomes the actual one with its start moved back by p_mins, so today expects p_mins more
--- than the actual hours and the gap comes out of the bank. 0 takes it off again. Admins fix other days in Edit.
+-- Only fills the part of the person's usual day (usual week, else standard hours) that today's schedule leaves out,
+-- never more: the planned start moves back by that much and the gap comes out of the bank. On a normal-length day
+-- it changes nothing (short time comes from the bank anyway). 0 takes it off again. Admins fix other days in Edit.
 create or replace function public.use_ot_bank(p_staff uuid, p_pin text, p_mins int) returns json
 language plpgsql security definer set search_path = public, extensions as $$
 declare
-  v_err text; v_tz text; v_max int; v_day date; s staff; a attendance; v_note text; v_tag text;
+  v_err text; v_tz text; v_max int; v_day date; s staff; a attendance; v_note text; v_tag text; d jsonb; v_usual int; v_cover int;
 begin
   v_err := _check_pin(p_staff, p_pin);
   if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
@@ -502,13 +503,19 @@ begin
     return json_build_object('ok', false, 'error', format('You can use up to %s:%s from your bank in a day.', coalesce(v_max, 180) / 60, lpad((coalesce(v_max, 180) % 60)::text, 2, '0')));
   end if;
   perform set_config('bhl.actor', 'staff: ' || s.display_name, true);
+  d := s.week_pattern -> extract(dow from v_day)::int::text;
+  v_usual := case when d is not null and jsonb_typeof(d) = 'object' and d->>'s' is not null and d->>'e' is not null
+                  then extract(epoch from ((d->>'e')::time - (d->>'s')::time))::int / 60
+                  else extract(epoch from (s.sched_end - s.sched_start))::int / 60 end;
+  if v_usual <= 0 then v_usual := v_usual + 1440; end if;
+  v_cover := greatest(0, least(p_mins, v_usual - ((extract(epoch from (a.sched_end - a.sched_start))::int / 60 + 1440) % 1440)));
   -- swap any earlier "Offset: h:mm OT from ..." tag for the new one
   v_note := nullif(btrim(regexp_replace(coalesce(a.note, ''), '^Offset: [0-9]+:[0-9]{2} OT from [^.]*(\.\s*|$)', '')), '');
-  if p_mins > 0 then
-    v_tag := format('Offset: %s:%s OT from my bank', p_mins / 60, lpad((p_mins % 60)::text, 2, '0'));
+  if v_cover > 0 then
+    v_tag := format('Offset: %s:%s OT from my bank', v_cover / 60, lpad((v_cover % 60)::text, 2, '0'));
     v_note := case when v_note is null then v_tag else v_tag || '. ' || v_note end;
   end if;
-  update attendance set plan_start = (sched_start - make_interval(mins => p_mins))::time, plan_end = sched_end, note = v_note where id = a.id;
+  update attendance set plan_start = (sched_start - make_interval(mins => v_cover))::time, plan_end = sched_end, note = v_note where id = a.id;
   return punch(p_staff, p_pin, 'check');
 end $$;
 

@@ -211,6 +211,13 @@
     if (!row || !row.plan_start || !row.plan_end || !row.sched_start || !row.sched_end) return 0;
     return Math.max(0, spanOf(row.plan_start, row.plan_end) - spanOf(row.sched_start, row.sched_end));
   }
+  /** Length of the person's usual working day for a date (usual week, else their standard hours), lunch included. */
+  function usualSpan(staff, dateStr) {
+    const g = new Date(dateStr + "T12:00:00Z").getUTCDay(), p = staff.week_pattern && staff.week_pattern[String(g)];
+    return p && p.s && p.e ? spanOf(p.s, p.e) : spanOf(staff.sched_start, staff.sched_end);
+  }
+  /** How much of `mins` the bank can actually cover on a day: only the part of the usual day the schedule left out (a normal-length day: 0). */
+  const bankCover = (row, staff, mins) => Math.max(0, Math.min(Math.max(0, mins || 0), usualSpan(staff, row.work_date) - spanOf(row.sched_start, row.sched_end)));
   /** Planned start that puts `mins` of the bank towards a day: the actual start moved back by that much (the planned end stays the actual end). */
   function bankPlanStart(schedStart, mins) {
     const t = (((minsOf(schedStart) - Math.max(0, mins || 0)) % 1440) + 1440) % 1440;
@@ -244,6 +251,7 @@
   function whatsappText(row, staff, settings, sessions = [], otUsed = 0) {
     const tz = settings.timezone;
     const label = "GMT";
+    if (row.lunch_out && !row.lunch_in && !row.time_out) return `Lunch Break: ${clockIn(d(row.lunch_out), tz)} ${label}`;   // on lunch: just the lunch punch
     const lines = [
       `Date: ${prettyDate(row.work_date, { month: "long", day: "numeric", year: "numeric" })}`,
       `Name: ${staff.full_name}`,
@@ -278,5 +286,5 @@
   function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
 
   window.BHL = { cfg, sb, configured, tzOffsetMs, zonedToDate, dateIn, hhmmIn, clockIn, clockStr, tzShort, minsOf,
-    fmtMins, hoursDec, prettyDate, standardMins, plannedLunch, calcDay, calcDays, otToday, bankPlanned, bankPlanStart, dailyUse, summarise, whatsappText, esc, toast, copyText, lsGet, lsSet };
+    fmtMins, hoursDec, prettyDate, standardMins, plannedLunch, calcDay, calcDays, otToday, bankPlanned, bankPlanStart, bankCover, usualSpan, dailyUse, summarise, whatsappText, esc, toast, copyText, lsGet, lsSet };
 })();

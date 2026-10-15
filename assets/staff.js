@@ -389,7 +389,9 @@
       $("otSub").textContent = c.complete ? `Your bank is now ${B.fmtMins(c.bankAfter ?? left)}.` : "Start later or leave earlier by up to that much. Whatever you don't use stays in your bank.";
       // Forgot to pick it at clock-in (or changed the schedule)? Put some of the bank towards today, up to the daily max.
       const block = Math.max(1, data.settings.ot_block_mins || 30), used = B.bankPlanned(row);
-      const max = Math.max(used, Math.floor(Math.min(B.dailyUse(data.settings), c.otAvail) / block) * block), steps = [];
+      // only the part of the usual day today's schedule leaves out (a normal-length day: nothing to pick; the bank covers short time anyway)
+      const gap = B.bankCover(row, data.staff, 1e9);
+      const max = Math.max(used, Math.floor(Math.min(B.dailyUse(data.settings), c.otAvail, gap) / block) * block), steps = [];
       for (let m = 0; m <= max; m += block) steps.push(m);
       if (!steps.includes(used)) steps.push(used);
       $("otUse").innerHTML = steps.sort((x, y) => x - y).map((m) => `<option value="${m}" ${m === used ? "selected" : ""}>${m ? B.fmtMins(m) : "None"}</option>`).join("");
