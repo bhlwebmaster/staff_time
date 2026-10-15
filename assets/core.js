@@ -240,7 +240,8 @@
     return s;
   }
 
-  function whatsappText(row, staff, settings, sessions = []) {
+  /** WhatsApp message for the group. otUsed = OT (bank) actually used that day, shown once clocked out ("None" if none). */
+  function whatsappText(row, staff, settings, sessions = [], otUsed = 0) {
     const tz = settings.timezone;
     const label = "GMT";
     const lines = [
@@ -249,10 +250,13 @@
       `Sched: ${clockStr(row.sched_start)} - ${clockStr(row.sched_end)} ${label}`,
       `Time In: ${row.time_in ? clockIn(d(row.time_in), tz) + " " + label : ""}`,
     ];
-    if (row.lunch_out) lines.push(`Lunch Break: ${clockIn(d(row.lunch_out), tz)} – ${row.lunch_in ? clockIn(d(row.lunch_in), tz) : "…"} ${label}`);
+    if (row.lunch_out) lines.push(`Lunch Break: ${clockIn(d(row.lunch_out), tz)}${row.lunch_in ? " – " + clockIn(d(row.lunch_in), tz) : ""} ${label}`);
     lines.push(`Time out: ${row.time_out ? clockIn(d(row.time_out), tz) + " " + label : ""}`);
+    if (row.time_out) lines.push(`OT used: ${otUsed > 0 ? fmtMins(otUsed) : "None"}`);
     for (const o of sessions) lines.push(`${row.day_kind === "rest" ? "Rest-day" : row.time_in && d(o.started_at) >= d(row.time_in) ? "Post-shift" : "Pre-shift"} OT: ${clockIn(d(o.started_at), tz)} – ${o.ended_at ? clockIn(d(o.ended_at), tz) + " " + label : "ongoing"} (${o.note})`);
-    if (row.note) lines.push("", row.note);
+    // the app's own "Offset: 1:30 OT from …" tag is a plan, not what was used: the OT used line replaces it
+    const note = String(row.note || "").replace(/^Offset: [0-9]+:[0-9]{2} OT from [^.]*(\.\s*|$)/, "").trim();
+    if (note) lines.push("", note);
     return lines.join("\n");
   }
 

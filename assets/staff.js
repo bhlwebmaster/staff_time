@@ -569,7 +569,7 @@
   // Copies the message in the group's format; the person pastes it into the WhatsApp group themselves.
   const waText = () => {
     const ot = data && openOt(), row = data && (ot ? data.rows.find((r) => r.work_date === ot.work_date) : todayRow());
-    return row && (row.time_in || otOf(row.work_date).length) ? B.whatsappText(row, data.staff, data.settings, otOf(row.work_date)) : "";
+    return row && (row.time_in || otOf(row.work_date).length) ? B.whatsappText(row, data.staff, data.settings, otOf(row.work_date), B.calcDays(data.rows, data.staff, data.settings).get(row.work_date)?.otUsed || 0) : "";
   };
   function renderWa() { $("waNotify").setAttribute("aria-disabled", String(!waText())); }
   $("waNotify").addEventListener("click", async () => {
