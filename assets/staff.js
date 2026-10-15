@@ -187,10 +187,10 @@
   }
 
   // ---------- OT bank card (people with Out-of-hours OT): the bank, the daily limit and the next cut-off ----------
-  /** Pay cut-offs are the 15th and the last day of the month. */
+  /** OT bank cut-off: the last day of the month (pay itself is still bi-monthly). */
   function nextCutoff(today) {
-    const [y, m, d] = today.split("-").map(Number);
-    return d <= 15 ? `${today.slice(0, 8)}15` : new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+    const [y, m] = today.split("-").map(Number);
+    return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   }
   function renderBank(o, today, setAside = 0) {
     const card = $("bankCard");
