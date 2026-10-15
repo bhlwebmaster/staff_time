@@ -699,7 +699,7 @@ dialog#lb button { position: fixed; top: 16px; right: 16px; border: 0; border-ra
         <li><div>Click a person's row to filter the daily entries to them. The name column stays in place when you scroll sideways.</div></li>
         <li><div>Download <b>Summary CSV</b> or <b>Daily CSV</b> for Excel/Sheets, or use <b>Print / PDF</b>.</div></li>
       </ol>
-      <p>Columns: <b>OT earned</b>, <b>OT used</b> (OT spent on a later work day), <b>Short</b> (time under expected hours that OT didn't cover), <b>Late</b>, <b>Billable hrs</b> (regular + OT earned) and <b>OT bank</b> (what Out-of-hours OT people have banked now; ⚠ when over the cap). The CSVs also have out-of-hours OT hours.</p>
+      <p>Columns: <b>OT rendered</b>, <b>OT used</b> (OT spent covering short time on a later day), <b>Short</b> (time under expected hours that OT didn't cover), <b>Late</b>, <b>Billable hrs</b> (normal scheduled hours only: regular + OT used; OT itself isn't paid) and <b>OT bank</b> (what Out-of-hours OT people have banked now; ⚠ when over the cap). The CSVs also have out-of-hours OT hours.</p>
     </div>
     <figure><div class="desk"><img src="img/a-timesheets.jpg?v=20261007c" alt="Timesheets"></div><figcaption>Timesheets</figcaption></figure>
   </div>
@@ -787,7 +787,7 @@ dialog#lb button { position: fixed; top: 16px; right: 16px; border: 0; border-ra
           <tr><td><b>Short</b></td><td>Under expected hours after OT is used. Counts as undertime in payroll.</td></tr>
           <tr><td><b>Late</b></td><td>After start + grace (5 min). With <b>Judge by hours</b> on, a day with full hours isn't late.</td></tr>
           <tr><td><b>No lunch logged</b></td><td>A day with a planned lunch but no taps. Worth a quick check.</td></tr>
-          <tr><td><b>Billable</b></td><td>Regular hours (capped at expected) + OT earned.</td></tr>
+          <tr><td><b>Billable</b></td><td>Normal scheduled hours only: regular hours (capped at expected) + OT used to cover short time. OT itself isn't paid.</td></tr>
         </tbody></table></div>
       <p style="margin-top:12px"><b>Shift reminders</b> (Settings): turn each reminder on or off and set its minutes, title and message. <b>Send a test to all phones</b> checks it works. Under the buttons you can see who has reminders on. First-time setup is in the README (Reminders).</p>
       <p style="margin-top:12px">Settings also has: <b>Count minutes before scheduled start</b> (on), <b>Judge by hours</b> (on), <b>OT bank cap</b> (8 hours), <b>Max OT bank use per day</b> (3 hours) and <b>Working days per cut-off</b> (10).</p>

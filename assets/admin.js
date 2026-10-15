@@ -206,7 +206,7 @@
     const overCap = list.filter(({ sum }) => sum.overCap);
     $("sheetKpis").innerHTML = [
       [B.hoursDec(tot.billable || 0), "billable hours"], [tot.days || 0, "days worked"],
-      [B.fmtMins(tot.ot || 0), "OT earned (h:mm)"], [tot.late || 0, "late arrivals", tot.late], [tot.missingOut || 0, "missing clock-outs", tot.missingOut],
+      [B.fmtMins(tot.ot || 0), "OT rendered (h:mm)"], [B.fmtMins(tot.otUsed || 0), "OT used (h:mm)"], [tot.late || 0, "late arrivals", tot.late], [tot.missingOut || 0, "missing clock-outs", tot.missingOut],
       ...(overCap.length ? [[overCap.map(({ s }) => s.display_name).join(", "), `OT bank over the ${B.fmtMins(settings.ot_bank_cap_mins ?? 480)} cap`, true]] : []),
     ].map(([v, l, w]) => `<div class="card kpi ${w ? "warn" : ""}"><b>${v}</b><span>${l}</span></div>`).join("");
     const cells = (x) => `<td class="num">${x.days}</td><td class="num">${B.fmtMins(x.worked)}</td><td class="num">${B.fmtMins(x.regular)}</td>
@@ -241,12 +241,12 @@
   }
   const period = () => `${$("from").value}_to_${$("to").value}`;
   $("csvSum").onclick = () => download(`BHL-timesheet-summary_${period()}.csv`, [
-    ["Name", "Timesheet name", "Period from", "Period to", "Days worked", "Worked hours", "Regular hours", "OT earned hours", "OT used hours", "Short hours (not covered)", "Late arrivals", "Late minutes", "Missing clock-outs", "Billable hours", "Out-of-hours OT hours", "OT bank hours (carry-over)"],
+    ["Name", "Timesheet name", "Period from", "Period to", "Days worked", "Worked hours", "Regular hours", "OT rendered hours", "OT used hours", "Short hours (not covered)", "Late arrivals", "Late minutes", "Missing clock-outs", "Billable hours", "Out-of-hours OT hours", "OT bank hours (carry-over)"],
     ...computeSheets().map(({ s, sum }) => [s.display_name, s.full_name, $("from").value, $("to").value, sum.days, B.hoursDec(sum.worked), B.hoursDec(sum.regular),
       B.hoursDec(sum.ot), B.hoursDec(sum.otUsed), B.hoursDec(sum.short), sum.late, sum.lateMins, sum.missingOut, B.hoursDec(sum.billable), B.hoursDec(sum.after), sum.carryBank != null ? B.hoursDec(sum.carryBank) : ""]),
   ]);
   $("csvDay").onclick = () => download(`BHL-timesheet-daily_${period()}.csv`, [
-    ["Date", "Name", "Timesheet name", "Sched start (UK)", "Sched end (UK)", "Time in (UK)", "Lunch out", "Lunch in", "Time out (UK)", "Worked hours", "Late minutes", "OT earned minutes", "OT used minutes", "Short minutes", "Note", "Out-of-hours OT minutes"],
+    ["Date", "Name", "Timesheet name", "Sched start (UK)", "Sched end (UK)", "Time in (UK)", "Lunch out", "Lunch in", "Time out (UK)", "Worked hours", "Late minutes", "OT rendered minutes", "OT used minutes", "Short minutes", "Note", "Out-of-hours OT minutes"],
     ...computeSheets().flatMap(({ s, sum }) => sum.days_list.map(({ row: r, c }) => [r.work_date, s.display_name, s.full_name, r.sched_start.slice(0, 5), r.sched_end.slice(0, 5),
       B.hhmmIn(c.tin, tz()), B.hhmmIn(c.lo, tz()), B.hhmmIn(c.li, tz()), B.hhmmIn(c.tout, tz()), c.worked != null ? B.hoursDec(c.worked) : "", c.late, c.ot, c.otUsed, c.short, r.note || "", c.after || 0])),
   ]);
@@ -553,7 +553,7 @@
       const has = cols.map((c) => sum.days_list.some((x) => x.row.work_date >= c.from && x.row.work_date <= c.to && x.c.tin));
       return { s, sum, cells, has };
     });
-    const tot = lines.reduce((a, l) => { for (const k of ["days", "worked", "regular", "ot", "short", "bank", "late", "missingOut", "billable"]) a[k] = (a[k] || 0) + l.sum[k]; return a; }, {});
+    const tot = lines.reduce((a, l) => { for (const k of ["days", "worked", "regular", "ot", "otUsed", "short", "bank", "late", "missingOut", "billable"]) a[k] = (a[k] || 0) + l.sum[k]; return a; }, {});
     const colTot = cols.map((_, i) => lines.reduce((a, l) => a + l.cells[i], 0));
     const detail = lines.flatMap((l) => l.sum.days_list.map((x) => ({ s: l.s, ...x }))).sort((a, b) => b.row.work_date.localeCompare(a.row.work_date) || a.s.display_name.localeCompare(b.s.display_name));   // newest first
     return { R, cols, lines, tot, colTot, detail };
@@ -564,7 +564,7 @@
     $("repTitle").textContent = R.title; $("repSub").textContent = R.period;
     $("repKpis").innerHTML = [
       [B.fmtMins(tot.worked || 0), "hours worked"], [B.hoursDec(tot.billable || 0), "billable hours"], [tot.days || 0, "days worked"],
-      [B.fmtMins(tot.ot || 0), "OT earned"], [tot.late || 0, "late arrivals", tot.late], [tot.missingOut || 0, "missing clock-outs", tot.missingOut],
+      [B.fmtMins(tot.ot || 0), "OT rendered"], [B.fmtMins(tot.otUsed || 0), "OT used"], [tot.late || 0, "late arrivals", tot.late], [tot.missingOut || 0, "missing clock-outs", tot.missingOut],
     ].map(([v, l, w]) => `<div class="card kpi ${w ? "warn" : ""}"><b>${v}</b><span>${l}</span></div>`).join("");
     $("matrixTitle").textContent = rType === "day" ? "Hours today" : cols[0]?.label.startsWith("Week") ? "Hours by week" : cols.length && /^\d{4}$/.test(cols[0].sub) ? "Hours by month" : "Hours by day";
     const cell = (m, has) => has ? `<td class="num">${B.fmtMins(m)}</td>` : `<td class="num zero">–</td>`;
@@ -572,14 +572,14 @@
     const [ma, mb] = pager($("matrixPager"), lines.length, matrixPg, renderReport);
     const [ra, rb] = pager($("repPager"), X.detail.length, repPg, renderReport);
     $("matrix").innerHTML = `<thead><tr><th>Name</th>${showCols ? cols.map((c) => `<th class="num">${c.label}<span class="d">${c.sub}</span></th>`).join("") : ""}
-        <th class="num tot">Worked</th><th class="num">Regular</th><th class="num">OT</th><th class="num">Short</th><th class="num">Late</th><th class="num tot">Billable hrs</th></tr></thead>
+        <th class="num tot">Worked</th><th class="num">Regular</th><th class="num">OT rendered</th><th class="num">OT used</th><th class="num">Short</th><th class="num">Late</th><th class="num tot">Billable hrs</th></tr></thead>
       <tbody>${lines.slice(ma, mb).map((l) => `<tr><td><b>${B.esc(l.s.display_name)}</b><span class="sub">${B.esc(l.s.full_name)}</span></td>
         ${showCols ? l.cells.map((m, i) => cell(m, l.has[i])).join("") : ""}
-        <td class="num tot"><b>${B.fmtMins(l.sum.worked)}</b></td><td class="num">${B.fmtMins(l.sum.regular)}</td><td class="num">${B.fmtMins(l.sum.ot)}</td>
+        <td class="num tot"><b>${B.fmtMins(l.sum.worked)}</b></td><td class="num">${B.fmtMins(l.sum.regular)}</td><td class="num">${B.fmtMins(l.sum.ot)}</td><td class="num">${B.fmtMins(l.sum.otUsed)}</td>
         <td class="num">${B.fmtMins(l.sum.short)}</td><td class="num">${l.sum.late}</td><td class="num tot"><b>${B.hoursDec(l.sum.billable)}</b></td></tr>`).join("")
-        || `<tr><td colspan="${cols.length + 7}" class="muted">No staff match this filter.</td></tr>`}</tbody>
+        || `<tr><td colspan="${cols.length + 8}" class="muted">No staff match this filter.</td></tr>`}</tbody>
       ${lines.length > 1 ? `<tfoot><tr><td>Total</td>${showCols ? colTot.map((m) => `<td class="num">${B.fmtMins(m)}</td>`).join("") : ""}
-        <td class="num tot">${B.fmtMins(tot.worked)}</td><td class="num">${B.fmtMins(tot.regular)}</td><td class="num">${B.fmtMins(tot.ot)}</td>
+        <td class="num tot">${B.fmtMins(tot.worked)}</td><td class="num">${B.fmtMins(tot.regular)}</td><td class="num">${B.fmtMins(tot.ot)}</td><td class="num">${B.fmtMins(tot.otUsed)}</td>
         <td class="num">${B.fmtMins(tot.short)}</td><td class="num">${tot.late}</td><td class="num tot">${B.hoursDec(tot.billable)}</td></tr></tfoot>` : ""}`;
     $("repDetail").innerHTML = `<thead><tr><th>Date</th><th>Name</th><th>Schedule</th><th>In</th><th>Lunch</th><th>Out</th><th class="num">Worked</th><th>Flags</th><th>Note</th></tr></thead>
       <tbody>${X.detail.slice(ra, rb).map(({ s, row: r, c }) => `<tr><td class="mono">${B.prettyDate(r.work_date)}</td><td>${B.esc(s.display_name)}</td>
@@ -595,10 +595,10 @@
     download(fileBase() + ".csv", [
       [settings.company_name, X.R.title, X.R.period],
       [],
-      ["Name", "Timesheet name", ...(showCols ? X.cols.map((c) => `${c.label} ${c.sub}`.trim() + " (hrs)") : []), "Worked hrs", "Regular hrs", "OT hrs", "Short hrs", "Late arrivals", "Billable hrs"],
+      ["Name", "Timesheet name", ...(showCols ? X.cols.map((c) => `${c.label} ${c.sub}`.trim() + " (hrs)") : []), "Worked hrs", "Regular hrs", "OT rendered hrs", "OT used hrs", "Short hrs", "Late arrivals", "Billable hrs"],
       ...X.lines.map((l) => [l.s.display_name, l.s.full_name, ...(showCols ? l.cells.map((m, i) => (l.has[i] ? B.hoursDec(m) : "")) : []),
-        B.hoursDec(l.sum.worked), B.hoursDec(l.sum.regular), B.hoursDec(l.sum.ot), B.hoursDec(l.sum.short), l.sum.late, B.hoursDec(l.sum.billable)]),
-      ["Total", "", ...(showCols ? X.colTot.map(B.hoursDec) : []), B.hoursDec(X.tot.worked || 0), B.hoursDec(X.tot.regular || 0), B.hoursDec(X.tot.ot || 0), B.hoursDec(X.tot.short || 0), X.tot.late || 0, B.hoursDec(X.tot.billable || 0)],
+        B.hoursDec(l.sum.worked), B.hoursDec(l.sum.regular), B.hoursDec(l.sum.ot), B.hoursDec(l.sum.otUsed), B.hoursDec(l.sum.short), l.sum.late, B.hoursDec(l.sum.billable)]),
+      ["Total", "", ...(showCols ? X.colTot.map(B.hoursDec) : []), B.hoursDec(X.tot.worked || 0), B.hoursDec(X.tot.regular || 0), B.hoursDec(X.tot.ot || 0), B.hoursDec(X.tot.otUsed || 0), B.hoursDec(X.tot.short || 0), X.tot.late || 0, B.hoursDec(X.tot.billable || 0)],
     ]);
   };
 
@@ -617,18 +617,18 @@
     doc.text(`Generated ${new Date().toLocaleString("en-GB", { timeZone: tz(), dateStyle: "medium", timeStyle: "short" })} UK`, W - M, 46, { align: "right" });
     // KPI strip
     const k = [["Hours worked", B.fmtMins(X.tot.worked || 0)], ["Billable hours", B.hoursDec(X.tot.billable || 0)], ["Days worked", String(X.tot.days || 0)],
-      ["OT earned", B.fmtMins(X.tot.ot || 0)], ["Late arrivals", String(X.tot.late || 0)], ["Missing clock-outs", String(X.tot.missingOut || 0)]];
+      ["OT rendered", B.fmtMins(X.tot.ot || 0)], ["OT used", B.fmtMins(X.tot.otUsed || 0)], ["Late arrivals", String(X.tot.late || 0)], ["Missing clock-outs", String(X.tot.missingOut || 0)]];
     const kw = (W - 2 * M) / k.length;
     k.forEach(([l, v], i) => {
       const x = M + i * kw; doc.setDrawColor(214, 222, 214); doc.roundedRect(x + 2, 74, kw - 4, 42, 4, 4, "S");
       doc.setFont("courier", "bold"); doc.setFontSize(14); doc.setTextColor(...ink); doc.text(v, x + 10, 94);
       doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(l, x + 10, 108);
     });
-    const head = ["Name", ...(showCols ? X.cols.map((c) => c.sub && !/^\d{4}$/.test(c.sub) ? `${c.label}\n${c.sub}` : c.label) : []), "Worked", "Regular", "OT", "Short", "Late", "Billable hrs"];
+    const head = ["Name", ...(showCols ? X.cols.map((c) => c.sub && !/^\d{4}$/.test(c.sub) ? `${c.label}\n${c.sub}` : c.label) : []), "Worked", "Regular", "OT rendered", "OT used", "Short", "Late", "Billable hrs"];
     const body = X.lines.map((l) => [`${l.s.display_name}\n${l.s.full_name}`, ...(showCols ? l.cells.map((m, i) => (l.has[i] ? B.fmtMins(m) : "–")) : []),
-      B.fmtMins(l.sum.worked), B.fmtMins(l.sum.regular), B.fmtMins(l.sum.ot), B.fmtMins(l.sum.short), String(l.sum.late), B.hoursDec(l.sum.billable)]);
+      B.fmtMins(l.sum.worked), B.fmtMins(l.sum.regular), B.fmtMins(l.sum.ot), B.fmtMins(l.sum.otUsed), B.fmtMins(l.sum.short), String(l.sum.late), B.hoursDec(l.sum.billable)]);
     const foot = X.lines.length > 1 ? [["Total", ...(showCols ? X.colTot.map((m) => B.fmtMins(m)) : []), B.fmtMins(X.tot.worked), B.fmtMins(X.tot.regular),
-      B.fmtMins(X.tot.ot), B.fmtMins(X.tot.short), String(X.tot.late), B.hoursDec(X.tot.billable)]] : [];
+      B.fmtMins(X.tot.ot), B.fmtMins(X.tot.otUsed), B.fmtMins(X.tot.short), String(X.tot.late), B.hoursDec(X.tot.billable)]] : [];
     const numStyles = {}; for (let i = 1; i < head.length; i++) numStyles[i] = { halign: "right", font: "courier" };
     const common = { theme: "grid", margin: { left: M, right: M, bottom: 40 }, styles: { fontSize: 8.5, cellPadding: 4, lineColor: [214, 222, 214], textColor: ink },
       headStyles: { fillColor: [232, 237, 231], textColor: muted, fontStyle: "bold", fontSize: 7.5 }, footStyles: { fillColor: [232, 237, 231], textColor: ink, fontStyle: "bold" } };
@@ -651,7 +651,7 @@
     for (let i = 1; i <= n; i++) {
       doc.setPage(i); doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...muted);
       const H = doc.internal.pageSize.getHeight();
-      doc.text(`Rules: OT credited in ${settings.ot_block_mins}-min blocks · late after ${settings.grace_mins} min grace · billable = regular + OT`, M, H - 20);
+      doc.text(`Rules: OT credited in ${settings.ot_block_mins}-min blocks · late after ${settings.grace_mins} min grace · billable = regular hours + OT used to cover short time (OT itself isn't paid)`, M, H - 20);
       doc.text(`Page ${i} of ${n}`, W - M, H - 20, { align: "right" });
     }
     doc.save(fileBase() + ".pdf");

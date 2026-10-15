@@ -243,7 +243,7 @@
     s.bank = s.ot - s.otUsed;   // OT earned but not used (it expires after the next work day)
     if (all.carry) { s.carryBank = all.bank; s.overCap = all.bank > (settings.ot_bank_cap_mins ?? 480); }   // carry-over bank now
     s.after = s.days_list.reduce((a, x) => a + (x.c.complete ? x.c.after : 0), 0);   // after-hours OT clocked in the period
-    s.billable = s.regular + s.ot;
+    s.billable = s.regular + s.otUsed;   // normal scheduled hours only: OT isn't paid, it's used to cover short time (as payroll counts it)
     return s;
   }
 
