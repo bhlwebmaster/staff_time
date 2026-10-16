@@ -255,7 +255,7 @@
   /** WhatsApp message for the group. otUsed = OT (bank) actually used that day, shown once clocked out ("None" if none). */
   function whatsappText(row, staff, settings, sessions = [], otUsed = 0) {
     const tz = settings.timezone;
-    const label = "GMT";
+    const label = "UK";   // UK time (settings.timezone, Europe/London: BST in summer, GMT in winter), as the app shows it
     if (row.lunch_out && !row.lunch_in && !row.time_out) return `Lunch Break: ${clockIn(d(row.lunch_out), tz)} ${label}`;   // on lunch: just the lunch punch
     const lines = [
       `Date: ${prettyDate(row.work_date, { month: "long", day: "numeric", year: "numeric" })}`,
