@@ -255,7 +255,9 @@
   /** WhatsApp message for the group. otUsed = OT (bank) actually used that day, shown once clocked out ("None" if none). */
   function whatsappText(row, staff, settings, sessions = [], otUsed = 0) {
     const tz = settings.timezone;
-    const label = "UK";   // UK time (settings.timezone, Europe/London: BST in summer, GMT in winter), as the app shows it
+    // UK time (settings.timezone), labelled GMT in winter and GMT+1 during British Summer Time, for that day
+    const label = new Intl.DateTimeFormat("en-GB", { timeZone: tz, timeZoneName: "shortOffset" }).formatToParts(zonedToDate(row.work_date, "12:00", tz) || new Date())
+      .find((p) => p.type === "timeZoneName")?.value.replace(/^(GMT|UTC)([+-]0(:00)?)?$/, "GMT") || "GMT";
     if (row.lunch_out && !row.lunch_in && !row.time_out) return `Lunch Break: ${clockIn(d(row.lunch_out), tz)} ${label}`;   // on lunch: just the lunch punch
     const lines = [
       `Date: ${prettyDate(row.work_date, { month: "long", day: "numeric", year: "numeric" })}`,
