@@ -126,13 +126,16 @@
     if (offDay && !row?.time_in && !openOt()) { k = "out"; label = B.sched.KINDS[plan.kind]?.label || "Day off"; }   // rest day / leave, not "Not in yet"
     $("tStatus").className = "pill " + k; $("tStatus").textContent = label;
     const ss = row?.sched_start || (plan?.kind === "shift" ? plan.start + ":00" : st.sched_start), se = row?.sched_end || (plan?.kind === "shift" ? plan.end + ":00" : st.sched_end);
-    $("tSched").textContent = plan && plan.kind !== "shift" ? `${B.sched.KINDS[plan.kind].label} today` : `${B.clockStr(ss)} – ${B.clockStr(se)} UK`;
+    // today's day type: from the day's record once clocked in, else the weekly schedule. On a rest or leave day nothing is expected and all work is OT.
+    const kindNow = row?.day_kind || todayPlan(st)?.kind, leaveNow = B.isOffDay(kindNow);
+    $("tSched").textContent = plan && plan.kind !== "shift" ? `${B.sched.KINDS[plan.kind].label} today`
+      : leaveNow ? `${B.sched.KINDS[kindNow].label} · all work today is OT` : `${B.clockStr(ss)} – ${B.clockStr(se)} UK`;
     $("schedEdit").hidden = !!row?.time_in;
     if (!row?.time_in) { $("sStart").value ||= ss.slice(0, 5); $("sEnd").value ||= se.slice(0, 5); }
     if (document.activeElement !== $("tNote")) $("tNote").value = row?.note || "";
 
     const c = row ? B.calcDays(data.rows, st, set).get(row.work_date) : null;
-    renderOt(row, c, ss, se, today, offDay);
+    renderOt(row, c, ss, se, today, offDay || leaveNow);
     const flags = [];
     if (c?.late) flags.push(`<span class="flag late">Late ${B.fmtMins(c.late)}</span>`);
     if (c?.complete && c.ot) flags.push(`<span class="flag ot">OT +${B.fmtMins(c.ot)}</span>`);
@@ -358,6 +361,7 @@
   function renderOt(row, c, ss, se, today, offDay) {
     const box = $("otBox"), when = (d) => B.prettyDate(d, { weekday: "short", day: "numeric", month: "short" });
     otPlan = null;
+    if (offDay) { box.hidden = true; otPick = "no"; return; }   // a day off (rest or leave): no bank to use, nothing is short
     if (!row?.time_in) {
       const o = B.otToday(data.rows, data.staff, data.settings, today);
       if (!o.mins || !ss || offDay) { box.hidden = true; otPick = "no"; return; }   // nothing to cover on a day off
