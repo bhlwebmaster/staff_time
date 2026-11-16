@@ -111,6 +111,8 @@
     return c;
   }
   const lunchCell = (r) => r.lunch_out ? `${t(r.lunch_out)}–${r.lunch_in ? t(r.lunch_in) : "…"}` : "—";
+  /** The schedule cell of a day record: leave and rest days have no schedule, so they say what the day is. */
+  const schedCell = (r) => (B.isOffDay(r.day_kind) ? B.sched.KINDS[r.day_kind].label : `${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}`);
   const pillFor = (c) => ({ in: ["in", "Working"], lunch: ["lunch", "On lunch"], out: ["out", "Clocked out"], absent: ["absent", "Not in"] }[c.status]);
 
   // ---------- today ----------
@@ -140,7 +142,8 @@
       if (r && !r.time_in && plan.kind !== "shift" && c.status === "absent") c.status = "off";   // day off with only OT sessions
       if (c.status !== "off") n[c.status]++; if (c.late) n.late++;   // KPIs count everyone
       if (i < da || i >= db) return "";
-      const [k, label] = c.otRunning ? ["in", "Out-of-hours OT"] : c.status === "off" ? ["out", B.sched.KINDS[plan.kind].label] : pillFor(c);
+      let [k, label] = c.otRunning ? ["in", "Out-of-hours OT"] : c.status === "off" ? ["out", B.sched.KINDS[plan.kind].label] : pillFor(c);
+      if (r && B.isOffDay(r.day_kind) && c.status !== "off" && c.status !== "absent") label = B.dayStatusLabel(r.day_kind, c.otRunning ? "Working" : label);
       let worked = "—";
       if (c.worked != null) worked = B.fmtMins(c.worked);
       else if (r?.time_in && day === today()) {
@@ -148,7 +151,7 @@
         worked = `<span class="muted">${B.fmtMins(Math.max(0, (Date.now() - Math.max(new Date(r.time_in), c.schedStart) - lunch) / 60000))}</span>`;
       }
       return `<tr><td style="white-space:nowrap">${B.avatarHtml(s, 28)}<b>${B.esc(s.display_name)}</b></td><td><span class="pill ${k}">${label}</span></td>
-        <td class="mono">${r ? `${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}` : plan.kind === "shift" ? `${B.clockStr(plan.start)}–${B.clockStr(plan.end)}` : "—"}</td>
+        <td class="mono">${r ? schedCell(r) : plan.kind === "shift" ? `${B.clockStr(plan.start)}–${B.clockStr(plan.end)}` : "—"}</td>
         <td class="mono">${r ? t(r.time_in) : "—"}</td><td class="mono">${r ? lunchCell(r) : "—"}</td><td class="mono">${r ? t(r.time_out) : "—"}</td>
         <td class="num">${worked}</td><td>${r ? flagsHtml(c, day === today()) : ""}${B.noteText(r?.note) ? `<span class="sub" title="${B.esc(B.noteText(r.note))}">${B.esc(B.noteText(r.note))}</span>` : ""}</td>
         <td><button class="btn sm adminonly" data-edit="${r ? B.esc(r.id) : ""}" data-staff="${B.esc(s.id)}" data-date="${day}">${r ? "Edit" : "Add"}</button></td></tr>`;
@@ -222,7 +225,7 @@
     const [pa, pb] = pager($("dailyPager"), days.length, dailyPg, renderSheets);
     $("dailyRows").innerHTML = days.slice(pa, pb).map(({ s, row: r, c }) => `<tr>
       <td class="mono">${B.prettyDate(r.work_date)}</td><td>${B.esc(s.display_name)}</td>
-      <td class="mono">${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}</td>
+      <td class="mono">${schedCell(r)}</td>
       <td class="mono">${t(r.time_in)}</td><td class="mono">${lunchCell(r)}</td><td class="mono">${t(r.time_out)}</td>
       <td class="num">${c.worked != null ? B.fmtMins(c.worked) : "—"}</td><td>${flagsHtml(c, r.work_date === today())}</td>
       <td class="note">${B.esc(B.noteText(r.note))}</td><td class="noprint"><button class="btn sm adminonly" data-edit="${B.esc(r.id)}">Edit</button></td></tr>`).join("")
@@ -247,7 +250,7 @@
   ]);
   $("csvDay").onclick = () => download(`BHL-timesheet-daily_${period()}.csv`, [
     ["Date", "Name", "Timesheet name", "Sched start (UK)", "Sched end (UK)", "Time in (UK)", "Lunch out", "Lunch in", "Time out (UK)", "Worked hours", "Late minutes", "OT rendered minutes", "OT used minutes", "Short minutes", "Note", "Out-of-hours OT minutes"],
-    ...computeSheets().flatMap(({ s, sum }) => sum.days_list.map(({ row: r, c }) => [r.work_date, s.display_name, s.full_name, r.sched_start.slice(0, 5), r.sched_end.slice(0, 5),
+    ...computeSheets().flatMap(({ s, sum }) => sum.days_list.map(({ row: r, c }) => [r.work_date, s.display_name, s.full_name, B.isOffDay(r.day_kind) ? B.sched.KINDS[r.day_kind].label : r.sched_start.slice(0, 5), B.isOffDay(r.day_kind) ? "" : r.sched_end.slice(0, 5),
       B.hhmmIn(c.tin, tz()), B.hhmmIn(c.lo, tz()), B.hhmmIn(c.li, tz()), B.hhmmIn(c.tout, tz()), c.worked != null ? B.hoursDec(c.worked) : "", c.late, c.ot, c.otUsed, c.short, B.noteText(r.note), c.after || 0])),
   ]);
 
@@ -260,11 +263,16 @@
     $("entryTitle").textContent = r ? `Edit · ${s.display_name}, ${B.prettyDate(r.work_date)}` : "Add entry";
     $("eWho").value = s.id; $("eWho").disabled = !!r; $("eDate").value = base.work_date; $("eDate").disabled = !!r;
     $("eSS").value = (r?.sched_start || s.sched_start).slice(0, 5); $("eSE").value = (r?.sched_end || s.sched_end).slice(0, 5);
+    // a rest or leave day has no schedule: hide it (the saved values stay as they are) and say what the day is
+    const off = !!r && B.isOffDay(r.day_kind);
+    for (const id of ["eSS", "eSE"]) $(id).closest("label").hidden = off;
+    $("eOffNote").hidden = !off;
+    if (off) $("eOffNote").textContent = `${B.sched.KINDS[r.day_kind].label}: nothing is expected today, so there is no schedule. Everything worked is OT. Add more with "Add session" below, or Extra OT credit.`;
     const h = (iso) => (iso ? B.hhmmIn(new Date(iso), tz()) : "");
     $("eIn").value = h(r?.time_in); $("eOut").value = h(r?.time_out); $("eLO").value = h(r?.lunch_out); $("eLI").value = h(r?.lunch_in);
     $("eNote").value = r?.note || "";
     $("eOtAdj").value = r?.ot_adjust || "";
-    $("eBankRow").hidden = !s.ot_carry_from; $("eBank").value = B.bankPlanned(r) || "";
+    $("eBankRow").hidden = !s.ot_carry_from || off; $("eBank").value = B.bankPlanned(r) || "";
     $("eDel").hidden = !r;
     $("eHist").innerHTML = "";
     $("eOtBox").hidden = !r || (!s.ot_carry_from && !r.after_mins);
@@ -583,7 +591,7 @@
         <td class="num">${B.fmtMins(tot.short)}</td><td class="num">${tot.late}</td><td class="num tot">${B.hoursDec(tot.billable)}</td></tr></tfoot>` : ""}`;
     $("repDetail").innerHTML = `<thead><tr><th>Date</th><th>Name</th><th>Schedule</th><th>In</th><th>Lunch</th><th>Out</th><th class="num">Worked</th><th>Flags</th><th>Note</th></tr></thead>
       <tbody>${X.detail.slice(ra, rb).map(({ s, row: r, c }) => `<tr><td class="mono">${B.prettyDate(r.work_date)}</td><td>${B.esc(s.display_name)}</td>
-        <td class="mono">${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}</td><td class="mono">${t(r.time_in)}</td><td class="mono">${lunchCell(r)}</td>
+        <td class="mono">${schedCell(r)}</td><td class="mono">${t(r.time_in)}</td><td class="mono">${lunchCell(r)}</td>
         <td class="mono">${t(r.time_out)}</td><td class="num">${c.worked != null ? B.fmtMins(c.worked) : "—"}</td><td>${flagsHtml(c, r.work_date === today())}</td>
         <td class="note">${B.esc(B.noteText(r.note))}</td></tr>`).join("") || `<tr><td colspan="9" class="muted">No entries in this period.</td></tr>`}</tbody>`;
   }
@@ -641,7 +649,7 @@
     doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text("Daily detail (UK time)", M, y);
     doc.autoTable({ ...common, startY: y + 8,
       head: [["Date", "Name", "Schedule", "In", "Lunch", "Out", "Worked", "Late", "OT rendered", "OT used", "Short", "Note"]],
-      body: X.detail.map(({ s, row: r, c }) => [B.prettyDate(r.work_date), s.display_name, `${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}`,
+      body: X.detail.map(({ s, row: r, c }) => [B.prettyDate(r.work_date), s.display_name, schedCell(r),
         r.time_in ? t(r.time_in) : "—", r.lunch_out ? lunchCell(r) : "—", r.time_out ? t(r.time_out) : (c.open && r.work_date !== today() ? "MISSING" : "—"),
         c.worked != null ? B.fmtMins(c.worked) : "—", c.late ? B.fmtMins(c.late) : "", c.ot ? B.fmtMins(c.ot) : "", c.otUsed ? B.fmtMins(c.otUsed) : "", c.short ? B.fmtMins(c.short) : "", B.noteText(r.note)]),
       columnStyles: { 6: { halign: "right", font: "courier" }, 7: { halign: "right", textColor: [178, 59, 42] }, 8: { halign: "right", textColor: green }, 9: { halign: "right", textColor: green }, 10: { halign: "right" }, 11: { cellWidth: 150 } },

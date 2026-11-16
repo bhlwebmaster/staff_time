@@ -17,27 +17,31 @@
   }
 
   // ---------- roster / pick ----------
-  function statusOf(t) {
-    if (t?.ot_open) return ["in", "Out-of-hours OT"];
+  /** [css class, label]. kind = the day's type (leave days read "VL (OT Working)"); defaults to the record's own day_kind. */
+  function statusOf(t, kind = t?.day_kind) {
+    const L = (k, label) => [k, B.dayStatusLabel(kind, label)];
+    if (t?.ot_open) return kind && B.isOffDay(kind) ? L("in", "Working") : ["in", "Out-of-hours OT"];
     if (!t || !t.time_in) return ["absent", "Not in yet"];
-    if (t.time_out) return ["out", "Clocked out"];
-    if (t.lunch_out && !t.lunch_in) return ["lunch", "On lunch"];
-    return ["in", "Working"];
+    if (t.time_out) return L("out", "Clocked out");
+    if (t.lunch_out && !t.lunch_in) return L("lunch", "On lunch");
+    return L("in", "Working");
   }
+  /** The day type of someone's record today, from their recent days (the roster's "today" doesn't carry it). */
+  const kindToday = (s) => s.recent?.find((r) => r.work_date === roster?.today)?.day_kind;
   async function loadRoster() {
     try { roster = await api.roster(); }
     catch (e) { B.toast("Can't reach the server. Check your connection.", "err"); return; }
     tick();
     $("pickDate").textContent = B.prettyDate(roster.today, { weekday: "long", day: "numeric", month: "long" });
     $("people").innerHTML = roster.staff.map((s) => {
-      const [k, label] = statusOf(s.today);
+      const dk = kindToday(s), [k, label] = statusOf(s.today, dk);
       const g = B.stats(s.recent, s, roster.settings, roster.today);
       const plan = !s.today?.time_in ? todayPlan(s) : null, off = plan && plan.kind !== "shift";
       return `<button class="person" data-id="${B.esc(s.id)}" style="--card-tint:${B.colorOf(s)}">
         <span class="top">${B.avatarHtml(s, 46)}<span><span class="nm">${B.esc(s.display_name)}</span>${streakChip(g.streak)}</span></span>
         <span class="tagline">${B.esc(s.tagline || "")}</span>
         ${off ? liveStatus(s, plan) : `<span class="pill ${k}">${label}</span>`}
-        <span class="sub">${off ? "&nbsp;" : plan ? `${B.clockStr(plan.start)}–${B.clockStr(plan.end)}` : `${B.clockStr(s.today?.sched_start || s.sched_start)}–${B.clockStr(s.today?.sched_end || s.sched_end)}`}</span>
+        <span class="sub">${off || (s.today?.time_in && B.isOffDay(dk)) ? "&nbsp;" : plan ? `${B.clockStr(plan.start)}–${B.clockStr(plan.end)}` : `${B.clockStr(s.today?.sched_start || s.sched_start)}–${B.clockStr(s.today?.sched_end || s.sched_end)}`}</span>
       </button>`;
     }).join("") || `<p class="muted">No staff yet. An admin can add people from the admin page.</p>`;
     renderTeam();
@@ -49,7 +53,7 @@
   function renderTeam() {
     if (!roster) return;
     $("team").innerHTML = roster.staff.map((s) => {
-      const [k, label] = statusOf(s.today);
+      const [k, label] = statusOf(s.today, kindToday(s));
       const t = s.today;
       const times = t?.time_in ? `in ${B.clockIn(new Date(t.time_in), tz())}${t.time_out ? " · out " + B.clockIn(new Date(t.time_out), tz()) : ""}` : "";
       return `<div class="tr">${B.avatarHtml(s, 30)}<span class="n">${B.esc(s.display_name)}</span><span class="pill ${k}">${label}</span><span class="x">${times}</span></div>`;
