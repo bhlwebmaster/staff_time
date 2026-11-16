@@ -258,8 +258,8 @@
     box.hidden = !canOt();
     if (box.hidden) return;
     const uk = (v) => B.clockIn(new Date(v), set.timezone), ph = (v) => B.clockIn(new Date(v), LOCAL_TZ);
-    const tp = todayPlan(data.staff), dayKind = row?.day_kind || tp?.kind || "shift", rest = dayKind === "rest";
-    const kindOf = (o) => (rest ? "Rest-day" : row?.time_in && new Date(o.started_at) >= new Date(row.time_in) ? "Post-shift" : "Pre-shift");
+    const tp = todayPlan(data.staff), dayKind = row?.day_kind || tp?.kind || "shift", rest = B.isOffDay(dayKind);
+    const kindOf = (o) => (rest ? (dayKind === "rest" ? "Rest-day" : "Leave-day") : row?.time_in && new Date(o.started_at) >= new Date(row.time_in) ? "Post-shift" : "Pre-shift");
     const sessions = row ? otOf(row.work_date) : [];
     const list = sessions.filter((o) => o.ended_at).map((o) => `<div class="ot-s"><span>${kindOf(o)}</span>
       <span class="mono">${uk(o.started_at)}–${uk(o.ended_at)} UK</span><span class="mono muted">${ph(o.started_at)}–${ph(o.ended_at)} ${B.esc(cfg.LOCAL_LABEL || "")}</span>
@@ -331,7 +331,7 @@
     if (a === "ot_end") {
       const o = r.ot_sessions?.filter((x) => x.ended_at).pop();
       if (o?.auto_stopped) B.toast("It ran over 4 hours, so it was stopped at 4:00. An admin can fix the time.", "err");
-      else if (!todayRow()?.time_in && todayRow()?.day_kind !== "rest") B.toast("OT ended. Clock in when your shift starts.");
+      else if (!todayRow()?.time_in && !B.isOffDay(todayRow()?.day_kind)) B.toast("OT ended. Clock in when your shift starts.");
     }
     if (newBadges.length || onTimeIn || after.level.n > before.level.n) B.confetti();
     renderToday(); loadRoster(); bumpIdle();

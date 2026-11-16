@@ -98,6 +98,8 @@
    *   Expected hours come from the PLANNED schedule (plan_start/plan_end), so starting later or leaving earlier
    *   with "use yesterday's OT" draws on that OT instead of reducing the day.
    */
+  /** Days when nothing is expected: rest days and leave (vacation, sick, emergency). Work done on them is all OT and is never late. */
+  const isOffDay = (kind) => kind === "rest" || kind === "vacation" || kind === "sick" || kind === "emergency";
   function calcDay(row, staff, settings, opts = {}) {
     const tz = settings.timezone;
     const sStart = zonedToDate(row.work_date, row.sched_start, tz);
@@ -106,7 +108,7 @@
     const ps = row.plan_start || row.sched_start, pe = row.plan_end || row.sched_end;
     let span = ps && pe ? minsOf(pe) - minsOf(ps) : standardMins(staff) + (staff.lunch_mins ?? 60);
     if (span <= 0) span += 1440;                              // overnight shift
-    const isRest = row.day_kind === "rest";                   // rest day: nothing is expected, every worked minute is OT
+    const isRest = isOffDay(row.day_kind);                    // rest day or leave: nothing is expected, every worked minute is OT
     const planLunch = isRest ? 0 : plannedLunch(staff, row.work_date);
     const tookLunch = !!(row.lunch_out && row.lunch_in);
     const std = isRest ? 0 : tookLunch ? Math.max(0, span - planLunch) : Math.min(span, Math.max(span - planLunch, standardMins(staff)));
@@ -178,8 +180,8 @@
         else if (!bankFrom) bankFrom = r.work_date;
         bank = left + add;
         c.bankAfter = bank; c.overCap = bank > (settings.ot_bank_cap_mins ?? 480);
-      } else if (r.day_kind === "rest") {
-        // A rest day never uses OT: it adds its own OT to the bank, and the bank waits for the next working day.
+      } else if (isOffDay(r.day_kind)) {
+        // A rest day or leave day never uses OT: it adds its own OT to the bank, and the bank waits for the next working day.
         bank = (live ? bank : 0) + (c.complete ? c.ot : 0);
         if (!live) bankFrom = r.work_date;
       } else { bank = c.complete ? c.ot : 0; bankFrom = r.work_date; }   // a working day uses the bank; only its own OT moves on
@@ -268,7 +270,7 @@
     if (row.lunch_out) lines.push(`Lunch Break: ${clockIn(d(row.lunch_out), tz)}${row.lunch_in ? " – " + clockIn(d(row.lunch_in), tz) : ""} ${label}`);
     lines.push(`Time out: ${row.time_out ? clockIn(d(row.time_out), tz) + " " + label : ""}`);
     if (row.time_out) lines.push(`OT used: ${otUsed > 0 ? fmtMins(otUsed) : "None"}`);
-    for (const o of sessions) lines.push(`${row.day_kind === "rest" ? "Rest-day" : row.time_in && d(o.started_at) >= d(row.time_in) ? "Post-shift" : "Pre-shift"} OT: ${clockIn(d(o.started_at), tz)} – ${o.ended_at ? clockIn(d(o.ended_at), tz) + " " + label : "ongoing"} (${o.note})`);
+    for (const o of sessions) lines.push(`${row.day_kind === "rest" ? "Rest-day" : isOffDay(row.day_kind) ? "Leave-day" : row.time_in && d(o.started_at) >= d(row.time_in) ? "Post-shift" : "Pre-shift"} OT: ${clockIn(d(o.started_at), tz)} – ${o.ended_at ? clockIn(d(o.ended_at), tz) + " " + label : "ongoing"} (${o.note})`);
     const note = noteText(row.note);   // the OT used line replaces the app's "Offset" plan
     if (note) lines.push("", note);
     return lines.join("\n");
@@ -292,5 +294,5 @@
   function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
 
   window.BHL = { cfg, sb, configured, tzOffsetMs, zonedToDate, dateIn, hhmmIn, clockIn, clockStr, tzShort, minsOf,
-    fmtMins, hoursDec, prettyDate, standardMins, plannedLunch, calcDay, calcDays, otToday, bankPlanned, bankPlanStart, bankCover, usualSpan, dailyUse, summarise, whatsappText, noteText, esc, toast, copyText, lsGet, lsSet };
+    fmtMins, hoursDec, prettyDate, standardMins, plannedLunch, calcDay, calcDays, isOffDay, otToday, bankPlanned, bankPlanStart, bankCover, usualSpan, dailyUse, summarise, whatsappText, noteText, esc, toast, copyText, lsGet, lsSet };
 })();
