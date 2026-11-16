@@ -102,6 +102,8 @@
   const LEAVE_ABBR = { vacation: "VL", sick: "SL", emergency: "EL" };
   /** Status text for someone clocked in: on a leave day it reads "VL (OT Working)"; every other day keeps its label. */
   const dayStatusLabel = (kind, label) => (LEAVE_ABBR[kind] ? `${LEAVE_ABBR[kind]} (OT ${label})` : label);
+  /** The pill colour class: a worked leave day is "otleave" (red); every other day keeps its own. */
+  const dayStatusClass = (kind, cls) => (LEAVE_ABBR[kind] ? "otleave" : cls);
   const isOffDay = (kind) => kind === "rest" || kind === "vacation" || kind === "sick" || kind === "emergency";
   function calcDay(row, staff, settings, opts = {}) {
     const tz = settings.timezone;
@@ -297,5 +299,5 @@
   function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
 
   window.BHL = { cfg, sb, configured, tzOffsetMs, zonedToDate, dateIn, hhmmIn, clockIn, clockStr, tzShort, minsOf,
-    fmtMins, hoursDec, prettyDate, standardMins, plannedLunch, calcDay, calcDays, isOffDay, dayStatusLabel, otToday, bankPlanned, bankPlanStart, bankCover, usualSpan, dailyUse, summarise, whatsappText, noteText, esc, toast, copyText, lsGet, lsSet };
+    fmtMins, hoursDec, prettyDate, standardMins, plannedLunch, calcDay, calcDays, isOffDay, dayStatusLabel, dayStatusClass, otToday, bankPlanned, bankPlanStart, bankCover, usualSpan, dailyUse, summarise, whatsappText, noteText, esc, toast, copyText, lsGet, lsSet };
 })();

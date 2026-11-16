@@ -41,3 +41,9 @@ test("LEAVE: a clocked-in leave day reads 'VL (OT Working)'; other days keep the
   assert.equal(B.dayStatusLabel("vacation", "Clocked out"), "VL (OT Clocked out)");
   for (const k of ["shift", "rest", "holiday", "unpaid", undefined]) assert.equal(B.dayStatusLabel(k, "Working"), "Working");
 });
+
+test("LEAVE: a worked leave day gets the red 'otleave' pill; other days keep their colour", () => {
+  assert.equal(B.dayStatusClass("vacation", "in"), "otleave");
+  assert.equal(B.dayStatusClass("emergency", "lunch"), "otleave");
+  for (const k of ["shift", "rest", "holiday", "unpaid", undefined]) assert.equal(B.dayStatusClass(k, "in"), "in");
+});

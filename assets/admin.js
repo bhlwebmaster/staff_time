@@ -143,7 +143,7 @@
       if (c.status !== "off") n[c.status]++; if (c.late) n.late++;   // KPIs count everyone
       if (i < da || i >= db) return "";
       let [k, label] = c.otRunning ? ["in", "Out-of-hours OT"] : c.status === "off" ? ["out", B.sched.KINDS[plan.kind].label] : pillFor(c);
-      if (r && B.isOffDay(r.day_kind) && c.status !== "off" && c.status !== "absent") label = B.dayStatusLabel(r.day_kind, c.otRunning ? "Working" : label);
+      if (r && B.isOffDay(r.day_kind) && c.status !== "off" && c.status !== "absent") { label = B.dayStatusLabel(r.day_kind, c.otRunning ? "Working" : label); k = B.dayStatusClass(r.day_kind, k); }
       let worked = "—";
       if (c.worked != null) worked = B.fmtMins(c.worked);
       else if (r?.time_in && day === today()) {

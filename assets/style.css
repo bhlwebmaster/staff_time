@@ -104,6 +104,8 @@ a.brand:hover .logo { transform: rotate(-6deg); transition: transform .2s; }
 .pill.absent { color: var(--muted); background: transparent; border: 1px dashed var(--line); }
 .pill.absent::before { background: transparent; border: 1.5px solid currentColor; }
 .pill.late { color: #a3321f; background: #fde4e1; }
+/* a leave day being worked ("VL (OT Working)"): red so it stands out from normal shifts */
+.pill.otleave { color: var(--late); background: var(--late-soft); font-weight: 700; }
 .pill.leave { color: #3b3500; background: #fff59a; }
 .pill.leave.k-vacation, .pill.leave.k-holiday { color: #06300c; background: #c9f3cf; }
 .pill.leave.k-sick { color: #4a1606; background: #ffd9cc; }

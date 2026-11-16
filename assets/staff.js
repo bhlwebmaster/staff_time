@@ -19,7 +19,7 @@
   // ---------- roster / pick ----------
   /** [css class, label]. kind = the day's type (leave days read "VL (OT Working)"); defaults to the record's own day_kind. */
   function statusOf(t, kind = t?.day_kind) {
-    const L = (k, label) => [k, B.dayStatusLabel(kind, label)];
+    const L = (k, label) => [B.dayStatusClass(kind, k), B.dayStatusLabel(kind, label)];
     if (t?.ot_open) return kind && B.isOffDay(kind) ? L("in", "Working") : ["in", "Out-of-hours OT"];
     if (!t || !t.time_in) return ["absent", "Not in yet"];
     if (t.time_out) return L("out", "Clocked out");
@@ -535,10 +535,11 @@
       return `<span class="pill absent">Not in yet</span>`;
     }
     const at = (v) => B.clockIn(new Date(v), tzn);
-    if (t.ot_open) return `<span class="pill in">Out-of-hours OT</span><small>shift ${at(t.time_in)}–${at(t.time_out)}</small>`;
-    if (t.time_out) return `<span class="pill out">Clocked out</span><small>${at(t.time_in)}–${at(t.time_out)}</small>`;
-    if (t.lunch_out && !t.lunch_in) return `<span class="pill lunch">On lunch</span><small>since ${at(t.lunch_out)}</small>`;
-    return `<span class="pill in">Working</span><small>in ${at(t.time_in)}</small>`;
+    const dk = kindToday(r || p), pill = (cls, label) => `<span class="pill ${B.dayStatusClass(dk, cls)}">${B.dayStatusLabel(dk, label)}</span>`;   // a worked leave day reads "VL (OT Working)", in red
+    if (t.ot_open) return `${B.isOffDay(dk) ? pill("in", "Working") : `<span class="pill in">Out-of-hours OT</span>`}<small>shift ${at(t.time_in)}–${at(t.time_out)}</small>`;
+    if (t.time_out) return `${pill("out", "Clocked out")}<small>${at(t.time_in)}–${at(t.time_out)}</small>`;
+    if (t.lunch_out && !t.lunch_in) return `${pill("lunch", "On lunch")}<small>since ${at(t.lunch_out)}</small>`;
+    return `${pill("in", "Working")}<small>in ${at(t.time_in)}</small>`;
   }
   const step = (dir) => loadWeek(B.sched.addDays(wkAt, dir * (wkRange === "day" ? 1 : 7)));
   $("wkPrev").onclick = () => step(-1);
