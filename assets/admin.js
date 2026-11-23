@@ -406,7 +406,7 @@
     $("stGrace").value = settings.grace_mins; $("stBlock").value = settings.ot_block_mins; $("stEarly").checked = settings.count_early;
     $("stDpc").value = settings.days_per_cutoff ?? 10;
     $("stCap").value = (settings.ot_bank_cap_mins ?? 480) / 60;
-    $("stDaily").value = (settings.ot_daily_use_mins ?? 180) / 60;
+    $("stDaily").value = (settings.ot_daily_use_mins ?? 480) / 60;
     $("stFlex").checked = settings.flex_hours !== false;
     renderHolidays();
     loadReminders();

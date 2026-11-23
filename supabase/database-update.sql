@@ -70,7 +70,8 @@ alter table public.staff add column if not exists ot_carry_from date;
 -- Soft cap on a carry-over OT bank: OT above it is still banked, admins are warned
 alter table public.settings add column if not exists ot_bank_cap_mins int not null default 480;
 -- The most of a carry-over OT bank one day can use (the rest stays banked)
-alter table public.settings add column if not exists ot_daily_use_mins int not null default 180;
+alter table public.settings add column if not exists ot_daily_use_mins int not null default 480;
+alter table public.settings alter column ot_daily_use_mins set default 480;
 -- Public half of the push-notification keys (Settings → Reminders); the staff app needs it to turn reminders on
 alter table public.settings add column if not exists push_public_key text;
 -- Minutes of finished after-hours OT sessions on this day (kept up to date from ot_sessions)
@@ -503,8 +504,8 @@ begin
   v_day := (now() at time zone v_tz)::date;
   select * into a from attendance where staff_id = p_staff and work_date = v_day for update;
   if a.time_in is null then return json_build_object('ok', false, 'error', 'Clock in first.'); end if;
-  if p_mins is null or p_mins < 0 or p_mins > coalesce(v_max, 180) then
-    return json_build_object('ok', false, 'error', format('You can use up to %s:%s from your bank in a day.', coalesce(v_max, 180) / 60, lpad((coalesce(v_max, 180) % 60)::text, 2, '0')));
+  if p_mins is null or p_mins < 0 or p_mins > coalesce(v_max, 480) then
+    return json_build_object('ok', false, 'error', format('You can use up to %s:%s from your bank in a day.', coalesce(v_max, 480) / 60, lpad((coalesce(v_max, 480) % 60)::text, 2, '0')));
   end if;
   perform set_config('bhl.actor', 'staff: ' || s.display_name, true);
   d := s.week_pattern -> extract(dow from v_day)::int::text;

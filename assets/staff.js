@@ -209,7 +209,7 @@
     $("bankCut").textContent = B.prettyDate(cut, { weekday: "short", day: "numeric", month: "short" });
     $("bankLeft").textContent = left === 0 ? "Cut-off is today" : left === 1 ? "1 day left" : `${left} days left`;
     $("bankLeft").className = left <= 3 ? "soon" : "muted";
-    const max = data.settings.ot_daily_use_mins ?? 180;
+    const max = data.settings.ot_daily_use_mins ?? 480;
     $("bankNote").textContent = setAside ? `Up to ${B.fmtMins(setAside)} can cover short time today. Only what you're actually short comes out, to the minute, when you clock out. The rest stays.`
       : !o.mins ? "No OT in your bank yet. Out-of-hours and extra time you work is added here."
       : `Try to use it before the cut-off: start later or leave earlier, up to ${B.fmtMins(max)} a day (pick it when you clock in).`;

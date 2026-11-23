@@ -158,7 +158,7 @@
   /** Carry-over OT bank (people with After-hours OT on, from staff.ot_carry_from): OT never expires, it waits until used. */
   const carriesOt = (staff, date) => !!staff.ot_carry_from && date >= staff.ot_carry_from;
   /** The most of a carry-over bank someone can plan to use at clock-in (Settings → Max OT bank use per day). Other short time takes from the whole bank. */
-  const dailyUse = (settings) => Math.max(0, settings.ot_daily_use_mins ?? 180);
+  const dailyUse = (settings) => Math.max(0, settings.ot_daily_use_mins ?? 480);
   /**
    * Work out every day for one person, in date order, passing each work day's OT to the next work day.
    * Returns a Map work_date → calcDay result. Give it a few days before the range you show, so the first day
