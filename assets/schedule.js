@@ -9,7 +9,10 @@
     emergency: { label: "Emergency Leave", cls: "k-emer", paid: true },
     holiday:  { label: "Holiday", cls: "k-hol", paid: true },
     unpaid:   { label: "Unpaid Leave", cls: "k-unpaid" },
+    otbank:   { label: "OT Bank Day", cls: "k-otb", paid: true },   // whole shift paid from the OT bank, no clock-in
   };
+  /** Days drawn as a shift bar (an OT Bank Day keeps its shift times, all of it faded). */
+  const onShift = (k) => k === "shift" || k === "otbank";
   // One distinct colour per person (same colour every day), in name order.
   const LANE_COLORS = ["#0d7656", "#1f6fb2", "#d9622b", "#6d4bc4", "#c2416b", "#a8740a", "#0e8a8a", "#56606b", "#8a5a2b", "#3f7d1f", "#b3386e", "#2f4fa8"];
   const DAY = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
@@ -37,13 +40,24 @@
     const o = overrides && overrides[p.id + "|" + ds];
     const base = patternDay(p, dow(ds)), h = HOL[ds];
     if (o) return { kind: o.kind, start: hhmm(o.start_time) || base.start || hhmm(p.sched_start), end: hhmm(o.end_time) || base.end || hhmm(p.sched_end), note: o.note, changed: true,
+      cover: o.kind === "shift" ? Number(o.cover_mins) || 0 : 0, side: o.cover_side === "end" ? "end" : "start",
       ...(o.kind === "holiday" && h ? { holiday: h.name, paid: h.paid !== false } : {}) };
     if (h && base.kind === "shift") return { kind: "holiday", start: base.start, end: base.end, note: h.name, holiday: h.name, paid: h.paid !== false, changed: false };
-    return { ...base, changed: false };
+    return { ...base, cover: 0, side: "start", changed: false };
+  }
+  /** "3:00 from OT bank, start later" for a day with OT bank cover; "" otherwise. */
+  const coverText = (e) => e.cover ? `${B.fmtMins(e.cover)} from OT bank, ${e.side === "end" ? "leave earlier" : "start later"}` : "";
+  /** The covered part of a shift: [from, to] as HH:MM. */
+  function coverRange(e) {
+    if (!e.cover || !e.start || !e.end) return null;
+    const at = (m) => { m = ((m % 1440) + 1440) % 1440; return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
+    return e.side === "end" ? [at(mins(e.end) - e.cover), hhmm(e.end)] : [hhmm(e.start), at(mins(e.start) + e.cover)];
   }
   const indexDays = (list) => { const m = {}; for (const d of list || []) m[d.staff_id + "|" + d.work_date] = d; return m; };
 
   function cellText(e) { if (e.kind === "holiday" && e.holiday) return e.holiday; return e.kind === "shift" ? `${ampm(e.start)}-${ampm(e.end)}` : KINDS[e.kind]?.label || e.kind; }
+  /** Table cell HTML: the shift, plus a faded "OT 3:00" tag when part of it is covered by the OT bank. */
+  const cellHtml = (e) => B.esc(cellText(e)) + (e.kind === "shift" && e.cover ? `<small class="cov-tag" title="${B.esc(coverText(e))}">OT ${B.fmtMins(e.cover)}</small>` : "");
 
   /** Bottom table in the WhatsApp sheet: one row per person, one column per day. */
   // opts.n = number of days to show (7 = week, 1 = one day); opts.colorFrom = week start used for stable colours
@@ -54,7 +68,7 @@
     return `<table class="wk-table ${n === 1 ? "one" : ""} ${stCol ? "has-st" : ""}"><thead><tr><th>UK time</th>${days.map((d) => `<th class="${d === today ? "is-today" : ""}">${DAY[dow(d)]}<span>${+d.slice(8)}</span>${HOL[d] ? `<em class="hol">${B.esc(HOL[d].name)}</em>` : ""}</th>`).join("")}${stCol ? "<th>Status</th>" : ""}</tr></thead>
       <tbody>${people.map((p) => `<tr><th style="--pc:${colors[p.id] || "#9aa6a0"}"><span class="dot"></span>${B.esc(p.display_name)}</th>${days.map((d) => {
         const e = effective(p, d, overrides);
-        return `<td class="${KINDS[e.kind]?.cls || ""} ${d === today ? "is-today" : ""}" title="${B.esc(e.note || "")}">${cellText(e)}</td>`; }).join("")}${stCol ? `<td class="st">${opts.status(p, effective(p, days[0], overrides))}</td>` : ""}</tr>`).join("")}</tbody></table>`;
+        return `<td class="${KINDS[e.kind]?.cls || ""} ${d === today ? "is-today" : ""}" title="${B.esc([coverText(e), e.note].filter(Boolean).join(" · "))}">${cellHtml(e)}</td>`; }).join("")}${stCol ? `<td class="st">${opts.status(p, effective(p, days[0], overrides))}</td>` : ""}</tr>`).join("")}</tbody></table>`;
   }
 
 
@@ -62,21 +76,21 @@
 
   function laneColors(from, people, overrides) {
     const days = Array.from({ length: 7 }, (_, i) => addDays(from, i)), c = {};
-    people.filter((p) => days.some((d) => effective(p, d, overrides).kind === "shift")).forEach((p, i) => { c[p.id] = LANE_COLORS[i % LANE_COLORS.length]; });
+    people.filter((p) => days.some((d) => onShift(effective(p, d, overrides).kind))).forEach((p, i) => { c[p.id] = LANE_COLORS[i % LANE_COLORS.length]; });
     return c;
   }
   /** Calendar-style week: one coloured bar per person per shift, each person in their own lane. */
   function timelineHtml(from, people, overrides, today, opts = {}) {
     const nd = opts.n || 7, days = Array.from({ length: nd }, (_, i) => addDays(from, i));
     // lanes: only people with at least one shift in view, in a stable order
-    const lanes = people.filter((p) => days.some((d) => effective(p, d, overrides).kind === "shift"));
+    const lanes = people.filter((p) => days.some((d) => onShift(effective(p, d, overrides).kind)));
     const color = laneColors(opts.colorFrom || from, people, overrides);
     const n = Math.max(1, lanes.length);
     // One day: zoom in on the hours people actually work (1 hour either side)
     let h0 = 0, h1 = 24, HOUR = HOUR_WEEK;
     if (nd === 1) {
       HOUR = HOUR_DAY;
-      const sh = lanes.map((p) => effective(p, days[0], overrides)).filter((e) => e.kind === "shift" && e.start && e.end);
+      const sh = lanes.map((p) => effective(p, days[0], overrides)).filter((e) => onShift(e.kind) && e.start && e.end);
       if (sh.length) {
         h0 = Math.max(0, Math.floor(Math.min(...sh.map((e) => mins(e.start))) / 60) - 1);
         h1 = Math.min(24, Math.ceil(Math.max(...sh.map((e) => { const st = mins(e.start), en = mins(e.end); return en <= st ? 1440 : en; })) / 60) + 1);
@@ -87,7 +101,7 @@
       const items = [], off = [];
       for (const p of lanes) {
         const e = effective(p, d, overrides);
-        if (e.kind !== "shift") { if (e.kind !== "rest") off.push(`${B.esc(p.display_name)}: ${B.esc(e.holiday || KINDS[e.kind].label)}`); continue; }
+        if (!onShift(e.kind)) { if (e.kind !== "rest") off.push(`${B.esc(p.display_name)}: ${B.esc(e.holiday || KINDS[e.kind].label)}`); continue; }
         if (!e.start || !e.end) continue;
         const st = mins(e.start); let en = mins(e.end); if (en <= st) en = 24 * 60; // overnight shows to midnight
         items.push({ p, e, st, en });
@@ -99,9 +113,13 @@
       const cols = Math.max(1, colEnd.length);
       const bars = items.map(({ p, e, st, en, col }) => {
         const top = (st / 60 - h0) * HOUR, h = Math.max(HOUR * 0.75, ((en - st) / 60) * HOUR);
-        const nar = cols > 2 && nd > 1;
-        return `<div class="bar ${nar ? "narrow" : ""}" style="top:${top}px;height:${h}px;left:calc(${(col / cols) * 100}% + 2px);width:calc(${100 / cols}% - 4px);--c:${color[p.id]}"
-          title="${B.esc(p.display_name)} · ${ampm(e.start)}–${ampm(e.end)}"><b>${B.esc(p.display_name)}</b><span>${nar ? `${shortT(e.start)}–${shortT(e.end)}` : `${ampm(e.start)}–${ampm(e.end)}`}</span></div>`;
+        const nar = cols > 2 && nd > 1, whole = e.kind === "otbank";
+        // OT bank cover: the covered part of the bar is faded (same colour, striped); an OT Bank Day is faded all the way
+        const cv = !whole && e.cover ? Math.min(100, (e.cover / Math.max(1, en - st)) * 100) : 0;
+        const covEl = cv ? `<i class="cov ${e.side === "end" ? "end" : "start"}" style="height:${cv}%"></i>` : "";
+        const tip = whole ? "OT Bank Day (whole shift from the OT bank)" : coverText(e);
+        return `<div class="bar ${nar ? "narrow" : ""} ${whole ? "otb" : ""}" style="top:${top}px;height:${h}px;left:calc(${(col / cols) * 100}% + 2px);width:calc(${100 / cols}% - 4px);--c:${color[p.id]}"
+          title="${B.esc(p.display_name)} · ${ampm(e.start)}–${ampm(e.end)}${tip ? " · " + B.esc(tip) : ""}">${covEl}<b>${B.esc(p.display_name)}</b><span>${nar ? `${shortT(e.start)}–${shortT(e.end)}` : `${ampm(e.start)}–${ampm(e.end)}`}</span>${whole ? `<span class="otb-l">${nar ? "OT bank" : "OT Bank Day"}</span>` : cv && !nar ? `<span class="cov-l">${B.fmtMins(e.cover)} OT bank</span>` : ""}</div>`;
       });
       return `<div class="tl-day ${d === today ? "is-today" : ""}">${bars.join("")}${off.length ? `<div class="tl-off">${off.join("<br>")}</div>` : ""}</div>`;
     };
@@ -158,11 +176,19 @@
   .tl-day .bar.narrow { padding: 4px 3px; } .tl-day .bar.narrow b { font-size: 11px; letter-spacing: -.01em; }
   .tl-day .bar span { font-size: 10px; opacity: .92; white-space: nowrap; overflow: hidden; text-overflow: clip; }
   .tl-day .bar.narrow span { font-size: 9.5px; }
+  .tl-day .bar > b, .tl-day .bar > span { position: relative; z-index: 1; }
+  .tl-day .bar .cov { position: absolute; left: 0; right: 0; z-index: 0; pointer-events: none;
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,.62) 0 6px, rgba(255,255,255,.42) 6px 12px); }
+  .tl-day .bar .cov.start { top: 0; } .tl-day .bar .cov.end { bottom: 0; }
+  .tl-day .bar.otb { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--c) 42%, #fff) 0 6px, color-mix(in srgb, var(--c) 30%, #fff) 6px 12px); color: #12302c; box-shadow: inset 0 0 0 1.5px var(--c); }
+  .tl-day .bar .otb-l, .tl-day .bar .cov-l { font-weight: 700; font-size: 9.5px; opacity: 1; }
+  .wk-table td .cov-tag { display: block; font-family: var(--body); font-size: 10px; font-weight: 600; color: #5b6b67; opacity: .85; }
+  .wk-table td.k-otb { background: repeating-linear-gradient(135deg, #e7f1ef 0 6px, #f4f8f7 6px 12px); color: #0f5c56; font-family: var(--body); font-weight: 700; }
   .tl-day .tl-off { position: absolute; left: 3px; right: 3px; bottom: 3px; font-size: 10px; color: #1c5a26; background: #d7f5dc; border-radius: 6px; padding: 3px 5px; line-height: 1.25; }
   .tl-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12.5px; font-weight: 600; padding: 10px 12px; border-top: 1px solid var(--line); background: var(--surface); }
   .tl-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
   .wk-legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
   .wk-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }`;
 
-  Object.assign(B, { sched: { setHolidays, holidayOn, KINDS, DAY, addDays, dow, weekStart, effective, patternDay, indexDays, tableHtml, timelineHtml, cellText, hhmm, ampm, CSS } });
+  Object.assign(B, { sched: { setHolidays, holidayOn, KINDS, DAY, addDays, dow, weekStart, effective, patternDay, indexDays, tableHtml, timelineHtml, cellText, cellHtml, coverText, coverRange, onShift, hhmm, ampm, CSS } });
 })();

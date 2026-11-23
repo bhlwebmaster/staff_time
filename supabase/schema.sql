@@ -336,6 +336,10 @@ declare
   v_se   time;
   v_kind text;
   o      ot_sessions;
+  v_cm   int := 0;      -- OT bank cover set for today (schedule): minutes and side (start = start later, end = leave earlier)
+  v_cs   text;
+  v_is   time;
+  v_ie   time;
 begin
   v_err := _check_pin(p_staff, p_pin);
   if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
@@ -359,15 +363,22 @@ begin
     if to_regprocedure('public.day_schedule(uuid,date)') is not null then
       execute 'select start_time, end_time from public.day_schedule($1, $2)' into v_ss, v_se using p_staff, v_day;
     end if;
+    -- Hours expected today: the schedule (or the hours typed in "Different hours today"), less any OT bank cover set for today
+    v_is := coalesce(p_sched_start, v_ss, s.sched_start); v_ie := coalesce(p_sched_end, v_se, s.sched_end);
+    if to_regprocedure('public._day_cover(uuid,date)') is not null then
+      execute 'select mins, side from public._day_cover($1, $2)' into v_cm, v_cs using p_staff, v_day;
+    end if;
+    if coalesce(v_cm, 0) > 0 then
+      if v_cs = 'end' then v_ie := (v_ie - make_interval(mins => v_cm))::time; else v_is := (v_is + make_interval(mins => v_cm))::time; end if;
+    end if;
     if a.id is not null then
-      -- the day already exists (pre-shift OT was clocked before the shift): clock in on it
-      update attendance set sched_start = coalesce(p_sched_start, v_ss, s.sched_start), sched_end = coalesce(p_sched_end, v_se, s.sched_end),
+      -- the day already exists (pre-shift OT was clocked before the shift, or an OT bank day): clock in on it
+      update attendance set sched_start = v_is, sched_end = v_ie,
         plan_start = coalesce(v_ss, s.sched_start), plan_end = coalesce(v_se, s.sched_end), time_in = now(), note = coalesce(v_note, note)
         where id = a.id;
     else
       insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end, time_in, note)
-        values (p_staff, v_day, coalesce(p_sched_start, v_ss, s.sched_start), coalesce(p_sched_end, v_se, s.sched_end),
-                coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), now(), v_note);
+        values (p_staff, v_day, v_is, v_ie, coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), now(), v_note);
     end if;
   elsif p_action = 'lunch_start' then
     if a.time_in is null then return json_build_object('ok', false, 'error', 'Clock in first.'); end if;
@@ -403,7 +414,7 @@ begin
       if to_regprocedure('public.day_schedule(uuid,date)') is not null then
         execute 'select kind, start_time, end_time from public.day_schedule($1, $2)' into v_kind, v_ss, v_se using p_staff, v_day;
       end if;
-      if v_kind not in ('shift', 'rest') then
+      if v_kind not in ('shift', 'rest', 'otbank') then
         return json_build_object('ok', false, 'error', 'You''re off today (leave or a holiday). Ask an admin to add the OT if you were called in.');
       end if;
       if a.id is null then   -- the day starts with the OT; on a working day Clock in later fills in the shift
@@ -426,7 +437,7 @@ begin
     'now', now(),
     'staff', json_build_object('id', s.id, 'display_name', s.display_name, 'full_name', s.full_name,
                'sched_start', s.sched_start, 'sched_end', s.sched_end, 'lunch_mins', s.lunch_mins, 'week_pattern', s.week_pattern,
-               'avatar', s.avatar, 'photo', s.photo, 'tagline', s.tagline, 'color', s.color, 'ot_carry_from', s.ot_carry_from),
+               'avatar', s.avatar, 'photo', s.photo, 'tagline', s.tagline, 'color', s.color, 'ot_carry_from', s.ot_carry_from, 'auto_approve', coalesce((to_jsonb(s)->>'auto_approve')::boolean, false)),
     'settings', (select json_build_object('timezone', timezone, 'grace_mins', grace_mins,
                'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours, 'ot_bank_cap_mins', ot_bank_cap_mins, 'ot_daily_use_mins', ot_daily_use_mins) from settings where id = 1),
     -- this month + last month, for the personal OT bank (a carry-over bank goes back to when it started)

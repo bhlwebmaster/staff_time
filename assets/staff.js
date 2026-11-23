@@ -21,6 +21,7 @@
   function statusOf(t, kind = t?.day_kind) {
     const L = (k, label) => [B.dayStatusClass(kind, k), B.dayStatusLabel(kind, label)];
     if (t?.ot_open) return kind && B.isOffDay(kind) ? L("in", "Working") : ["in", "Out-of-hours OT"];
+    if (kind === "otbank" && !t?.time_in) return ["out", "OT Bank Day"];
     if (!t || !t.time_in) return ["absent", "Not in yet"];
     if (t.time_out) return L("out", "Clocked out");
     if (t.lunch_out && !t.lunch_in) return L("lunch", "On lunch");
@@ -132,14 +133,18 @@
     const ss = row?.sched_start || (plan?.kind === "shift" ? plan.start + ":00" : st.sched_start), se = row?.sched_end || (plan?.kind === "shift" ? plan.end + ":00" : st.sched_end);
     // today's day type: from the day's record once clocked in, else the weekly schedule. On a rest or leave day nothing is expected and all work is OT.
     const kindNow = row?.day_kind || todayPlan(st)?.kind, leaveNow = B.isOffDay(kindNow);
-    $("tSched").textContent = plan && plan.kind !== "shift" ? `${B.sched.KINDS[plan.kind].label} today`
-      : leaveNow ? `${B.sched.KINDS[kindNow].label} · all work today is OT` : `${B.clockStr(ss)} – ${B.clockStr(se)} UK`;
+    // Planned hours stay as scheduled; the part covered by the OT bank is shown underneath (faded on the schedule graph)
+    const ps = row?.plan_start || (plan?.kind === "shift" ? plan.start + ":00" : ss), pe = row?.plan_end || (plan?.kind === "shift" ? plan.end + ":00" : se);
+    const covNow = coverNow(row, plan), covR = B.sched.coverRange({ start: ps, end: pe, cover: covNow.mins, side: covNow.side });
+    if (plan && plan.kind !== "shift") $("tSched").textContent = `${B.sched.KINDS[plan.kind].label} today`;
+    else if (leaveNow) $("tSched").textContent = `${B.sched.KINDS[kindNow].label} · all work today is OT`;
+    else $("tSched").innerHTML = `${B.clockStr(ps)} – ${B.clockStr(pe)} UK${covR ? `<span class="cov-note">${B.clockStr(covR[0])}–${B.clockStr(covR[1])} covered by OT bank (${B.fmtMins(covNow.mins)})</span>` : ""}`;
     $("schedEdit").hidden = !!row?.time_in;
     if (!row?.time_in) { $("sStart").value ||= ss.slice(0, 5); $("sEnd").value ||= se.slice(0, 5); }
     if (document.activeElement !== $("tNote")) $("tNote").value = row?.note || "";
 
     const c = row ? B.calcDays(data.rows, st, set).get(row.work_date) : null;
-    renderOt(row, c, ss, se, today, offDay || leaveNow);
+    renderOt(row, c, ss, se, today, offDay || leaveNow, ps, pe, covNow);
     const flags = [];
     if (c?.late) flags.push(`<span class="flag late">Late ${B.fmtMins(c.late)}</span>`);
     if (c?.complete && c.ot) flags.push(`<span class="flag ot">OT +${B.fmtMins(c.ot)}</span>`);
@@ -311,6 +316,14 @@
     }
     if (a === "ot_end") extra.note = null;
     if (a === "in" && $("schedEdit").open) { extra.sched_start = $("sStart").value; extra.sched_end = $("sEnd").value; }
+    if (a === "in" && covDirty) {
+      // OT bank cover picked but not saved yet: save it now, so clock-in uses it
+      btn.disabled = true;
+      const rc = await api.setOtCover(me.id, pin, cov.mins, cov.side).catch((e) => ({ ok: false, error: e.message }));
+      btn.disabled = false;
+      if (!rc.ok) return B.toast(rc.error, "err");
+      covDirty = false;
+    }
     if (a === "in" && otPlan && otPick !== "no") {
       // Use yesterday's OT: shift today's times and note it (expected hours stay the same, the OT covers the gap)
       const adj = otAdjusted();
@@ -362,10 +375,57 @@
     const p = otPlan; if (!p) return null;
     return otPick === "late" ? { s: addM(p.ss, p.mins), e: p.se.slice(0, 5) } : otPick === "early" ? { s: p.ss.slice(0, 5), e: addM(p.se, -p.mins) } : { s: p.ss.slice(0, 5), e: p.se.slice(0, 5) };
   }
-  function renderOt(row, c, ss, se, today, offDay) {
+  // ---------- OT bank cover (carry-over bank): part of today's shift paid from the bank, start later or leave earlier ----------
+  let cov = { mins: 0, side: "start" }, covDirty = false;
+  /** Today's saved cover: from today's record once clocked in, else from the schedule. */
+  function coverNow(row, plan) {
+    if (row?.time_in && row.plan_start && row.plan_end) {
+      const m = B.bankPlanned(row), early = String(row.sched_end).slice(0, 5) < String(row.plan_end).slice(0, 5);
+      return { mins: m, side: early ? "end" : "start" };
+    }
+    return plan?.kind === "shift" ? { mins: plan.cover || 0, side: plan.side || "start" } : { mins: 0, side: "start" };
+  }
+  function renderCover(row, c, today, ps, pe, saved) {
+    const box = $("otBox"), o = B.otToday(data.rows, data.staff, data.settings, today);
+    if (!covDirty) cov = { ...saved };
+    const bank = o.mins || 0;
+    if (!bank && !saved.mins) { box.hidden = true; return; }
+    const block = Math.max(1, data.settings.ot_block_mins || 30), span = B.usualSpan({ sched_start: ps, sched_end: pe }, today);
+    const max = Math.max(saved.mins, Math.floor(Math.min(B.dailyUse(data.settings), bank, span - block) / block) * block);
+    const steps = []; for (let m = block; m <= max; m += block) steps.push(m);
+    if (cov.mins && !steps.includes(cov.mins)) steps.push(cov.mins);
+    box.hidden = false; box.classList.remove("info");
+    $("otTitle").textContent = c?.complete ? (c.otUsed ? `Used ${B.fmtMins(c.otUsed)} from your OT bank today.` : "Your OT bank wasn't needed today.")
+      : `You have ${B.fmtMins(bank)} in your OT bank.`;
+    $("otSub").textContent = c?.complete ? `Your bank is now ${B.fmtMins(c.bankAfter ?? bank)}.`
+      : "Use some of it today: start later or leave earlier, up to " + B.fmtMins(Math.min(B.dailyUse(data.settings), bank)) + ". Only what you're actually short comes out when you clock out.";
+    for (const b of $("otPick").children) b.setAttribute("aria-pressed", String(b.dataset.o === (!cov.mins ? "no" : cov.side === "end" ? "early" : "late")));
+    $("otAmtRow").hidden = !cov.mins || steps.length < 1;
+    $("otAmtRow").firstChild.textContent = "How much";
+    $("otAmt").innerHTML = steps.sort((x, y) => x - y).map((m) => `<option value="${m}" ${m === cov.mins ? "selected" : ""}>${B.fmtMins(m)}</option>`).join("");
+    $("otSave").hidden = !covDirty;
+    const r = B.sched.coverRange({ start: ps, end: pe, cover: cov.mins, side: cov.side });
+    $("otPreview").textContent = r ? `Today: ${B.clockStr(ps)} – ${B.clockStr(pe)} UK · ${B.clockStr(r[0])}–${B.clockStr(r[1])} from OT bank`
+      : `Today: ${B.clockStr(ps)} – ${B.clockStr(pe)} UK`;
+    if (covDirty && !row?.time_in) $("otPreview").textContent += " (saved when you clock in, or tap Save)";
+  }
+  $("otSave").addEventListener("click", async (e) => {
+    const btn = e.currentTarget; btn.disabled = true;
+    const r = await api.setOtCover(me.id, pin, cov.mins, cov.side).catch((err) => ({ ok: false, error: err.message }));
+    btn.disabled = false;
+    if (!r.ok) { B.toast(r.error, "err"); if (/PIN/.test(r.error)) { pin = ""; pick(me); } return; }
+    covDirty = false; data = r;
+    await loadWeek(null);   // refreshes today's schedule (and the graph) with the new cover
+    renderToday(); if (!$("msBody").hidden) loadMySched(false);
+    B.toast(cov.mins ? `${B.fmtMins(cov.mins)} from your OT bank today (${cov.side === "end" ? "leave earlier" : "start later"})` : "OT bank cover removed for today");
+  });
+
+  function renderOt(row, c, ss, se, today, offDay, ps, pe, covSaved) {
     const box = $("otBox"), when = (d) => B.prettyDate(d, { weekday: "short", day: "numeric", month: "short" });
     otPlan = null;
     if (offDay) { box.hidden = true; otPick = "no"; return; }   // a day off (rest or leave): no bank to use, nothing is short
+    $("otSave").hidden = true;
+    if (data.staff.ot_carry_from && today >= data.staff.ot_carry_from) { otPick = "no"; return renderCover(row, c, today, ps, pe, covSaved); }
     if (!row?.time_in) {
       const o = B.otToday(data.rows, data.staff, data.settings, today);
       if (!o.mins || !ss || offDay) { box.hidden = true; otPick = "no"; return; }   // nothing to cover on a day off
@@ -386,7 +446,7 @@
       $("otPreview").textContent = otPick === "no" ? `Today: ${B.clockStr(ss)} – ${B.clockStr(se)} UK` : `Today: ${B.clockStr(adj.s)} – ${B.clockStr(adj.e)} UK (was ${B.clockStr(ss)} – ${B.clockStr(se)})`;
       return;
     }
-    otPick = "no"; $("otAmtRow").hidden = true; $("otUseRow").hidden = true;
+    otPick = "no"; $("otAmtRow").hidden = true;
     if (!c || !c.otAvail) { box.hidden = true; return; }
     box.hidden = false; box.classList.add("info");
     const from = c.otFrom ? ` from ${when(c.otFrom)}` : "";
@@ -395,16 +455,6 @@
       $("otTitle").textContent = c.complete ? (c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT from your bank today.` : "Your OT bank wasn't needed today.")
         : `Your ${B.fmtMins(c.otAvail)} OT bank covers any short time today.`;
       $("otSub").textContent = c.complete ? `Your bank is now ${B.fmtMins(c.bankAfter ?? left)}.` : "Start later or leave earlier by up to that much. Whatever you don't use stays in your bank.";
-      // Forgot to pick it at clock-in (or changed the schedule)? Put some of the bank towards today, up to the daily max.
-      const block = Math.max(1, data.settings.ot_block_mins || 30), used = B.bankPlanned(row);
-      // only the part of the usual day today's schedule leaves out (a normal-length day: nothing to pick; the bank covers short time anyway)
-      const gap = B.bankCover(row, data.staff, 1e9);
-      const max = Math.max(used, Math.floor(Math.min(B.dailyUse(data.settings), c.otAvail, gap) / block) * block), steps = [];
-      for (let m = 0; m <= max; m += block) steps.push(m);
-      if (!steps.includes(used)) steps.push(used);
-      $("otUse").innerHTML = steps.sort((x, y) => x - y).map((m) => `<option value="${m}" ${m === used ? "selected" : ""}>${m ? B.fmtMins(m) : "None"}</option>`).join("");
-      $("otUseRow").hidden = steps.length < 2;
-      if (used) $("otSub").textContent += ` Set to cover up to ${B.fmtMins(used)} today: only your real short time comes out, to the minute.`;
     } else if (c.complete) {
       $("otTitle").textContent = c.otUsed ? `Used ${B.fmtMins(c.otUsed)} OT${from} today.` : `Your ${B.fmtMins(c.otAvail)} OT${from} wasn't needed today.`;
       $("otSub").textContent = c.otUsed && c.otUsed < c.otAvail ? `The other ${B.fmtMins(c.otAvail - c.otUsed)} expired.` : c.otUsed ? "" : "It has now expired.";
@@ -413,17 +463,24 @@
       $("otSub").textContent = "Start later or leave earlier by up to that much. Unused OT expires at the end of today.";
     }
   }
-  $("otUseSave").addEventListener("click", async (e) => {
-    const btn = e.currentTarget, mins = +$("otUse").value;
-    btn.disabled = true;
-    const r = await api.useOtBank(me.id, pin, mins).catch((err) => ({ ok: false, error: err.message }));
-    btn.disabled = false;
-    if (!r.ok) { B.toast(r.error, "err"); if (/PIN/.test(r.error)) { pin = ""; pick(me); } return; }
-    data = r; renderToday();
-    B.toast(mins ? `Your bank covers up to ${B.fmtMins(mins)} of short time today` : "OT bank no longer set for today");
+  $("otPick").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-o]"); if (!b) return;
+    if (data?.staff?.ot_carry_from) {   // OT bank cover: choose start later / leave earlier / none, then Save (or it's saved at clock-in)
+      const k = b.dataset.o;
+      if (k === "no") cov = { mins: 0, side: cov.side };
+      else {
+        const max = +($("otAmt").options[$("otAmt").options.length - 1]?.value || 0);
+        if (!max) return B.toast("There isn't enough in your OT bank yet (30 minutes or more).", "err");
+        cov = { mins: cov.mins || Math.min(max, 180), side: k === "early" ? "end" : "start" };
+      }
+      covDirty = true; return renderToday();
+    }
+    otPick = b.dataset.o; renderToday();
   });
-  $("otPick").addEventListener("click", (e) => { const b = e.target.closest("button[data-o]"); if (!b) return; otPick = b.dataset.o; renderToday(); });
-  $("otAmt").addEventListener("change", (e) => { otAmt = +e.target.value; renderToday(); });
+  $("otAmt").addEventListener("change", (e) => {
+    if (data?.staff?.ot_carry_from) { cov = { ...cov, mins: +e.target.value }; covDirty = true; return renderToday(); }
+    otAmt = +e.target.value; renderToday();
+  });
 
   // ---------- season (XP, level, streak, badges) ----------
   let fresh = new Set();
@@ -521,7 +578,7 @@
     const r = roster.staff.find((x) => x.id === p.id), t = r?.today;
     if (!t?.time_in && !t?.ot_open && plan.kind !== "shift") {
       if (plan.kind === "holiday" && plan.holiday) return `<span class="pill leave k-holiday">${B.esc(plan.holiday)}</span>`;
-      const k = { rest: "Rest day", vacation: "Vacation", sick: "Sick", emergency: "Emergency leave", holiday: "Holiday", unpaid: "Unpaid leave" }[plan.kind] || plan.kind;
+      const k = { rest: "Rest day", vacation: "Vacation", sick: "Sick", emergency: "Emergency leave", holiday: "Holiday", unpaid: "Unpaid leave", otbank: "OT Bank Day" }[plan.kind] || plan.kind;
       return `<span class="pill leave k-${plan.kind}">${k}</span>`;
     }
     const tzn = tz(), now = new Date();
@@ -595,8 +652,11 @@
 
   // ---------- my schedule (this week + next 2) and change requests ----------
   let msIdx = 0, msReqs = [], msEditing = false, msWk = null, msFrom = null;
-  const MS_KINDS = ["shift", "rest", "vacation", "sick", "emergency", "unpaid"];
-  const sameDay = (a, b) => a.kind === b.kind && (a.kind !== "shift" || (a.start === b.start && a.end === b.end));
+  const msKinds = () => ["shift", "rest", "vacation", "sick", "emergency", "unpaid", ...(data?.staff?.ot_carry_from ? ["otbank"] : [])];   // OT Bank Day: only with an OT bank
+  const sameDay = (a, b) => a.kind === b.kind && (a.kind !== "shift" || (a.start === b.start && a.end === b.end && (a.cover || 0) === (b.cover || 0) && (!a.cover || (a.side || "start") === (b.side || "start"))));
+  /** OT bank cover choices for a request (30-minute steps up to the daily limit). */
+  const coverOpts = (cur) => { const block = Math.max(1, data?.settings?.ot_block_mins || 30), max = B.dailyUse(data?.settings || {}), o = [0];
+    for (let m = block; m <= max; m += block) o.push(m); return o.map((m) => `<option value="${m}" ${m === (cur || 0) ? "selected" : ""}>${m ? B.fmtMins(m) + " from OT bank" : "No OT bank"}</option>`).join(""); };
   async function loadMySched(refresh) {
     if (!me || !pin) return;
     const S = B.sched, today = B.dateIn(new Date(), tz()), w0 = S.weekStart(today);
@@ -620,10 +680,11 @@
     const reqs = msReqs.filter((r) => r.week_start === from);
     const pending = reqs.find((r) => r.status === "pending");
     const latest = reqs.find((r) => r.status !== "cancelled");
-    const reqDay = (d) => { const v = pending?.days?.[d]; return v ? { kind: v.kind, start: v.s, end: v.e } : null; };
+    const reqDay = (d) => { const v = pending?.days?.[d]; return v ? { kind: v.kind, start: v.s, end: v.e, cover: v.cm || 0, side: v.cs || "start" } : null; };
     const label = (e) => S.KINDS[e.kind]?.label || e.kind;
-    const fmt = (e) => e.kind === "shift" ? `${S.ampm(e.start)} – ${S.ampm(e.end)}` : `<span class="k ${S.KINDS[e.kind]?.cls || ""}">${label(e)}</span>`;
-    const plain = (e) => e.kind === "shift" ? `${S.ampm(e.start)}–${S.ampm(e.end)}` : label(e);
+    const covTxt = (e) => e.kind === "shift" && e.cover ? `<small class="cov">${S.coverText(e)}</small>` : "";
+    const fmt = (e) => e.kind === "shift" ? `${S.ampm(e.start)} – ${S.ampm(e.end)}${covTxt(e)}` : `<span class="k ${S.KINDS[e.kind]?.cls || ""}">${label(e)}</span>`;
+    const plain = (e) => e.kind === "shift" ? `${S.ampm(e.start)}–${S.ampm(e.end)}${e.cover ? ` (${B.fmtMins(e.cover)} OT bank)` : ""}` : label(e);
     // Same shift in Philippine time (handles UK summer/winter time; "+1" when it lands on the next day in Manila)
     const ph = (d, t) => { const at = B.zonedToDate(d, t, tz()), pd = B.dateIn(at, LOCAL_TZ); return `<span class="nw">${S.ampm(B.hhmmIn(at, LOCAL_TZ))}${pd > d ? "<sup>+1</sup>" : ""}</span>`; };
     const fmtPh = (d, e) => e.kind === "shift" ? `${ph(d, e.start)} – ${ph(d, e.end)}` : "";
@@ -642,19 +703,21 @@
       }).join("")}</div>`;
       html += `<div class="row" style="gap:8px">${canEdit ? `<button type="button" class="btn" data-ms="edit">${pending ? "Edit my request" : "Request a change"}</button>` : ""}
         ${pending ? `<button type="button" class="btn ghost" data-ms="withdraw">Withdraw request</button>` : ""}</div>
-        <p class="muted" style="margin:0;font-size:12.5px">Changes go to an admin for approval. When an admin updates the schedule, you'll see it here straight away.</p>`;
+        <p class="muted" style="margin:0;font-size:12.5px">${data?.staff?.auto_approve ? "Your changes go straight into the schedule (no approval needed)." : "Changes go to an admin for approval. When an admin updates the schedule, you'll see it here straight away."}${data?.staff?.ot_carry_from ? " You can also use your OT bank: part of a working day (start later or leave earlier), or a whole OT Bank Day." : ""}</p>`;
     } else {
       html += `<div class="ms-list">${days.map((d) => {
         const cur = S.effective(p, d, ov), v = reqDay(d) || cur;
         if (d < today) return `<div class="ms-row past">${dayLbl(d)}<span class="v">${fmt(cur)}</span></div>`;
         return `<div class="ms-row" data-d="${d}">${dayLbl(d)}<span class="ed">
-          <select aria-label="Day type">${MS_KINDS.map((k) => `<option value="${k}" ${v.kind === k ? "selected" : ""}>${k === "shift" ? "Working" : S.KINDS[k].label}</option>`).join("")}</select>
+          <select aria-label="Day type">${msKinds().map((k) => `<option value="${k}" ${v.kind === k ? "selected" : ""}>${k === "shift" ? "Working" : S.KINDS[k].label}</option>`).join("")}</select>
           <input type="time" aria-label="Start" value="${v.start || cur.start || S.hhmm(p.sched_start)}" ${v.kind === "shift" ? "" : "hidden"}>
-          <input type="time" aria-label="End" value="${v.end || cur.end || S.hhmm(p.sched_end)}" ${v.kind === "shift" ? "" : "hidden"}></span></div>`;
+          <input type="time" aria-label="End" value="${v.end || cur.end || S.hhmm(p.sched_end)}" ${v.kind === "shift" ? "" : "hidden"}>
+          ${data?.staff?.ot_carry_from ? `<select data-f="cm" aria-label="OT bank cover" ${v.kind === "shift" ? "" : "hidden"}>${coverOpts(v.cover)}</select>
+          <select data-f="cs" aria-label="Start later or leave earlier" ${v.kind === "shift" && v.cover ? "" : "hidden"}><option value="start" ${v.side !== "end" ? "selected" : ""}>start later</option><option value="end" ${v.side === "end" ? "selected" : ""}>leave earlier</option></select>` : ""}</span></div>`;
       }).join("")}</div>
       <label class="f">Note for the admin <span class="muted" style="font-weight:400">e.g. "Swapping Monday and Wednesday"</span>
         <textarea id="msNote" rows="2" maxlength="300" placeholder="Optional">${B.esc(pending?.note || "")}</textarea></label>
-      <div class="row" style="gap:8px"><button type="button" class="btn primary" data-ms="send">Send for approval</button><button type="button" class="btn ghost" data-ms="cancel">Cancel</button></div>`;
+      <div class="row" style="gap:8px"><button type="button" class="btn primary" data-ms="send">${data?.staff?.auto_approve ? "Save changes" : "Send for approval"}</button><button type="button" class="btn ghost" data-ms="cancel">Cancel</button></div>`;
     }
     $("msBody").innerHTML = html;
     markChanged();
@@ -664,10 +727,18 @@
     if (!msEditing) return;
     const S = B.sched, p = msWk.staff.find((x) => x.id === me.id), ov = S.indexDays(p.days.map((d) => ({ ...d, staff_id: p.id })));
     $("msBody").querySelectorAll(".ms-row[data-d]").forEach((r) => {
-      const [sel, a, b] = r.querySelectorAll("select, input");
-      a.hidden = b.hidden = sel.value !== "shift";
-      r.classList.toggle("chg", !sameDay({ kind: sel.value, start: a.value, end: b.value }, S.effective(p, r.dataset.d, ov)));
+      const v = msRead(r), [, a, b] = r.querySelectorAll("select, input"), cm = r.querySelector('[data-f="cm"]'), cs = r.querySelector('[data-f="cs"]');
+      a.hidden = b.hidden = v.kind !== "shift";
+      if (cm) cm.hidden = v.kind !== "shift";
+      if (cs) cs.hidden = v.kind !== "shift" || !v.cover;
+      r.classList.toggle("chg", !sameDay(v, S.effective(p, r.dataset.d, ov)));
     });
+  }
+  /** One edited day in the request form: { kind, start, end, cover, side }. */
+  function msRead(r) {
+    const sel = r.querySelector("select"), [a, b] = r.querySelectorAll('input[type="time"]'), cm = r.querySelector('[data-f="cm"]'), cs = r.querySelector('[data-f="cs"]');
+    const kind = sel.value, cover = kind === "shift" && cm ? +cm.value || 0 : 0;
+    return { kind, start: a.value, end: b.value, cover, side: cover && cs ? cs.value : "start" };
   }
   $("msBody").addEventListener("change", markChanged);
   $("msBody").addEventListener("input", markChanged);
@@ -688,16 +759,18 @@
       const S = B.sched, p = msWk.staff.find((x) => x.id === me.id), ov = S.indexDays(p.days.map((d) => ({ ...d, staff_id: p.id })));
       const days = {};
       for (const r of $("msBody").querySelectorAll(".ms-row[data-d]")) {
-        const [sel, a, c] = r.querySelectorAll("select, input"), v = { kind: sel.value, start: a.value, end: c.value };
+        const v = msRead(r);
         if (v.kind === "shift" && (!v.start || !v.end)) return B.toast("Add a start and end time for each working day.", "err");
-        if (!sameDay(v, S.effective(p, r.dataset.d, ov))) days[r.dataset.d] = v.kind === "shift" ? { kind: "shift", s: v.start, e: v.end } : { kind: v.kind };
+        if (!sameDay(v, S.effective(p, r.dataset.d, ov))) days[r.dataset.d] = v.kind === "shift" ? { kind: "shift", s: v.start, e: v.end, ...(v.cover ? { cm: v.cover, cs: v.side } : {}) } : { kind: v.kind };
       }
       if (!Object.keys(days).length) return B.toast("Nothing changed yet. Change a day first, or tap Cancel.", "err");
       b.disabled = true;
       const r = await api.requestWeek(me.id, pin, msFrom, days, $("msNote").value.trim()).catch((err) => ({ ok: false, error: err.message }));
       b.disabled = false;
       if (!r.ok) return B.toast(r.error, "err");
-      msEditing = false; B.toast("Sent to the admin for approval"); loadMySched(true);
+      msEditing = false; B.toast(r.auto ? "Saved. Your schedule is updated." : "Sent to the admin for approval");
+      if (r.auto) { delete wkCache[msFrom]; loadWeek(null); }
+      loadMySched(true);
     }
   });
   function lock() { pin = ""; data = null; if (me) pick(me); else show("vPick"); }

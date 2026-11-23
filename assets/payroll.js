@@ -47,11 +47,12 @@
   function compute(staff, rows, p, settings, over = {}, today = B.dateIn(new Date(), settings.timezone), plan = null) {
     // plan(date) → { kind: shift | rest | vacation | sick | emergency | holiday | unpaid } from the weekly schedule; default Mon–Fri.
     const kindOf = (d) => { if (!plan) return isWeekday(d) ? "shift" : "rest"; const e = plan(d); return e.kind === "holiday" && e.paid === false ? "rest" : e.kind; };
-    const PAID = { shift: 1, vacation: 1, sick: 1, emergency: 1, holiday: 1 };
+    const PAID = { shift: 1, vacation: 1, sick: 1, emergency: 1, holiday: 1, otbank: 1 };   // OT Bank Day: paid, from the OT bank
     const from = staff.start_date && staff.start_date > p.start_date ? staff.start_date : p.start_date;
     // Absences only count days that are over: up to yesterday, or the period end if that's earlier
     const lastPast = [p.end_date, addDays(today, -1)].sort()[0];
-    const mine = rows.filter((r) => r.staff_id === staff.id && r.work_date >= p.start_date && r.work_date <= p.end_date && r.time_in);
+    const counted = (r) => r.time_in || r.day_kind === "otbank";   // an OT Bank Day counts as worked (paid from the bank)
+    const mine = rows.filter((r) => r.staff_id === staff.id && r.work_date >= p.start_date && r.work_date <= p.end_date && counted(r));
     const workedOn = new Set(mine.map((r) => r.work_date));
     let fullSched = 0, sched = 0, absent = 0, leave = 0;
     for (let d = p.start_date; d <= p.end_date; d = addDays(d, 1)) {
@@ -67,7 +68,7 @@
     //   the person's last work day (OT can only be used on the next work day); what's left is undertime.
     // Strict: minutes late after grace + minutes left before the scheduled end, as before.
     const flex = settings.flex_hours !== false;
-    const days = B.calcDays(rows.filter((r) => r.staff_id === staff.id && r.time_in), staff, settings);
+    const days = B.calcDays(rows.filter((r) => r.staff_id === staff.id && counted(r)), staff, settings);
     let late = 0, under = 0, hrs = 0;
     for (const r of mine) {
       const c = days.get(r.work_date);

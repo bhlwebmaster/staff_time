@@ -340,6 +340,10 @@ declare
   v_se   time;
   v_kind text;
   o      ot_sessions;
+  v_cm   int := 0;      -- OT bank cover set for today (schedule): minutes and side (start = start later, end = leave earlier)
+  v_cs   text;
+  v_is   time;
+  v_ie   time;
 begin
   v_err := _check_pin(p_staff, p_pin);
   if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
@@ -363,15 +367,22 @@ begin
     if to_regprocedure('public.day_schedule(uuid,date)') is not null then
       execute 'select start_time, end_time from public.day_schedule($1, $2)' into v_ss, v_se using p_staff, v_day;
     end if;
+    -- Hours expected today: the schedule (or the hours typed in "Different hours today"), less any OT bank cover set for today
+    v_is := coalesce(p_sched_start, v_ss, s.sched_start); v_ie := coalesce(p_sched_end, v_se, s.sched_end);
+    if to_regprocedure('public._day_cover(uuid,date)') is not null then
+      execute 'select mins, side from public._day_cover($1, $2)' into v_cm, v_cs using p_staff, v_day;
+    end if;
+    if coalesce(v_cm, 0) > 0 then
+      if v_cs = 'end' then v_ie := (v_ie - make_interval(mins => v_cm))::time; else v_is := (v_is + make_interval(mins => v_cm))::time; end if;
+    end if;
     if a.id is not null then
-      -- the day already exists (pre-shift OT was clocked before the shift): clock in on it
-      update attendance set sched_start = coalesce(p_sched_start, v_ss, s.sched_start), sched_end = coalesce(p_sched_end, v_se, s.sched_end),
+      -- the day already exists (pre-shift OT was clocked before the shift, or an OT bank day): clock in on it
+      update attendance set sched_start = v_is, sched_end = v_ie,
         plan_start = coalesce(v_ss, s.sched_start), plan_end = coalesce(v_se, s.sched_end), time_in = now(), note = coalesce(v_note, note)
         where id = a.id;
     else
       insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end, time_in, note)
-        values (p_staff, v_day, coalesce(p_sched_start, v_ss, s.sched_start), coalesce(p_sched_end, v_se, s.sched_end),
-                coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), now(), v_note);
+        values (p_staff, v_day, v_is, v_ie, coalesce(v_ss, s.sched_start), coalesce(v_se, s.sched_end), now(), v_note);
     end if;
   elsif p_action = 'lunch_start' then
     if a.time_in is null then return json_build_object('ok', false, 'error', 'Clock in first.'); end if;
@@ -407,7 +418,7 @@ begin
       if to_regprocedure('public.day_schedule(uuid,date)') is not null then
         execute 'select kind, start_time, end_time from public.day_schedule($1, $2)' into v_kind, v_ss, v_se using p_staff, v_day;
       end if;
-      if v_kind not in ('shift', 'rest') then
+      if v_kind not in ('shift', 'rest', 'otbank') then
         return json_build_object('ok', false, 'error', 'You''re off today (leave or a holiday). Ask an admin to add the OT if you were called in.');
       end if;
       if a.id is null then   -- the day starts with the OT; on a working day Clock in later fills in the shift
@@ -430,7 +441,7 @@ begin
     'now', now(),
     'staff', json_build_object('id', s.id, 'display_name', s.display_name, 'full_name', s.full_name,
                'sched_start', s.sched_start, 'sched_end', s.sched_end, 'lunch_mins', s.lunch_mins, 'week_pattern', s.week_pattern,
-               'avatar', s.avatar, 'photo', s.photo, 'tagline', s.tagline, 'color', s.color, 'ot_carry_from', s.ot_carry_from),
+               'avatar', s.avatar, 'photo', s.photo, 'tagline', s.tagline, 'color', s.color, 'ot_carry_from', s.ot_carry_from, 'auto_approve', coalesce((to_jsonb(s)->>'auto_approve')::boolean, false)),
     'settings', (select json_build_object('timezone', timezone, 'grace_mins', grace_mins,
                'ot_block_mins', ot_block_mins, 'count_early', count_early, 'flex_hours', flex_hours, 'ot_bank_cap_mins', ot_bank_cap_mins, 'ot_daily_use_mins', ot_daily_use_mins) from settings where id = 1),
     -- this month + last month, for the personal OT bank (a carry-over bank goes back to when it started)
@@ -725,14 +736,22 @@ create table if not exists public.schedule_days (
 -- Allowed day types (Emergency Leave added later; re-created so older databases get it too)
 alter table public.schedule_days drop constraint if exists schedule_days_kind_check;
 alter table public.schedule_days add constraint schedule_days_kind_check
-  check (kind in ('shift', 'rest', 'vacation', 'sick', 'emergency', 'holiday', 'unpaid'));
+  check (kind in ('shift', 'rest', 'vacation', 'sick', 'emergency', 'holiday', 'unpaid', 'otbank'));
+-- OT bank cover on a working day: part of the shift paid from the carry-over OT bank (start later or leave earlier).
+-- An 'otbank' day ("OT Bank Day") is a whole shift paid from the bank, with no clock-in.
+alter table public.schedule_days add column if not exists cover_mins int not null default 0;
+alter table public.schedule_days add column if not exists cover_side text not null default 'start';
+alter table public.schedule_days drop constraint if exists schedule_days_cover_check;
+alter table public.schedule_days add constraint schedule_days_cover_check check (cover_mins >= 0 and cover_mins <= 720 and cover_side in ('start', 'end'));
+-- Staff whose own schedule changes don't need approval (e.g. a staff member who is also an admin)
+alter table public.staff add column if not exists auto_approve boolean not null default false;
 alter table public.schedule_days enable row level security;
 drop policy if exists team_read on public.schedule_days;
 drop policy if exists admin_write on public.schedule_days;
 create policy team_read on public.schedule_days for select to authenticated using (public.is_admin());
 create policy admin_write on public.schedule_days for all to authenticated using (public.is_full_admin()) with check (public.is_full_admin());
 grant select, insert, update, delete on public.schedule_days to authenticated;
-grant select (week_pattern) on public.staff to authenticated;
+grant select (week_pattern, auto_approve) on public.staff to authenticated;
 
 -- The schedule for one person on one date: override → public holiday (on a working day) → weekly pattern → Mon–Fri default
 create or replace function public.day_schedule(p_staff uuid, p_date date)
@@ -763,12 +782,21 @@ language sql stable security definer set search_path = public as $$
     select json_agg(json_build_object('id', st.id, 'display_name', st.display_name, 'color', st.color, 'avatar', st.avatar,
       'sched_start', st.sched_start, 'sched_end', st.sched_end, 'week_pattern', st.week_pattern,
       'days', coalesce((select json_agg(json_build_object('work_date', sd.work_date, 'kind', sd.kind, 'start_time', sd.start_time,
-                'end_time', sd.end_time, 'note', sd.note)) from schedule_days sd
+                'end_time', sd.end_time, 'note', sd.note, 'cover_mins', sd.cover_mins, 'cover_side', sd.cover_side)) from schedule_days sd
                 where sd.staff_id = st.id and sd.work_date between p_from and p_from + 6), '[]'::json)) order by st.display_name)
     from staff st where st.active), '[]'::json));
 $$;
 grant execute on function public.week_schedule(date) to anon, authenticated;
 revoke all on function public.day_schedule(uuid, date) from public, anon, authenticated;
+
+-- OT bank cover set for one person on one date (working days only): minutes and side
+create or replace function public._day_cover(p_staff uuid, p_date date)
+returns table (mins int, side text)
+language sql stable security definer set search_path = public as $$
+  select coalesce((select sd.cover_mins from schedule_days sd where sd.staff_id = p_staff and sd.work_date = p_date and sd.kind = 'shift'), 0),
+         coalesce((select sd.cover_side from schedule_days sd where sd.staff_id = p_staff and sd.work_date = p_date and sd.kind = 'shift'), 'start');
+$$;
+revoke all on function public._day_cover(uuid, date) from public, anon, authenticated;
 
 -- ---------- Day kind on attendance (rest days count every minute as OT) ----------
 -- Each attendance row keeps what the schedule says the day is; kept in step when the schedule for that date changes.
@@ -796,6 +824,29 @@ begin
     update attendance a set day_kind = (select kind from day_schedule(a.staff_id, a.work_date))
       where a.staff_id = new.staff_id and a.work_date = new.work_date;
   end if;
+  -- OT bank day: a record with the planned shift and no times, so the whole shift is taken from the bank
+  if tg_op <> 'DELETE' and new.kind = 'otbank' then
+    insert into attendance (staff_id, work_date, sched_start, sched_end, plan_start, plan_end, day_kind)
+      select new.staff_id, new.work_date, ds.start_time, ds.end_time, ds.start_time, ds.end_time, 'otbank' from day_schedule(new.staff_id, new.work_date) ds
+      on conflict (staff_id, work_date) do nothing;
+  end if;
+  -- No longer an OT bank day: remove that empty record again (only if nothing was clocked on it)
+  if tg_op <> 'INSERT' and old.kind = 'otbank' and (tg_op = 'DELETE' or new.kind <> 'otbank') then
+    delete from attendance a where a.staff_id = old.staff_id and a.work_date = old.work_date and a.time_in is null
+      and not exists (select 1 from ot_sessions o where o.staff_id = a.staff_id and o.work_date = a.work_date);
+  end if;
+  -- Cover taken off (row removed) on a day already clocked in: back to the planned hours
+  if tg_op = 'DELETE' and old.kind = 'shift' and old.cover_mins > 0 then
+    update attendance a set sched_start = a.plan_start, sched_end = a.plan_end
+      where a.staff_id = old.staff_id and a.work_date = old.work_date and a.time_in is not null and a.plan_start is not null;
+  end if;
+  -- Cover changed on a day already clocked in: expected hours follow (planned day less the cover)
+  if tg_op <> 'DELETE' and new.kind = 'shift' then
+    update attendance a set sched_start = case when new.cover_side = 'start' then (a.plan_start + make_interval(mins => new.cover_mins))::time else a.plan_start end,
+                            sched_end   = case when new.cover_side = 'end' then (a.plan_end - make_interval(mins => new.cover_mins))::time else a.plan_end end
+      where a.staff_id = new.staff_id and a.work_date = new.work_date and a.time_in is not null and a.plan_start is not null
+        and (tg_op = 'INSERT' or new.cover_mins is distinct from old.cover_mins or new.cover_side is distinct from old.cover_side);
+  end if;
   return null;
 end $$;
 drop trigger if exists schedule_days_sync_trg on public.schedule_days;
@@ -817,7 +868,7 @@ language sql stable security definer set search_path = public as $$
       'sched_start', sched_start, 'sched_end', sched_end, 'lunch_mins', lunch_mins, 'active', active,
       'has_pin', pin_hash is not null, 'created_at', created_at,
       'avatar', avatar, 'photo', photo, 'tagline', tagline, 'color', color,
-      'start_date', start_date, 'pay_rate', pay_rate, 'pay_type', pay_type, 'week_pattern', week_pattern, 'ot_carry_from', ot_carry_from) order by display_name)
+      'start_date', start_date, 'pay_rate', pay_rate, 'pay_type', pay_type, 'week_pattern', week_pattern, 'ot_carry_from', ot_carry_from, 'auto_approve', auto_approve) order by display_name)
     from staff), '[]'::json) end;
 $$;
 
@@ -880,6 +931,65 @@ begin
   return query select pd.kind, pd.start_time, pd.end_time;
 end $$;
 
+-- Is an OT bank cover / OT bank day in a requested day allowed? null = fine, else the reason.
+-- v = {"kind":"shift","s":"09:00","e":"18:00","cm":180,"cs":"start"} or {"kind":"otbank"}
+create or replace function public._check_cover(p_staff uuid, v jsonb) returns text
+language plpgsql stable security definer set search_path = public as $$
+declare s staff; v_max int; v_block int; v_cm int := coalesce((v->>'cm')::int, 0); v_span int;
+begin
+  select * into s from staff where id = p_staff;
+  if v->>'kind' = 'otbank' and s.ot_carry_from is null then return 'OT bank days are only for people with an OT bank. Ask an admin.'; end if;
+  if v_cm = 0 then return null; end if;
+  if v->>'kind' <> 'shift' then return 'OT bank cover is only for working days.'; end if;
+  if s.ot_carry_from is null then return 'You don''t have an OT bank. Ask an admin.'; end if;
+  select coalesce(ot_daily_use_mins, 480), greatest(1, coalesce(ot_block_mins, 30)) into v_max, v_block from settings where id = 1;
+  if v_cm < 0 or v_cm > v_max or v_cm % v_block <> 0 then
+    return format('OT bank cover: up to %s:%s a day, in %s-minute steps.', v_max / 60, lpad((v_max % 60)::text, 2, '0'), v_block); end if;
+  v_span := (extract(epoch from ((v->>'e')::time - (v->>'s')::time))::int / 60 + 1440) % 1440;
+  if v_cm >= v_span then return 'To cover the whole shift, choose "OT Bank Day" instead.'; end if;
+  if coalesce(v->>'cs', 'start') not in ('start', 'end') then return 'Choose start later or leave earlier.'; end if;
+  return null;
+end $$;
+
+-- Write one requested day into the schedule (same as the usual week = no change kept)
+create or replace function public._apply_schedule_day(p_staff uuid, p_date date, v jsonb, p_note text) returns void
+language plpgsql security definer set search_path = public as $$
+declare pd record; v_cm int := case when v->>'kind' = 'shift' then coalesce((v->>'cm')::int, 0) else 0 end;
+begin
+  select * into pd from _base_day(p_staff, p_date);
+  if v->>'kind' = pd.kind and v_cm = 0 and (v->>'kind' <> 'shift' or ((v->>'s')::time = pd.start_time and (v->>'e')::time = pd.end_time)) then
+    delete from schedule_days where staff_id = p_staff and work_date = p_date;   -- same as usual week
+  else
+    insert into schedule_days (staff_id, work_date, kind, start_time, end_time, note, cover_mins, cover_side)
+      values (p_staff, p_date, v->>'kind',
+              case when v->>'kind' = 'shift' then (v->>'s')::time when v->>'kind' = 'otbank' then coalesce(pd.start_time, (select sched_start from staff where id = p_staff)) end,
+              case when v->>'kind' = 'shift' then (v->>'e')::time when v->>'kind' = 'otbank' then coalesce(pd.end_time, (select sched_end from staff where id = p_staff)) end,
+              p_note, v_cm, case when v->>'cs' = 'end' then 'end' else 'start' end)
+      on conflict (staff_id, work_date) do update
+        set kind = excluded.kind, start_time = excluded.start_time, end_time = excluded.end_time, note = excluded.note,
+            cover_mins = excluded.cover_mins, cover_side = excluded.cover_side;
+  end if;
+end $$;
+
+-- Staff: OT bank cover for TODAY, straight away (no approval): p_mins of today's shift from the bank, start later or leave earlier.
+-- Before clock-in it's used when they clock in; after clock-in the expected hours change at once. 0 removes it.
+create or replace function public.set_ot_cover(p_staff uuid, p_pin text, p_mins int, p_side text) returns json
+language plpgsql security definer set search_path = public, extensions as $$
+declare v_err text; v_day date := _team_today(); ds record; v jsonb; s staff;
+begin
+  v_err := _check_pin(p_staff, p_pin);
+  if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
+  select * into s from staff where id = p_staff;
+  select * into ds from day_schedule(p_staff, v_day);
+  if ds.kind <> 'shift' then return json_build_object('ok', false, 'error', 'OT bank cover is only for a working day.'); end if;
+  v := jsonb_build_object('kind', 'shift', 's', to_char(ds.start_time, 'HH24:MI'), 'e', to_char(ds.end_time, 'HH24:MI'), 'cm', coalesce(p_mins, 0), 'cs', coalesce(p_side, 'start'));
+  v_err := _check_cover(p_staff, v);
+  if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
+  perform set_config('bhl.actor', 'staff: ' || s.display_name, true);
+  perform _apply_schedule_day(p_staff, v_day, v, (select note from schedule_days where staff_id = p_staff and work_date = v_day));
+  return punch(p_staff, p_pin, 'check');
+end $$;
+
 -- Staff: send (or replace) a request for one week
 create or replace function public.request_week(p_staff uuid, p_pin text, p_week date, p_days jsonb, p_note text)
 returns json
@@ -900,11 +1010,21 @@ begin
       return json_build_object('ok', false, 'error', 'A day is outside this week.'); end if;
     if k::date < v_today then
       return json_build_object('ok', false, 'error', 'Past days can''t be changed. Ask an admin.'); end if;
-    if coalesce(v->>'kind', '') not in ('shift', 'rest', 'vacation', 'sick', 'emergency', 'unpaid') then
+    if coalesce(v->>'kind', '') not in ('shift', 'rest', 'vacation', 'sick', 'emergency', 'unpaid', 'otbank') then
       return json_build_object('ok', false, 'error', 'Unknown day type.'); end if;
     if v->>'kind' = 'shift' and (coalesce(v->>'s', '') !~ '^\d{2}:\d{2}$' or coalesce(v->>'e', '') !~ '^\d{2}:\d{2}$') then
       return json_build_object('ok', false, 'error', 'Add a start and end time for each working day.'); end if;
+    v_err := _check_cover(p_staff, v);
+    if v_err is not null then return json_build_object('ok', false, 'error', v_err); end if;
   end loop;
+  -- Staff whose changes don't need approval (e.g. also an admin): the schedule changes straight away
+  if (select auto_approve from staff where id = p_staff) then
+    for k, v in select * from jsonb_each(p_days) loop perform _apply_schedule_day(p_staff, k::date, v, nullif(left(btrim(coalesce(p_note, '')), 300), '')); end loop;
+    insert into schedule_requests (staff_id, week_start, days, note, status, decided_at, decided_by)
+      values (p_staff, p_week, p_days, nullif(left(btrim(coalesce(p_note, '')), 300), ''), 'approved', now(), 'auto (no approval needed)')
+      returning * into v_row;
+    return json_build_object('ok', true, 'auto', true, 'request', row_to_json(v_row));
+  end if;
   delete from schedule_requests where staff_id = p_staff and week_start = p_week and status = 'pending';
   insert into schedule_requests (staff_id, week_start, days, note)
     values (p_staff, p_week, p_days, nullif(left(btrim(coalesce(p_note, '')), 300), ''))
@@ -946,20 +1066,7 @@ begin
   if not found or r.status <> 'pending' then return json_build_object('ok', false, 'error', 'This request was already handled or withdrawn.'); end if;
   select email into v_by from admins where user_id = auth.uid();
   if p_approve then
-    for k, v in select * from jsonb_each(r.days) loop
-      select * into pd from _base_day(r.staff_id, k::date);
-      if v->>'kind' = pd.kind and (v->>'kind' <> 'shift' or ((v->>'s')::time = pd.start_time and (v->>'e')::time = pd.end_time)) then
-        delete from schedule_days where staff_id = r.staff_id and work_date = k::date;   -- same as usual week
-      else
-        insert into schedule_days (staff_id, work_date, kind, start_time, end_time, note)
-          values (r.staff_id, k::date, v->>'kind',
-                  case when v->>'kind' = 'shift' then (v->>'s')::time end,
-                  case when v->>'kind' = 'shift' then (v->>'e')::time end,
-                  r.note)
-          on conflict (staff_id, work_date) do update
-            set kind = excluded.kind, start_time = excluded.start_time, end_time = excluded.end_time, note = excluded.note;
-      end if;
-    end loop;
+    for k, v in select * from jsonb_each(r.days) loop perform _apply_schedule_day(r.staff_id, k::date, v, r.note); end loop;
   end if;
   update schedule_requests set status = case when p_approve then 'approved' else 'rejected' end,
     admin_note = nullif(btrim(coalesce(p_note, '')), ''), decided_at = now(), decided_by = v_by
@@ -970,6 +1077,9 @@ end $$;
 revoke all on function public._pattern_day(uuid, date) from public, anon, authenticated;
 revoke all on function public._base_day(uuid, date) from public, anon, authenticated;
 revoke all on function public._team_today() from public, anon, authenticated;
+revoke all on function public._check_cover(uuid, jsonb) from public, anon, authenticated;
+revoke all on function public._apply_schedule_day(uuid, date, jsonb, text) from public, anon, authenticated;
+grant execute on function public.set_ot_cover(uuid, text, int, text) to anon, authenticated;
 grant execute on function public.request_week(uuid, text, date, jsonb, text) to anon, authenticated;
 grant execute on function public.my_schedule_requests(uuid, text) to anon, authenticated;
 grant execute on function public.cancel_schedule_request(uuid, text, uuid) to anon, authenticated;
@@ -1219,6 +1329,7 @@ grant execute on function public.set_pin(uuid, text, text)                      
 grant execute on function public.set_profile(uuid, text, text, text, text, text)            to anon, authenticated;
 grant execute on function public.my_payslips(uuid, text)                                    to anon, authenticated;
 grant execute on function public.request_week(uuid, text, date, jsonb, text)                to anon, authenticated;
+grant execute on function public.set_ot_cover(uuid, text, int, text)                         to anon, authenticated;
 grant execute on function public.my_schedule_requests(uuid, text)                           to anon, authenticated;
 grant execute on function public.cancel_schedule_request(uuid, text, uuid)                  to anon, authenticated;
 grant execute on function public.save_push(uuid, text, text, text, text, text)              to anon, authenticated;
@@ -1250,7 +1361,7 @@ begin
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname in (
       'roster', 'week_schedule', 'punch', 'set_pin', 'set_profile', 'my_payslips', 'request_week',
-      'my_schedule_requests', 'cancel_schedule_request', 'save_push', 'remove_push', 'hub_signin', 'use_ot_bank', -- staff app (PIN-checked, no login)
+      'my_schedule_requests', 'cancel_schedule_request', 'save_push', 'remove_push', 'hub_signin', 'use_ot_bank', 'set_ot_cover', -- staff app (PIN-checked, no login)
       'admin_staff', 'decide_schedule_request', 'is_admin', 'is_full_admin', 'my_role', 'ot_autostop')   -- signed-in admin / finance
   loop
     if f.prosecdef then

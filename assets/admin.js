@@ -112,8 +112,13 @@
   }
   const lunchCell = (r) => r.lunch_out ? `${t(r.lunch_out)}–${r.lunch_in ? t(r.lunch_in) : "…"}` : "—";
   /** The schedule cell of a day record: leave and rest days have no schedule, so they say what the day is. */
-  const schedCell = (r) => (B.isOffDay(r.day_kind) ? B.sched.KINDS[r.day_kind].label : `${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)}`);
-  const pillFor = (c) => ({ in: ["in", "Working"], lunch: ["lunch", "On lunch"], out: ["out", "Clocked out"], absent: ["absent", "Not in"] }[c.status]);
+  // A day with OT bank cover shows its planned hours plus "OT 3:00"; an OT Bank Day says so.
+  const schedCell = (r) => {
+    if (B.isOffDay(r.day_kind) || (r.day_kind === "otbank" && !r.time_in)) return B.sched.KINDS[r.day_kind].label;
+    const cm = B.bankPlanned(r);
+    return `${B.clockStr(r.plan_start || r.sched_start)}–${B.clockStr(r.plan_end || r.sched_end)}${cm ? ` <small class="cov-tag" title="Covered by the OT bank: ${B.clockStr(r.plan_start)}–${B.clockStr(r.plan_end)} planned, ${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)} worked">OT ${B.fmtMins(cm)}</small>` : ""}`;
+  };
+  const pillFor = (c) => ({ in: ["in", "Working"], lunch: ["lunch", "On lunch"], out: ["out", "Clocked out"], absent: ["absent", "Not in"], otbank: ["out", "OT Bank Day"] }[c.status]);
 
   // ---------- today ----------
   const dayPg = pg(20); let dayData = null;
@@ -132,7 +137,7 @@
     const rows = pre.filter((r) => r.work_date === day);
     const planOv = B.sched.indexDays(sdays);
     const act = staff.filter((s) => s.active || rows.some((r) => r.staff_id === s.id));
-    let n = { in: 0, lunch: 0, out: 0, absent: 0, late: 0 };
+    let n = { in: 0, lunch: 0, out: 0, absent: 0, late: 0, otbank: 0 };
     const [da, db] = pager($("dayPager"), act.length, dayPg, renderDay);
     $("dayRows").innerHTML = act.map((s, i) => {
       const r = rows.find((x) => x.staff_id === s.id);
@@ -151,7 +156,7 @@
         worked = `<span class="muted">${B.fmtMins(Math.max(0, (Date.now() - Math.max(new Date(r.time_in), c.schedStart) - lunch) / 60000))}</span>`;
       }
       return `<tr><td style="white-space:nowrap">${B.avatarHtml(s, 28)}<b>${B.esc(s.display_name)}</b></td><td><span class="pill ${k}">${label}</span></td>
-        <td class="mono">${r ? schedCell(r) : plan.kind === "shift" ? `${B.clockStr(plan.start)}–${B.clockStr(plan.end)}` : "—"}</td>
+        <td class="mono">${r ? schedCell(r) : plan.kind === "shift" ? `${B.clockStr(plan.start)}–${B.clockStr(plan.end)}${plan.cover ? ` <small class="cov-tag">OT ${B.fmtMins(plan.cover)}</small>` : ""}` : "—"}</td>
         <td class="mono">${r ? t(r.time_in) : "—"}</td><td class="mono">${r ? lunchCell(r) : "—"}</td><td class="mono">${r ? t(r.time_out) : "—"}</td>
         <td class="num">${worked}</td><td>${r ? flagsHtml(c, day === today()) : ""}${B.noteText(r?.note) ? `<span class="sub" title="${B.esc(B.noteText(r.note))}">${B.esc(B.noteText(r.note))}</span>` : ""}</td>
         <td><button class="btn sm adminonly" data-edit="${r ? B.esc(r.id) : ""}" data-staff="${B.esc(s.id)}" data-date="${day}">${r ? "Edit" : "Add"}</button></td></tr>`;
@@ -371,6 +376,7 @@
     $("pStartDate").value = s?.start_date || ""; $("pRate").value = s?.pay_rate ?? "";
     $("pPayType").value = s ? B.payroll.payType(s.pay_type) : "bimonthly"; payTypeLabel();
     renderPattern(s);
+    $("pAuto").checked = !!s?.auto_approve;
     $("pOt").checked = !!s?.ot_carry_from; $("pOtFrom").value = s?.ot_carry_from || today(); $("pOtFromRow").hidden = !s?.ot_carry_from;
     $("pReset").hidden = !s?.has_pin;
     $("pPhotoRow").hidden = !s?.photo; $("pAv").innerHTML = s ? B.avatarHtml(s, 36) : "";
@@ -382,7 +388,7 @@
     const rec = { display_name: $("pDisp").value.trim(), full_name: $("pFull").value.trim().toUpperCase(), sched_start: $("pSS").value, sched_end: $("pSE").value,
       lunch_mins: +$("pLunch").value, active: $("pActive").value === "true",
       start_date: $("pStartDate").value || null, pay_rate: $("pRate").value === "" ? null : +$("pRate").value, pay_type: $("pPayType").value, week_pattern: readPattern(),
-      ot_carry_from: $("pOt").checked ? $("pOtFrom").value || today() : null };
+      ot_carry_from: $("pOt").checked ? $("pOtFrom").value || today() : null, auto_approve: $("pAuto").checked };
     if (rec.week_pattern && Object.values(rec.week_pattern).some((d) => d && d.e <= d.s)) return B.toast("In the usual week, each end time must be after its start time.", "err");
     if (rec.sched_end <= rec.sched_start) return B.toast("End must be after start.", "err");
     try {
@@ -706,12 +712,12 @@
     if (!reqs.length) return;
     const weeks = reqs.map((r) => r.week_start).sort();
     const cur = S.indexDays(await A.scheduleDays(weeks[0], S.addDays(weeks[weeks.length - 1], 6)).catch(() => []));
-    const plain = (e) => e.kind === "shift" ? `${S.ampm(e.start)}–${S.ampm(e.end)}` : S.KINDS[e.kind]?.label || e.kind;
+    const plain = (e) => e.kind === "shift" ? `${S.ampm(e.start)}–${S.ampm(e.end)}${e.cover ? ` · ${S.coverText(e)}` : ""}` : S.KINDS[e.kind]?.label || e.kind;
     $("reqList").innerHTML = reqs.map((r) => {
       const s = byId(r.staff_id); if (!s) return "";
       const rows = Object.keys(r.days).sort().map((d) => {
-        const v = r.days[d], want = { kind: v.kind, start: v.s, end: v.e }, now = S.effective(s, d, cur);
-        const same = now.kind === want.kind && (want.kind !== "shift" || (now.start === want.start && now.end === want.end));
+        const v = r.days[d], want = { kind: v.kind, start: v.s, end: v.e, cover: v.cm || 0, side: v.cs || "start" }, now = S.effective(s, d, cur);
+        const same = now.kind === want.kind && (want.kind !== "shift" || (now.start === want.start && now.end === want.end && (now.cover || 0) === want.cover && (!want.cover || now.side === want.side)));
         return `<tr><td>${DSHORT[S.dow(d)]} ${+d.slice(8)}</td><td class="old">${plain(now)}</td><td>→</td><td class="${same ? "same" : "new"}">${same ? "already the same" : plain(want)}</td></tr>`;
       }).join("");
       return `<div class="req" data-id="${r.id}">
@@ -749,9 +755,13 @@
   }
   function isChanged(s, d, e) {
     const u = S.effective(s, d, null);   // usual week, with public holidays
-    return e.kind !== u.kind || (e.kind === "shift" && (e.start !== u.start || e.end !== u.end));
+    return e.kind !== u.kind || (e.kind === "shift" && (e.start !== u.start || e.end !== u.end || (e.cover || 0) > 0));
   }
   const schPg = pg(20);
+  /** OT bank cover choices: none, then 30-minute steps up to the daily limit (Settings). */
+  const covOpts = (cur) => { const block = Math.max(1, settings.ot_block_mins || 30), max = B.dailyUse(settings), o = [0];
+    for (let m = block; m <= max; m += block) o.push(m); if (cur && !o.includes(cur)) o.push(cur);
+    return o.map((m) => `<option value="${m}" ${m === (cur || 0) ? "selected" : ""}>${m ? "OT bank " + B.fmtMins(m) : "No OT bank"}</option>`).join(""); };
   function renderSchedule() {
     const edit = role === "admin", days = Array.from({ length: 7 }, (_, i) => S.addDays(schFrom, i)), t = today();
     const people = staff.filter((x) => x.active);
@@ -759,22 +769,25 @@
     $("schGrid").innerHTML = `<thead><tr><th>Name</th>${days.map((d) => `<th class="${d === t ? "is-today" : ""}">${S.DAY[S.dow(d)]}<br>${+d.slice(8)}</th>`).join("")}</tr></thead>
       <tbody>${people.slice(sa, sb).map((s) => `<tr><th>${B.avatarHtml(s, 24)}${B.esc(s.display_name)}</th>${days.map((d) => {
         const e = schDraft[s.id + "|" + d], ch = isChanged(s, d, e);
-        if (!edit) return `<td><div class="sch-cell k-${e.kind} ${ch ? "changed" : ""}"><span class="sch-ro">${S.cellText(e)}</span></div></td>`;
+        if (!edit) return `<td><div class="sch-cell k-${e.kind} ${ch ? "changed" : ""}"><span class="sch-ro">${S.cellHtml(e)}</span></div></td>`;
         return `<td><div class="sch-cell k-${e.kind} ${ch ? "changed" : ""}" data-k="${s.id}|${d}">
-          <select aria-label="${B.esc(s.display_name)} ${d}">${Object.entries(S.KINDS).map(([k, v]) => `<option value="${k}" ${k === e.kind ? "selected" : ""}>${v.label}</option>`).join("")}</select>
+          <select aria-label="${B.esc(s.display_name)} ${d}">${Object.entries(S.KINDS).filter(([k]) => k !== "otbank" || s.ot_carry_from || e.kind === k).map(([k, v]) => `<option value="${k}" ${k === e.kind ? "selected" : ""}>${v.label}</option>`).join("")}</select>
           ${e.kind === "shift" ? `<div class="t"><input type="time" value="${e.start || ""}" aria-label="start"><input type="time" value="${e.end || ""}" aria-label="end"></div>` : ""}
+          ${e.kind === "shift" && s.ot_carry_from ? `<div class="t"><select data-f="cm" aria-label="OT bank cover">${covOpts(e.cover)}</select>${e.cover ? `<select data-f="cs" aria-label="side"><option value="start" ${e.side !== "end" ? "selected" : ""}>start later</option><option value="end" ${e.side === "end" ? "selected" : ""}>leave earlier</option></select>` : ""}</div>` : ""}
         </div></td>`; }).join("")}</tr>`).join("") || `<tr><td colspan="8" class="muted">No active staff.</td></tr>`}</tbody>`;
-    $("schTimeline").innerHTML = S.timelineHtml(schFrom, people, Object.fromEntries(Object.entries(schDraft).map(([k, e]) => [k, { kind: e.kind, start_time: e.start, end_time: e.end }])), t);
+    $("schTimeline").innerHTML = S.timelineHtml(schFrom, people, Object.fromEntries(Object.entries(schDraft).map(([k, e]) => [k, { kind: e.kind, start_time: e.start, end_time: e.end, cover_mins: e.cover || 0, cover_side: e.side }])), t);
   }
   $("schGrid").addEventListener("change", (e) => {
     const cell = e.target.closest(".sch-cell[data-k]"); if (!cell) return;
     const cur = schDraft[cell.dataset.k], [sid] = cell.dataset.k.split("|"), s = byId(sid);
     const sel = cell.querySelector("select"), times = cell.querySelectorAll("input[type=time]");
-    const kind = sel.value;
+    const kind = sel.value, cm = cell.querySelector('[data-f="cm"]'), cs = cell.querySelector('[data-f="cs"]');
+    const u = S.patternDay(s, S.dow(cell.dataset.k.split("|")[1]));
     if (kind === "shift") {
-      const u = S.patternDay(s, S.dow(cell.dataset.k.split("|")[1]));
-      schDraft[cell.dataset.k] = { kind, start: times[0]?.value || cur.start || u.start || S.hhmm(s.sched_start), end: times[1]?.value || cur.end || u.end || S.hhmm(s.sched_end) };
-    } else schDraft[cell.dataset.k] = { kind, start: cur.start, end: cur.end };
+      const cover = cur.kind === "shift" && cm ? +cm.value || 0 : 0;
+      schDraft[cell.dataset.k] = { kind, start: times[0]?.value || cur.start || u.start || S.hhmm(s.sched_start), end: times[1]?.value || cur.end || u.end || S.hhmm(s.sched_end),
+        cover, side: cover ? (cs?.value || "start") : "start" };
+    } else schDraft[cell.dataset.k] = { kind, start: cur.start || u.start || S.hhmm(s.sched_start), end: cur.end || u.end || S.hhmm(s.sched_end), cover: 0, side: "start" };
     renderSchedule();
   });
   $("schPrev").onclick = () => loadSchedule(S.addDays(schFrom, -7));
@@ -794,7 +807,10 @@
     for (const [k, e] of Object.entries(schDraft)) {
       const [sid, d] = k.split("|"), s = byId(sid);
       if (e.kind === "shift" && (!e.start || !e.end || e.end <= e.start)) return B.toast(`${s.display_name}, ${B.prettyDate(d)}: end time must be after start time.`, "err");
-      if (isChanged(s, d, e)) up.push({ staff_id: sid, work_date: d, kind: e.kind, start_time: e.kind === "shift" ? e.start : null, end_time: e.kind === "shift" ? e.end : null });
+      if (e.kind === "shift" && e.cover && e.cover >= B.minsOf(e.end) - B.minsOf(e.start)) return B.toast(`${s.display_name}, ${B.prettyDate(d)}: to cover the whole shift, choose OT Bank Day.`, "err");
+      const timed = e.kind === "shift" || e.kind === "otbank";   // an OT Bank Day keeps its shift times
+      if (isChanged(s, d, e)) up.push({ staff_id: sid, work_date: d, kind: e.kind, start_time: timed ? e.start : null, end_time: timed ? e.end : null,
+        cover_mins: e.kind === "shift" ? e.cover || 0 : 0, cover_side: e.kind === "shift" && e.side === "end" ? "end" : "start" });
       else if (existing[k]) del.push(existing[k].id);
     }
     try { await A.saveScheduleDays(up); await A.deleteScheduleDays(del); B.toast("Week saved. Staff see it on the homepage."); loadSchedule(schFrom); }

@@ -138,6 +138,9 @@
   .otbox .seg { justify-self: start; flex-wrap: wrap; }
   .otbox #otPreview { font-size: 13px; }
   .otbox.info .seg, .otbox.info #otPreview { display: none; }
+  .otbox .cov-save { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+  #tSched .cov-note { display: block; font-family: var(--body); font-size: 13px; font-weight: 500; color: var(--muted); margin-top: 2px;
+    background: repeating-linear-gradient(135deg, rgba(13,118,86,.10) 0 6px, rgba(13,118,86,.04) 6px 12px); border-radius: 6px; padding: 2px 8px; width: fit-content; }
   .ot-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .ot-btns .btn { justify-content: center; }
   .ot-btns .btn:disabled { opacity: .45; cursor: not-allowed; }
@@ -183,6 +186,8 @@
   .ms-row .arrow { color: #b8570b; font-weight: 700; }
   .ms-row.chg { background: #fff4e8; }
   .ms-row .ed { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .ms-row .k.k-otb { background: repeating-linear-gradient(135deg, #dcefeb 0 6px, #eef6f4 6px 12px); color: #0f5c56; }
+  .ms-row small.cov { display: block; font-family: var(--body); font-size: 11.5px; font-weight: 600; color: var(--muted); }
   .ms-row .ed select, .ms-row .ed input { font: inherit; font-size: 13px; padding: 5px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
   .ms-row .ed input[type=time] { width: 108px; }
   .ms-state { border-radius: 10px; padding: 9px 12px; font-size: 13.5px; }
@@ -280,12 +285,9 @@
         <div class="seg" id="otPick" role="radiogroup" aria-label="Use OT today">
           <button type="button" data-o="late" aria-pressed="false">Start later</button><button type="button" data-o="early" aria-pressed="false">Leave earlier</button><button type="button" data-o="no" aria-pressed="true">No</button>
         </div>
-        <label class="f" id="otAmtRow" hidden style="max-width:220px">Cover up to<select id="otAmt"></select></label>
+        <div class="cov-save"><label class="f" id="otAmtRow" hidden style="max-width:220px;margin:0">Cover up to<select id="otAmt"></select></label>
+          <button class="btn" type="button" id="otSave" hidden>Save</button></div>
         <div class="mono" id="otPreview"></div>
-        <div class="row" id="otUseRow" hidden style="gap:8px;align-items:end;flex-wrap:wrap">
-          <label class="f" style="max-width:240px;margin:0">Bank covers up to (today)<select id="otUse"></select></label>
-          <button class="btn" type="button" id="otUseSave">Save</button>
-        </div>
       </div>
       <details id="schedEdit">
         <summary>Different hours today? (shifted start, swap)</summary>
@@ -406,13 +408,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=20261123b"></script>
-<script src="assets/core.js?v=20261123b"></script>
-<script src="assets/game.js?v=20261123b"></script>
-<script src="assets/schedule.js?v=20261123b"></script>
-<script src="assets/logo.js?v=20261123b"></script>
-<script src="assets/payroll.js?v=20261123b"></script>
-<script src="assets/api.js?v=20261123b"></script>
-<script src="assets/staff.js?v=20261123b"></script>
+<script src="config.js?v=20261124a"></script>
+<script src="assets/core.js?v=20261124a"></script>
+<script src="assets/game.js?v=20261124a"></script>
+<script src="assets/schedule.js?v=20261124a"></script>
+<script src="assets/logo.js?v=20261124a"></script>
+<script src="assets/payroll.js?v=20261124a"></script>
+<script src="assets/api.js?v=20261124a"></script>
+<script src="assets/staff.js?v=20261124a"></script>
 </body>
 </html>

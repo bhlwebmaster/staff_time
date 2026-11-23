@@ -147,6 +147,11 @@
       out.worked = after; out.variance = after; out.complete = true; out.status = "out";
       const block = Math.max(1, settings.ot_block_mins || 1);
       out.ot = Math.floor(after / block) * block;
+    } else if (!tin && row.day_kind === "otbank") {
+      // OT Bank Day (no clock-in): the whole expected shift is taken from the bank; whatever the bank can't cover is short
+      out.worked = after; out.variance = after - std; out.complete = true; out.status = "otbank";
+      const gap = Math.max(0, std - after);
+      out.otUsed = Math.min(gap, avail); out.short = gap - out.otUsed;
     }
     out.schedStart = sStart; out.schedEnd = sEnd;
     return out;
@@ -269,9 +274,12 @@
     const lines = [
       `Date: ${prettyDate(row.work_date, { month: "long", day: "numeric", year: "numeric" })}`,
       `Name: ${staff.full_name}`,
-      `Sched: ${clockStr(row.sched_start)} - ${clockStr(row.sched_end)} ${label}`,
-      `Time In: ${row.time_in ? clockIn(d(row.time_in), tz) + " " + label : ""}`,
+      `Sched: ${clockStr(row.plan_start || row.sched_start)} - ${clockStr(row.plan_end || row.sched_end)} ${label}`,
     ];
+    // Planned OT bank cover (until clock-out; after it, "OT used" shows what was really used)
+    const cov = bankPlanned(row);
+    if (cov && !row.time_out) lines.push(`OT bank: ${fmtMins(cov)} (${String(row.sched_end).slice(0, 5) < String(row.plan_end).slice(0, 5) ? "leave earlier" : "start later"})`);
+    lines.push(`Time In: ${row.time_in ? clockIn(d(row.time_in), tz) + " " + label : ""}`);
     if (row.lunch_out) lines.push(`Lunch Break: ${clockIn(d(row.lunch_out), tz)}${row.lunch_in ? " – " + clockIn(d(row.lunch_in), tz) : ""} ${label}`);
     lines.push(`Time out: ${row.time_out ? clockIn(d(row.time_out), tz) + " " + label : ""}`);
     if (row.time_out) lines.push(`OT used: ${otUsed > 0 ? fmtMins(otUsed) : "None"}`);

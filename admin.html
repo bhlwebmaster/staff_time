@@ -98,6 +98,10 @@
   .sch-cell.changed { border-color: var(--lunch); background: var(--lunch-soft); }
   .sch-cell select, .sch-cell input { font-size: 12px; padding: 3px 5px; border-radius: 6px; }
   .sch-cell .t { display: flex; gap: 3px; } .sch-cell .t input { width: 100%; }
+  .sch-cell.k-otbank { background: repeating-linear-gradient(135deg, #dcefeb 0 6px, #eef6f4 6px 12px); }
+  td .cov-tag { display: inline-block; font-family: var(--body); font-size: 10.5px; font-weight: 600; color: var(--muted); margin-left: 4px;
+    background: repeating-linear-gradient(135deg, rgba(13,118,86,.12) 0 5px, rgba(13,118,86,.05) 5px 10px); border-radius: 5px; padding: 0 5px; }
+  .sch-cell .cov-tag { display: block; font-size: 10.5px; font-weight: 600; color: var(--muted); }
   .sch-cell.k-rest { background: #fff59a; } .sch-cell.k-vacation { background: #b9f2c0; } .sch-cell.k-sick { background: #ffd9cc; } .sch-cell.k-emergency { background: #ffd08a; }
   .sch-cell.k-holiday { background: #d6e8ff; } .sch-cell.k-unpaid { background: #e8e8e8; }
   .sch-ro { font-family: var(--mono); font-size: 12px; }
@@ -522,6 +526,7 @@
       <label class="check"><input type="checkbox" id="pOt"> Out-of-hours OT: can clock OT before their shift or after clocking out (call-outs), and their OT carries over until used</label>
       <label class="f" id="pOtFromRow" style="max-width:260px" hidden>OT bank starts on<input type="date" id="pOtFrom"></label>
       <p class="muted" style="margin:0;font-size:12.5px">Everyone else keeps the usual rule: OT is used on the next work day or it expires.</p>
+      <label class="check"><input type="checkbox" id="pAuto"> Their own schedule changes don't need approval (e.g. someone who is also an admin)</label>
     </div>
     <div class="row" id="pPhotoRow"><span id="pAv"></span><button class="btn" type="button" id="pPhotoRm">Remove photo</button>
       <span class="muted" style="font-size:12.5px">Staff choose their own avatar and photo in the app.</span></div>
@@ -534,13 +539,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="config.js?v=20261123b"></script>
-<script src="assets/core.js?v=20261123b"></script>
-<script src="assets/game.js?v=20261123b"></script>
-<script src="assets/schedule.js?v=20261123b"></script>
-<script src="assets/logo.js?v=20261123b"></script>
-<script src="assets/payroll.js?v=20261123b"></script>
-<script src="assets/api.js?v=20261123b"></script>
-<script src="assets/admin.js?v=20261123b"></script>
+<script src="config.js?v=20261124a"></script>
+<script src="assets/core.js?v=20261124a"></script>
+<script src="assets/game.js?v=20261124a"></script>
+<script src="assets/schedule.js?v=20261124a"></script>
+<script src="assets/logo.js?v=20261124a"></script>
+<script src="assets/payroll.js?v=20261124a"></script>
+<script src="assets/api.js?v=20261124a"></script>
+<script src="assets/admin.js?v=20261124a"></script>
 </body>
 </html>
