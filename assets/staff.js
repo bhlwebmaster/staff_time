@@ -161,8 +161,12 @@
       const adj = covR ? B.sched.workRange({ start: ps, end: pe, cover: covNow.mins, side: covNow.side }) : null;
       $("tSched").innerHTML = `<span class="sl"><span class="lbl">Today's Schedule:</span> ${B.clockStr(ps)} – ${B.clockStr(pe)} UK</span>`
         + (adj ? `<span class="sl adj"><span class="lbl">Adjusted Schedule:</span> ${B.clockStr(adj[0])} – ${B.clockStr(adj[1])} UK</span>`
-          + `<span class="cov-note">${B.clockStr(covR[0])}–${B.clockStr(covR[1])} covered by OT bank (${B.fmtMins(covNow.mins)})</span>` : "");
+          : "");
     }
+    // Right of the schedule: "Covered by OT Bank · 12:00 PM - 3:00 PM · (3:00 Hours)"
+    const cv = $("tCov"), showCov = !!covR && !(plan && plan.kind !== "shift") && !leaveNow;
+    cv.hidden = !showCov;
+    if (showCov) cv.innerHTML = `<b>Covered by OT Bank</b><span>${B.clockStr(covR[0])} - ${B.clockStr(covR[1])}</span><small>(${B.fmtMins(covNow.mins)} Hours)</small>`;
     $("schedEdit").hidden = !!row?.time_in;
     if (!row?.time_in) { $("sStart").value ||= ss.slice(0, 5); $("sEnd").value ||= se.slice(0, 5); }
     if (document.activeElement !== $("tNote")) $("tNote").value = row?.note || "";
