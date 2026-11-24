@@ -156,7 +156,13 @@
     const covNow = coverNow(row, plan), covR = B.sched.coverRange({ start: ps, end: pe, cover: covNow.mins, side: covNow.side });
     if (plan && plan.kind !== "shift") $("tSched").textContent = `${B.sched.KINDS[plan.kind].label} today`;
     else if (leaveNow) $("tSched").textContent = `${B.sched.KINDS[kindNow].label} · all work today is OT`;
-    else $("tSched").innerHTML = `${B.clockStr(ps)} – ${B.clockStr(pe)} UK${covR ? `<span class="cov-note">${B.clockStr(covR[0])}–${B.clockStr(covR[1])} covered by OT bank (${B.fmtMins(covNow.mins)})</span>` : ""}`;
+    else {
+      // "Today's Schedule: 6:00 AM – 3:00 PM UK", plus "Adjusted Schedule: 6:00 AM – 12:00 PM UK" when the OT bank covers part of it
+      const adj = covR ? B.sched.workRange({ start: ps, end: pe, cover: covNow.mins, side: covNow.side }) : null;
+      $("tSched").innerHTML = `<span class="sl"><span class="lbl">Today's Schedule:</span> ${B.clockStr(ps)} – ${B.clockStr(pe)} UK</span>`
+        + (adj ? `<span class="sl adj"><span class="lbl">Adjusted Schedule:</span> ${B.clockStr(adj[0])} – ${B.clockStr(adj[1])} UK</span>`
+          + `<span class="cov-note">${B.clockStr(covR[0])}–${B.clockStr(covR[1])} covered by OT bank (${B.fmtMins(covNow.mins)})</span>` : "");
+    }
     $("schedEdit").hidden = !!row?.time_in;
     if (!row?.time_in) { $("sStart").value ||= ss.slice(0, 5); $("sEnd").value ||= se.slice(0, 5); }
     if (document.activeElement !== $("tNote")) $("tNote").value = row?.note || "";
@@ -419,12 +425,10 @@
       : "Use some of it today: start later or leave earlier, up to " + B.fmtMins(Math.min(B.dailyUse(data.settings), bank)) + ". Only what you're actually short comes out when you clock out.";
     for (const b of $("otPick").children) b.setAttribute("aria-pressed", String(b.dataset.o === (!cov.mins ? "no" : cov.side === "end" ? "early" : "late")));
     $("otAmtRow").hidden = !cov.mins || steps.length < 1;
-    $("otAmtRow").firstChild.textContent = "How much";
     $("otAmt").innerHTML = steps.sort((x, y) => x - y).map((m) => `<option value="${m}" ${m === cov.mins ? "selected" : ""}>${B.fmtMins(m)}</option>`).join("");
     $("otSave").hidden = !covDirty;
-    const r = B.sched.coverRange({ start: ps, end: pe, cover: cov.mins, side: cov.side });
-    $("otPreview").textContent = r ? `Today: ${B.clockStr(ps)} – ${B.clockStr(pe)} UK · ${B.clockStr(r[0])}–${B.clockStr(r[1])} from OT bank`
-      : `Today: ${B.clockStr(ps)} – ${B.clockStr(pe)} UK`;
+    const pv = { start: ps, end: pe, cover: cov.mins, side: cov.side }, r = B.sched.coverRange(pv), w = r && B.sched.workRange(pv);
+    $("otPreview").textContent = r ? `Adjusted Schedule: ${B.clockStr(w[0])} – ${B.clockStr(w[1])} UK · ${B.clockStr(r[0])}–${B.clockStr(r[1])} from OT bank` : "";
     if (covDirty && !row?.time_in) $("otPreview").textContent += " (saved when you clock in, or tap Save)";
   }
   $("otSave").addEventListener("click", async (e) => {

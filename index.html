@@ -138,7 +138,12 @@
   .otbox .seg { justify-self: start; flex-wrap: wrap; }
   .otbox #otPreview { font-size: 13px; }
   .otbox.info .seg, .otbox.info #otPreview { display: none; }
-  .otbox .cov-save { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+  .otbox .cov-save { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .otbox .amt { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin: 0; }
+  .otbox .amt select { width: auto; min-width: 84px; }
+  .otbox.info .cov-save { display: none; }
+  #tSched .sl { display: block; } #tSched .sl .lbl { font-family: var(--body); font-size: 13px; font-weight: 600; color: var(--muted); margin-right: 4px; }
+  #tSched .sl.adj { color: var(--accent); margin-top: 2px; }
   #tSched .cov-note { display: block; font-family: var(--body); font-size: 13px; font-weight: 500; color: var(--muted); margin-top: 2px;
     background: repeating-linear-gradient(135deg, rgba(13,118,86,.10) 0 6px, rgba(13,118,86,.04) 6px 12px); border-radius: 6px; padding: 2px 8px; width: fit-content; }
   .ot-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -278,10 +283,11 @@
       </div>
       <div class="otbox" id="otBox" hidden>
         <div><b id="otTitle"></b> <span class="muted" id="otSub"></span></div>
-        <div class="seg" id="otPick" role="radiogroup" aria-label="Use OT today">
-          <button type="button" data-o="late" aria-pressed="false">Start later</button><button type="button" data-o="early" aria-pressed="false">Leave earlier</button><button type="button" data-o="no" aria-pressed="true">No</button>
-        </div>
-        <div class="cov-save"><label class="f" id="otAmtRow" hidden style="max-width:220px;margin:0">Cover up to<select id="otAmt"></select></label>
+        <div class="cov-save">
+          <div class="seg" id="otPick" role="radiogroup" aria-label="Use OT today">
+            <button type="button" data-o="late" aria-pressed="false">Start later</button><button type="button" data-o="early" aria-pressed="false">Leave earlier</button><button type="button" data-o="no" aria-pressed="true">No</button>
+          </div>
+          <label class="amt" id="otAmtRow" hidden>How much <select id="otAmt"></select></label>
           <button class="btn" type="button" id="otSave" hidden>Save</button></div>
         <div class="mono" id="otPreview"></div>
       </div>
@@ -412,13 +418,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=20261124f"></script>
-<script src="assets/core.js?v=20261124f"></script>
-<script src="assets/game.js?v=20261124f"></script>
-<script src="assets/schedule.js?v=20261124f"></script>
-<script src="assets/logo.js?v=20261124f"></script>
-<script src="assets/payroll.js?v=20261124f"></script>
-<script src="assets/api.js?v=20261124f"></script>
-<script src="assets/staff.js?v=20261124f"></script>
+<script src="config.js?v=20261124g"></script>
+<script src="assets/core.js?v=20261124g"></script>
+<script src="assets/game.js?v=20261124g"></script>
+<script src="assets/schedule.js?v=20261124g"></script>
+<script src="assets/logo.js?v=20261124g"></script>
+<script src="assets/payroll.js?v=20261124g"></script>
+<script src="assets/api.js?v=20261124g"></script>
+<script src="assets/staff.js?v=20261124g"></script>
 </body>
 </html>
