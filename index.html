@@ -269,13 +269,7 @@
 
     <div class="tcols">
     <div class="tcol">
-    <div class="card pad o1 bankcard" id="bankCard" hidden>
-      <div class="bank-top"><div><div class="eyebrow">My OT bank</div><b id="bankMins" class="mono">0:00</b></div>
-        <div class="bank-cut"><span class="muted">Next cut-off</span><b id="bankCut"></b><span id="bankLeft"></span></div></div>
-      <p id="bankNote" class="muted" style="margin:0;font-size:13px"></p>
-    </div>
-    <div class="timeline o1" id="timeline"></div>
-    <div class="card pad stack o2">
+    <div class="card pad stack o1">
       <div class="row" style="justify-content:space-between">
         <div><div class="eyebrow">Today's schedule</div><div class="mono" id="tSched" style="font-size:17px;font-weight:600"></div></div>
         <div id="tFlags" class="row"></div>
@@ -296,6 +290,9 @@
           <label class="f">End (UK)<input type="time" id="sEnd"></label>
         </div>
       </details>
+    </div>
+    <div class="timeline o2" id="timeline"></div>
+    <div class="card pad stack o2">
       <label class="f">Note <span class="muted" style="font-weight:400">e.g. "Offset against 30-minute OT yesterday"</span>
         <textarea id="tNote" rows="2" placeholder="Optional"></textarea></label>
       <button class="btn primary big" id="actMain"></button>
@@ -338,6 +335,11 @@
     </div>
 
     <div class="tcol">
+    <div class="card pad o4 bankcard" id="bankCard" hidden>
+      <div class="bank-top"><div><div class="eyebrow">My OT bank</div><b id="bankMins" class="mono">0:00</b></div>
+        <div class="bank-cut"><span class="muted">Next cut-off</span><b id="bankCut"></b><span id="bankLeft"></span></div></div>
+      <p id="bankNote" class="muted" style="margin:0;font-size:13px"></p>
+    </div>
     <div class="card pad stack o5" id="mySched">
       <div class="row" style="flex-wrap:wrap;gap:8px"><div class="eyebrow">My schedule</div><span class="spacer"></span>
         <div class="seg" id="msWeeks" role="group" aria-label="Week"></div></div>
@@ -408,13 +410,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js?v=20261124b"></script>
-<script src="assets/core.js?v=20261124b"></script>
-<script src="assets/game.js?v=20261124b"></script>
-<script src="assets/schedule.js?v=20261124b"></script>
-<script src="assets/logo.js?v=20261124b"></script>
-<script src="assets/payroll.js?v=20261124b"></script>
-<script src="assets/api.js?v=20261124b"></script>
-<script src="assets/staff.js?v=20261124b"></script>
+<script src="config.js?v=20261124c"></script>
+<script src="assets/core.js?v=20261124c"></script>
+<script src="assets/game.js?v=20261124c"></script>
+<script src="assets/schedule.js?v=20261124c"></script>
+<script src="assets/logo.js?v=20261124c"></script>
+<script src="assets/payroll.js?v=20261124c"></script>
+<script src="assets/api.js?v=20261124c"></script>
+<script src="assets/staff.js?v=20261124c"></script>
 </body>
 </html>
