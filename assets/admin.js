@@ -116,7 +116,7 @@
   const schedCell = (r) => {
     if (B.isOffDay(r.day_kind) || (r.day_kind === "otbank" && !r.time_in)) return B.sched.KINDS[r.day_kind].label;
     const cm = B.bankPlanned(r);
-    return `${B.clockStr(r.plan_start || r.sched_start)}–${B.clockStr(r.plan_end || r.sched_end)}${cm ? ` <small class="cov-tag" title="Covered by the OT bank: ${B.clockStr(r.plan_start)}–${B.clockStr(r.plan_end)} planned, ${B.clockStr(r.sched_start)}–${B.clockStr(r.sched_end)} worked">OT ${B.fmtMins(cm)}</small>` : ""}`;
+    return `${B.clockStr(r.plan_start || r.sched_start)}–${B.clockStr(r.plan_end || r.sched_end)}${cm ? ` <small class="cov-tag">New Schedule: ${B.clockStr(r.sched_start)} - ${B.clockStr(r.sched_end)} (${B.fmtMins(cm)} OT Bank Offset Usage)</small>` : ""}`;
   };
   const pillFor = (c) => ({ in: ["in", "Working"], lunch: ["lunch", "On lunch"], out: ["out", "Clocked out"], absent: ["absent", "Not in"], otbank: ["out", "OT Bank Day"] }[c.status]);
 
@@ -156,7 +156,7 @@
         worked = `<span class="muted">${B.fmtMins(Math.max(0, (Date.now() - Math.max(new Date(r.time_in), c.schedStart) - lunch) / 60000))}</span>`;
       }
       return `<tr><td style="white-space:nowrap">${B.avatarHtml(s, 28)}<b>${B.esc(s.display_name)}</b></td><td><span class="pill ${k}">${label}</span></td>
-        <td class="mono">${r ? schedCell(r) : plan.kind === "shift" ? `${B.clockStr(plan.start)}–${B.clockStr(plan.end)}${plan.cover ? ` <small class="cov-tag">OT ${B.fmtMins(plan.cover)}</small>` : ""}` : "—"}</td>
+        <td class="mono">${r ? schedCell(r) : plan.kind === "shift" ? `${B.clockStr(plan.start)}–${B.clockStr(plan.end)}${plan.cover ? ` <small class="cov-tag">${B.esc(B.sched.newScheduleText(plan))}</small>` : ""}` : "—"}</td>
         <td class="mono">${r ? t(r.time_in) : "—"}</td><td class="mono">${r ? lunchCell(r) : "—"}</td><td class="mono">${r ? t(r.time_out) : "—"}</td>
         <td class="num">${worked}</td><td>${r ? flagsHtml(c, day === today()) : ""}${B.noteText(r?.note) ? `<span class="sub" title="${B.esc(B.noteText(r.note))}">${B.esc(B.noteText(r.note))}</span>` : ""}</td>
         <td><button class="btn sm adminonly" data-edit="${r ? B.esc(r.id) : ""}" data-staff="${B.esc(s.id)}" data-date="${day}">${r ? "Edit" : "Add"}</button></td></tr>`;

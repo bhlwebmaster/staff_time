@@ -56,3 +56,13 @@ test("WHATSAPP: shows the planned hours and the OT bank cover until clock-out", 
   const done = B.whatsappText({ ...row, time_out: "2026-11-16T18:00:00Z" }, { full_name: "X" }, settings, [], 180);
   assert.doesNotMatch(done, /OT bank:/); assert.match(done, /OT used: 3:00/);
 });
+
+test("SCHEDULE CELL: planned hours, then the new schedule with the OT bank offset", () => {
+  const S = B.sched;
+  const late = S.cellHtml({ kind: "shift", start: "06:00", end: "15:00", cover: 180, side: "end" });
+  assert.match(late, /6:00AM-3:00PM/);
+  assert.match(late, /New Schedule: 6:00AM - 12:00PM \(3:00 OT Bank Offset Usage\)/);
+  const early = S.cellHtml({ kind: "shift", start: "09:00", end: "18:00", cover: 90, side: "start" });
+  assert.match(early, /New Schedule: 10:30AM - 6:00PM \(1:30 OT Bank Offset Usage\)/);
+  assert.doesNotMatch(S.cellHtml({ kind: "shift", start: "09:00", end: "18:00", cover: 0 }), /New Schedule/);
+});
