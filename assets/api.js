@@ -47,7 +47,8 @@
       holidays: async () => unwrap(await sb.from("holidays").select("*").order("holiday_date")),
       saveHoliday: async (h) => unwrap(await sb.from("holidays").upsert(h, { onConflict: "holiday_date" })),
       deleteHoliday: async (d) => unwrap(await sb.from("holidays").delete().eq("holiday_date", d)),
-      saveSettings: async (s) => unwrap(await sb.from("settings").update(s).eq("id", 1)),
+      saveSettings: async (s) => { const rows = unwrap(await sb.from("settings").update(s).eq("id", 1).select("id"));
+        if (!rows?.length) throw new Error("Not saved: only a full admin can change settings. Sign out and in again, or ask a full admin."); return rows; },
       notifyRules: async () => unwrap(await sb.from("notify_rules").select("*")),
       saveNotifyRules: async (rows) => unwrap(await sb.from("notify_rules").upsert(rows, { onConflict: "kind" })),
       pushPhones: async () => unwrap(await sb.from("push_subscriptions").select("staff_id, user_agent, created_at, last_ok_at")),
