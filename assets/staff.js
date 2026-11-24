@@ -239,7 +239,7 @@
     $("bankLeft").textContent = left === 0 ? "Cut-off is today" : left === 1 ? "1 day left" : `${left} days left`;
     $("bankLeft").className = left <= 3 ? "soon" : "muted";
     const max = data.settings.ot_daily_use_mins ?? 480;
-    $("bankNote").textContent = setAside ? `Up to ${B.fmtMins(setAside)} can cover short time today. Only what you're actually short comes out, to the minute, when you clock out. The rest stays.`
+    $("bankNote").textContent = setAside ? `${B.fmtMins(setAside)} is set to cover today. Only what you're actually short comes out, to the minute, when you clock out. The rest stays.`
       : !o.mins ? "No OT in your bank yet. Out-of-hours and extra time you work is added here."
       : `Try to use it before the cut-off: start later or leave earlier, up to ${B.fmtMins(max)} a day (pick it when you clock in).`;
   }
@@ -427,9 +427,8 @@
     $("otAmtRow").hidden = !cov.mins || steps.length < 1;
     $("otAmt").innerHTML = steps.sort((x, y) => x - y).map((m) => `<option value="${m}" ${m === cov.mins ? "selected" : ""}>${B.fmtMins(m)}</option>`).join("");
     $("otSave").hidden = !covDirty;
-    const pv = { start: ps, end: pe, cover: cov.mins, side: cov.side }, r = B.sched.coverRange(pv), w = r && B.sched.workRange(pv);
-    $("otPreview").textContent = r ? `Adjusted Schedule: ${B.clockStr(w[0])} – ${B.clockStr(w[1])} UK · ${B.clockStr(r[0])}–${B.clockStr(r[1])} from OT bank` : "";
-    if (covDirty && !row?.time_in) $("otPreview").textContent += " (saved when you clock in, or tap Save)";
+    $("otPreview").textContent = covDirty ? (row?.time_in ? "Not saved yet: tap Save." : "Not saved yet: tap Save, or it's saved when you clock in.") : "";
+    $("otPreview").hidden = !covDirty;
   }
   $("otSave").addEventListener("click", async (e) => {
     const btn = e.currentTarget; btn.disabled = true;
@@ -465,7 +464,7 @@
       $("otAmt").innerHTML = steps.map((m) => `<option value="${m}" ${m === otAmt ? "selected" : ""}>${B.fmtMins(m)}</option>`).join("");
       for (const b of $("otPick").children) b.setAttribute("aria-pressed", b.dataset.o === otPick);
       const adj = otAdjusted();
-      $("otPreview").textContent = otPick === "no" ? `Today: ${B.clockStr(ss)} – ${B.clockStr(se)} UK` : `Today: ${B.clockStr(adj.s)} – ${B.clockStr(adj.e)} UK (was ${B.clockStr(ss)} – ${B.clockStr(se)})`;
+      $("otPreview").hidden = false; $("otPreview").textContent = otPick === "no" ? `Today: ${B.clockStr(ss)} – ${B.clockStr(se)} UK` : `Today: ${B.clockStr(adj.s)} – ${B.clockStr(adj.e)} UK (was ${B.clockStr(ss)} – ${B.clockStr(se)})`;
       return;
     }
     otPick = "no"; $("otAmtRow").hidden = true;
