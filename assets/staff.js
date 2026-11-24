@@ -51,13 +51,31 @@
   function streakChip(n) {
     return n >= 2 ? `<span class="chip-streak" title="${n} on-time days in a row">${B.icon("flame", 13)}${n} on-time</span>` : "";
   }
+  /** Team today: the hours someone works today, after any OT bank cover ("6:00 AM–12:00 PM · OT bank 3:00"). */
+  function teamHours(s) {
+    const t = s.today;
+    if (t?.time_in) {
+      if (B.isOffDay(t.day_kind)) return "";
+      const cm = B.bankPlanned(t);
+      return `${B.clockStr(t.sched_start)}–${B.clockStr(t.sched_end)}${cm ? ` <small>· OT bank ${B.fmtMins(cm)}</small>` : ""}`;
+    }
+    const plan = todayPlan(s);
+    if (plan) {
+      if (plan.kind === "otbank") return "OT Bank Day";
+      if (plan.kind !== "shift") return "";
+      const [a, b] = B.sched.workRange(plan);
+      return `${B.clockStr(a)}–${B.clockStr(b)}${plan.cover ? ` <small>· OT bank ${B.fmtMins(plan.cover)}</small>` : ""}`;
+    }
+    return s.sched_start ? `${B.clockStr(s.sched_start)}–${B.clockStr(s.sched_end)}` : "";
+  }
   function renderTeam() {
     if (!roster) return;
     $("team").innerHTML = roster.staff.map((s) => {
       const [k, label] = statusOf(s.today, kindToday(s));
       const t = s.today;
       const times = t?.time_in ? `in ${B.clockIn(new Date(t.time_in), tz())}${t.time_out ? " · out " + B.clockIn(new Date(t.time_out), tz()) : ""}` : "";
-      return `<div class="tr">${B.avatarHtml(s, 30)}<span class="n">${B.esc(s.display_name)}</span><span class="pill ${k}">${label}</span><span class="x">${times}</span></div>`;
+      const hrs = teamHours(s);
+      return `<div class="tr">${B.avatarHtml(s, 30)}<span class="n">${B.esc(s.display_name)}</span><span class="pill ${k}">${label}</span>${hrs ? `<span class="hrs">${hrs}</span>` : ""}<span class="x">${times}</span></div>`;
     }).join("");
   }
   $("people").addEventListener("click", (e) => {

@@ -66,3 +66,10 @@ test("SCHEDULE CELL: planned hours, then the new schedule with the OT bank offse
   assert.match(early, /New Schedule: 10:30AM - 6:00PM \(1:30 OT Bank Offset Usage\)/);
   assert.doesNotMatch(S.cellHtml({ kind: "shift", start: "09:00", end: "18:00", cover: 0 }), /New Schedule/);
 });
+
+test("TEAM TODAY: working hours are adjusted by the OT bank cover", () => {
+  const S = B.sched;
+  assert.equal(S.workRange({ kind: "shift", start: "06:00", end: "15:00", cover: 180, side: "end" }).join("-"), ["06:00", "12:00"].join("-"));
+  assert.equal(S.workRange({ kind: "shift", start: "09:00", end: "18:00", cover: 120, side: "start" }).join("-"), ["11:00", "18:00"].join("-"));
+  assert.equal(S.workRange({ kind: "shift", start: "09:00", end: "18:00", cover: 0 }).join("-"), ["09:00", "18:00"].join("-"));
+});

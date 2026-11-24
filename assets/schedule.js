@@ -58,9 +58,15 @@
   function cellText(e) { if (e.kind === "holiday" && e.holiday) return e.holiday; return e.kind === "shift" ? `${ampm(e.start)}-${ampm(e.end)}` : KINDS[e.kind]?.label || e.kind; }
   /** Table cell HTML: the shift, plus a faded "OT 3:00" tag when part of it is covered by the OT bank. */
   // e.g. "New Schedule: 6:00AM - 12:00PM (3:00 OT Bank Offset Usage)": the hours still to work after the cover.
+  /** The hours actually worked on a shift after any OT bank cover: [from, to] as HH:MM. */
+  function workRange(e) {
+    if (!e || !e.start || !e.end) return null;
+    const r = coverRange(e); if (!r) return [hhmm(e.start), hhmm(e.end)];
+    return e.side === "end" ? [hhmm(e.start), r[0]] : [r[1], hhmm(e.end)];
+  }
   function newScheduleText(e) {
-    const r = coverRange(e); if (!r) return "";
-    const [from, to] = e.side === "end" ? [hhmm(e.start), r[0]] : [r[1], hhmm(e.end)];
+    if (!coverRange(e)) return "";
+    const [from, to] = workRange(e);
     return `New Schedule: ${ampm(from)} - ${ampm(to)} (${B.fmtMins(e.cover)} OT Bank Offset Usage)`;
   }
   const cellHtml = (e) => B.esc(cellText(e)) + (e.kind === "shift" && e.cover ? `<small class="cov-tag" title="${B.esc(coverText(e))}">${B.esc(newScheduleText(e))}</small>` : "");
@@ -196,5 +202,5 @@
   .wk-legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
   .wk-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }`;
 
-  Object.assign(B, { sched: { setHolidays, holidayOn, KINDS, DAY, addDays, dow, weekStart, effective, patternDay, indexDays, tableHtml, timelineHtml, cellText, cellHtml, newScheduleText, coverText, coverRange, onShift, hhmm, ampm, CSS } });
+  Object.assign(B, { sched: { setHolidays, holidayOn, KINDS, DAY, addDays, dow, weekStart, effective, patternDay, indexDays, tableHtml, timelineHtml, cellText, cellHtml, newScheduleText, workRange, coverText, coverRange, onShift, hhmm, ampm, CSS } });
 })();
