@@ -628,6 +628,8 @@ alter table public.payslips add column if not exists pay_type text not null defa
 alter table public.payslips add column if not exists paid_days numeric(5,1) not null default 0;
 alter table public.payslips add column if not exists hours_worked numeric(7,2) not null default 0;
 alter table public.payslips add column if not exists paid_hours numeric(7,2) not null default 0;
+alter table public.payslips add column if not exists incentives numeric(12,2) not null default 0;   -- added to gross pay
+alter table public.payslips add column if not exists incentive_note text;
 
 alter table public.pay_periods enable row level security;
 alter table public.payslips    enable row level security;

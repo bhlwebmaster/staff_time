@@ -44,6 +44,7 @@
    * - Absences: planned shifts up to today (or period end) with no clock-in, plus unpaid leave days.
    * - Anything in `over` (typed by an admin) replaces the automatic value.
    */
+  const TEXT_KEYS = ["other_note", "incentive_note"];
   function compute(staff, rows, p, settings, over = {}, today = B.dateIn(new Date(), settings.timezone), plan = null) {
     // plan(date) → { kind: shift | rest | vacation | sick | emergency | holiday | unpaid } from the weekly schedule; default Mon–Fri.
     const kindOf = (d) => { if (!plan) return isWeekday(d) ? "shift" : "rest"; const e = plan(d); return e.kind === "holiday" && e.paid === false ? "rest" : e.kind; };
@@ -79,9 +80,9 @@
         if (c.tout && c.schedEnd && c.tout < c.schedEnd) under += Math.round((c.schedEnd - c.tout) / 60000);
       }
     }
-    const auto = { days_worked: mine.length, hours_worked: r2(hrs / 60), late_mins: late, undertime_mins: under, absences: absent, other_ded: 0, other_note: "" };
+    const auto = { days_worked: mine.length, hours_worked: r2(hrs / 60), late_mins: late, undertime_mins: under, absences: absent, incentives: 0, incentive_note: "", other_ded: 0, other_note: "" };
     const v = { ...auto };
-    for (const k of Object.keys(auto)) if (over[k] !== undefined && over[k] !== null && over[k] !== "") v[k] = k === "other_note" ? over[k] : Number(over[k]);
+    for (const k of Object.keys(auto)) if (over[k] !== undefined && over[k] !== null && over[k] !== "") v[k] = TEXT_KEYS.includes(k) ? over[k] : Number(over[k]);
     const rate = Number(staff.pay_rate) || 0;
     const type = payType(staff.pay_type), dpc = Number(settings.days_per_cutoff) || 10, std = Math.max(1, B.standardMins(staff));
     let daily, gross, paid_days, paid_hours = 0, absence_ded = 0;
@@ -102,10 +103,13 @@
     const minute = daily / std;
     const late_ded = type === "hourly" ? 0 : r2(v.late_mins * minute), undertime_ded = type === "hourly" ? 0 : r2(v.undertime_mins * minute);
     const total_ded = r2(late_ded + undertime_ded + absence_ded + (Number(v.other_ded) || 0));
+    // Incentives are added on top of basic pay: gross = basic + incentives
+    const basic = gross, incentives = r2(Number(v.incentives) || 0);
+    gross = r2(basic + incentives);
     return {
       staff_id: staff.id, employee_name: staff.full_name, start_date: staff.start_date || null, rate: r2(rate), pay_type: type, paid_days, paid_hours,
       days_scheduled: sched, paid_leave: leave, ...v, late_ded, undertime_ded, absence_ded, other_ded: r2(v.other_ded), total_ded,
-      gross, net: r2(Math.max(0, gross - total_ded)), auto, overrides: over, daily: r2(daily), minute,
+      basic, incentives, incentive_note: v.incentive_note || "", gross, net: r2(Math.max(0, gross - total_ded)), auto, overrides: over, daily: r2(daily), minute,
     };
   }
 
@@ -152,7 +156,8 @@
         ${row("Pay Period:", period({ start_date: s.period_start, end_date: s.period_end }))}
         ${row("Payment Date:", B.prettyDate(s.pay_date, { month: "long", day: "numeric", year: "numeric" }))}
         ${head("EARNINGS (GBP)")}
-        ${row(basicLabel(s), `<b>${GBP(s.gross)}</b>`)}
+        ${+s.incentives ? row(basicLabel(s), GBP(r2(s.gross - s.incentives))) + row(`Incentives${s.incentive_note ? ` (${B.esc(s.incentive_note)})` : ""}:`, GBP(s.incentives)) + row("<b>Gross Pay:</b>", `<b>${GBP(s.gross)}</b>`)
+          : row(basicLabel(s), `<b>${GBP(s.gross)}</b>`)}
         ${head("DEDUCTIONS (GBP)")}
         ${row(`Late/Undertime (${lateUnder} min):`, GBP(r2((+s.late_ded || 0) + (+s.undertime_ded || 0))))}
         ${row(`Absences (${Number(s.absences) || 0} day${Number(s.absences) === 1 ? "" : "s"}${unpaidAbs(s) ? ", unpaid" : ""}):`, GBP(s.absence_ded))}
@@ -246,7 +251,7 @@
     const n = (x) => Number(x) || 0, pl = (x, w) => `${x} ${w}${x === 1 ? "" : "s"}`;
     const basicD = t === "hourly" ? `${r2(s.paid_hours)} hours x ${money(s.rate)}` : t === "daily" ? `${pl(n(s.paid_days), "day")} x ${money(s.rate)}`
       : `${T.label} rate, ${money(s.rate)} ${T.short}`;
-    table("EARNINGS", [["Basic pay", basicD, money(s.gross)]], "Gross pay", money(s.gross));
+    table("EARNINGS", [["Basic pay", basicD, money(r2(s.gross - n(s.incentives)))], ...(n(s.incentives) ? [["Incentives", s.incentive_note || "", money(s.incentives)]] : [])], "Gross pay", money(s.gross));
     const unpaid = t === "hourly" || t === "daily";
     table("DEDUCTIONS", [
       ["Lates", pl(n(s.late_mins), "minute") + (t === "hourly" && n(s.late_mins) ? " (already left out of paid hours)" : ""), money(s.late_ded)],

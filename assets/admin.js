@@ -962,28 +962,28 @@
     const T = P.totals(payLines);
     const inp = (l, k, cls = "") => {
       const ov = payOver[l.staff_id]?.[k];
-      if (!edit) return k === "other_note" ? B.esc(l.other_note || "") : (k === "other_ded" ? P.GBP(l[k]) : l[k]);
+      if (!edit) return k.endsWith("_note") ? B.esc(l[k] || "") : (k === "other_ded" || k === "incentives" ? P.GBP(l[k]) : l[k]);
       const has = ov !== undefined && ov !== "";
       const autoV = l.auto ? l.auto[k] : "";
       const val = has ? ov : autoV;
-      const num = k !== "other_note";
+      const num = !k.endsWith("_note");
       return `<span class="cellin"><input class="${cls} ${has ? "ov" : ""}" data-s="${l.staff_id}" data-k="${k}" value="${B.esc(val ?? "")}"
-        ${num ? 'type="number" step="any" min="0"' : 'maxlength="40" placeholder="e.g. Cash advance"'} aria-label="${k.replace(/_/g, " ")} for ${B.esc(l.employee_name)}"
+        ${num ? 'type="number" step="any" min="0"' : `maxlength="40" placeholder="${k === "incentive_note" ? "e.g. Perfect attendance" : "e.g. Cash advance"}"`} aria-label="${k.replace(/_/g, " ")} for ${B.esc(l.employee_name)}"
         title="${has ? `Changed by admin. From attendance: ${autoV}` : "From attendance. Type to change."}">${has ? `<button type="button" class="undo" data-s="${l.staff_id}" data-k="${k}" title="Back to the attendance value (${B.esc(autoV)})" aria-label="Reset to ${B.esc(autoV)}">↺</button>` : ""}</span>`;
     };
     const [pa, pb] = pager($("payPager"), payLines.length, payPg, renderPayroll);   // TOTAL row still covers everyone
     $("paySheet").innerHTML = `<thead><tr><th style="text-align:left">Employee name</th><th>Start date</th><th>Payroll period</th><th>Rate</th>
-      <th>Days worked</th><th>Hours<br>worked</th><th>Lates<br>(mins)</th><th>Undertime<br>(mins)</th><th>Absences</th><th>Other deductions<br>(CA, loans, taxes)</th><th>Note</th>
+      <th>Days worked</th><th>Hours<br>worked</th><th>Lates<br>(mins)</th><th>Undertime<br>(mins)</th><th>Absences</th><th>Incentives</th><th>Note</th><th>Other deductions<br>(CA, loans, taxes)</th><th>Note</th>
       <th>Total deductions</th><th>Gross pay</th><th>Net pay</th><th>Exchange rate</th><th>Gross pay<br>(PHP)</th><th>Net pay<br>(PHP)</th><th>Fee share</th><th>Received<br>(PHP)</th></tr></thead>
       <tbody>${payLines.slice(pa, pb).map((l) => `<tr>
         <td><b>${B.esc(l.employee_name)}</b></td><td class="num">${P.usDate(l.start_date)}</td><td>${P.period(curP)}</td>
         <td class="num">${P.GBP(l.rate)}<span class="sub">${P.TYPES[l.pay_type].short}${l.pay_type === "hourly" ? ` · ${l.paid_hours} h paid` : l.pay_type === "daily" ? ` · ${l.paid_days} paid` : ""}</span></td><td class="num">${inp(l, "days_worked")}</td><td class="num">${inp(l, "hours_worked")}</td><td class="num">${inp(l, "late_mins")}</td>
-        <td class="num">${inp(l, "undertime_mins")}</td><td class="num">${inp(l, "absences")}</td><td class="num">${inp(l, "other_ded")}</td><td>${inp(l, "other_note", "note")}</td>
+        <td class="num">${inp(l, "undertime_mins")}</td><td class="num">${inp(l, "absences")}</td><td class="num">${inp(l, "incentives")}</td><td>${inp(l, "incentive_note", "note")}</td><td class="num">${inp(l, "other_ded")}</td><td>${inp(l, "other_note", "note")}</td>
         <td class="num">${P.GBP(l.total_ded)}</td><td class="num">${P.GBP(l.gross)}</td><td class="num"><b>${P.GBP(l.net)}</b></td>
         <td class="num">${l.exchange_rate ? Number(l.exchange_rate).toFixed(2) : "—"}</td><td class="num">${P.PHP(l.gross_php)}</td><td class="num hl">${P.PHP(l.net_php)}</td>
         <td class="num">${((+l.fee_share || 0) * 100).toFixed(2)}%</td><td class="num"><b>${P.PHP(l.received_php)}</b></td></tr>`).join("")
-        || `<tr><td colspan="19" class="muted">No active staff in this period.</td></tr>`}</tbody>
-      <tfoot><tr><td colspan="11" style="text-align:right">TOTAL</td><td class="num">${P.GBP(T.total_ded)}</td><td class="num">${P.GBP(T.gross)}</td><td class="num">${P.GBP(T.net)}</td>
+        || `<tr><td colspan="21" class="muted">No active staff in this period.</td></tr>`}</tbody>
+      <tfoot><tr><td colspan="13" style="text-align:right">TOTAL</td><td class="num">${P.GBP(T.total_ded)}</td><td class="num">${P.GBP(T.gross)}</td><td class="num">${P.GBP(T.net)}</td>
         <td></td><td class="num">${P.PHP(T.gross_php)}</td><td class="num">${P.PHP(T.net_php)}</td><td></td><td class="num">${P.PHP(T.received_php)}</td></tr></tfoot>`;
     const cur = $("slipWho").value;
     $("slipWho").innerHTML = payLines.map((l) => `<option value="${l.staff_id}">${B.esc(l.employee_name)}</option>`).join("");
@@ -994,9 +994,9 @@
     const i = e.target.closest("input[data-s]"); if (!i) return;
     const o = (payOver[i.dataset.s] ||= {}), k = i.dataset.k;
     const line = payLines.find((l) => l.staff_id === i.dataset.s), autoV = line?.auto?.[k];
-    const v = k === "other_note" ? i.value.trim() : i.value === "" ? "" : +i.value;
+    const v = k.endsWith("_note") ? i.value.trim() : i.value === "" ? "" : +i.value;
     // Same as attendance (or emptied) = no override; anything else is kept as the admin's value
-    if (v === "" || v === autoV || (k === "other_note" && !v)) delete o[k]; else o[k] = v;
+    if (v === "" || v === autoV || (k.endsWith("_note") && !v)) delete o[k]; else o[k] = v;
     recalc();
   });
   $("paySheet").addEventListener("click", (e) => {
@@ -1023,15 +1023,15 @@
     doc.save(`Payslips_${curP.start_date}_to_${curP.end_date}.pdf`);
   };
   $("payCsv").onclick = () => download(`Payroll_${curP.start_date}_to_${curP.end_date}.csv`, [
-    ["Employee name", "Start date", "Payroll period", "Pay type", "Rate (GBP)", "Paid days", "Paid hours", "Days worked", "Hours worked", "Lates (mins)", "Undertime (mins)", "Absences", "Late ded (GBP)", "Undertime ded (GBP)",
+    ["Employee name", "Start date", "Payroll period", "Pay type", "Rate (GBP)", "Paid days", "Paid hours", "Days worked", "Hours worked", "Lates (mins)", "Undertime (mins)", "Absences", "Incentives (GBP)", "Incentive note", "Late ded (GBP)", "Undertime ded (GBP)",
       "Absence ded (GBP)", "Other deductions (GBP)", "Note", "Total deductions (GBP)", "Gross pay (GBP)", "Net pay (GBP)", "Exchange rate", "Gross pay (PHP)", "Net pay (PHP)",
       "Transfer fee share", "Transfer fee (PHP)", "Amount received (PHP)"],
-    ...payLines.map((l) => [l.employee_name, P.usDate(l.start_date), P.period(curP), P.TYPES[l.pay_type].label, l.rate, l.paid_days, l.paid_hours, l.days_worked, l.hours_worked, l.late_mins, l.undertime_mins, l.absences, l.late_ded,
+    ...payLines.map((l) => [l.employee_name, P.usDate(l.start_date), P.period(curP), P.TYPES[l.pay_type].label, l.rate, l.paid_days, l.paid_hours, l.days_worked, l.hours_worked, l.late_mins, l.undertime_mins, l.absences, l.incentives, l.incentive_note || "", l.late_ded,
       l.undertime_ded, l.absence_ded, l.other_ded, l.other_note || "", l.total_ded, l.gross, l.net, l.exchange_rate ?? "", l.gross_php ?? "", l.net_php ?? "",
       ((+l.fee_share || 0) * 100).toFixed(2) + "%", l.fee_php ?? "", l.received_php ?? ""]),
   ]);
   const KEEP = ["employee_name", "start_date", "rate", "pay_type", "paid_days", "paid_hours", "days_scheduled", "days_worked", "hours_worked", "late_mins", "undertime_mins", "absences", "late_ded", "undertime_ded",
-    "absence_ded", "other_ded", "other_note", "total_ded", "gross", "net", "exchange_rate", "gross_php", "net_php", "fee_share", "fee_php", "received_php"];
+    "absence_ded", "incentives", "incentive_note", "other_ded", "other_note", "total_ded", "gross", "net", "exchange_rate", "gross_php", "net_php", "fee_share", "fee_php", "received_php"];
   async function savePayroll(status) {
     const p = { id: curP.id, exchange_rate: $("payFx").value === "" ? null : +$("payFx").value, transfer_fee: +$("payFee").value || 0 };
     if (status === "final") {
@@ -1040,7 +1040,7 @@
       if (payLines.some((l) => !l.rate)) return B.toast("Some people have no pay rate. Set it under Staff first.", "err");
     }
     const rows = payLines.map((l) => { const r = { period_id: curP.id, staff_id: l.staff_id, overrides: payOver[l.staff_id] || {}, updated_at: new Date().toISOString() };
-      for (const k of KEEP) r[k] = l[k] ?? null; r.other_note = l.other_note || null; return r; });
+      for (const k of KEEP) r[k] = l[k] ?? null; r.other_note = l.other_note || null; r.incentive_note = l.incentive_note || null; return r; });
     try {
       await A.savePeriod(p);
       if (rows.length) await A.savePayslips(rows);
